@@ -9,7 +9,7 @@ type CookieToSet = {
 
 const publicRoutes = new Set(["/", "/episodes", "/articles", "/contact", "/login", "/pricing"]);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
