@@ -31,15 +31,15 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl">
           <h2 className="text-3xl font-bold text-brand-dark">What we cover</h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
-            <article className="rounded-xl border border-brand-green/20 bg-white p-6 shadow-sm">
+            <article className="rounded-xl border border-brand-green/20 border-l-4 border-brand-green bg-white p-6 shadow-sm">
               <h3 className="text-xl font-semibold text-brand-greenDark">Fantasy Tactics</h3>
               <p className="mt-3 text-sm leading-6 text-brand-dark/80">Captain picks, chip strategy, fixture swings, and weekly decision frameworks that help you stay ahead.</p>
             </article>
-            <article className="rounded-xl border border-brand-green/20 bg-brand-creamDark/40 p-6 shadow-sm">
+            <article className="rounded-xl border border-brand-green/20 border-l-4 border-brand-green bg-brand-creamDark/40 p-6 shadow-sm">
               <h3 className="text-xl font-semibold text-brand-greenDark">Waiver Wire</h3>
               <p className="mt-3 text-sm leading-6 text-brand-dark/80">Target priority adds, under-the-radar assets, and streamers to win your Fantrax matchups.</p>
             </article>
-            <article className="rounded-xl border border-brand-green/20 bg-white p-6 shadow-sm">
+            <article className="rounded-xl border border-brand-green/20 border-l-4 border-brand-green bg-white p-6 shadow-sm">
               <h3 className="text-xl font-semibold text-brand-greenDark">Player Analysis</h3>
               <p className="mt-3 text-sm leading-6 text-brand-dark/80">Data-driven breakdowns mixed with football context so you can trust your picks with confidence.</p>
             </article>

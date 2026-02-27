@@ -8,13 +8,13 @@ export default function EpisodesPage() {
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           <a
             href="#"
-            className="rounded-xl bg-brand-green px-8 py-6 text-center text-lg font-bold text-brand-cream shadow-md transition-colors hover:bg-brand-greenLight"
+            className="rounded-xl bg-brand-green px-8 py-4 text-center text-lg font-bold text-brand-cream shadow-md transition-colors hover:bg-brand-greenLight"
           >
             Listen on Spotify
           </a>
           <a
             href="#"
-            className="rounded-xl border-2 border-brand-green bg-brand-creamDark px-8 py-6 text-center text-lg font-bold text-brand-greenDark transition-colors hover:bg-brand-cream"
+            className="rounded-xl border-2 border-brand-green bg-brand-creamDark px-8 py-4 text-center text-lg font-bold text-brand-greenDark transition-colors hover:bg-brand-cream"
           >
             Listen on Apple Podcasts
           </a>
