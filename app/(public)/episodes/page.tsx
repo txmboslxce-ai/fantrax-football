@@ -5,16 +5,16 @@ export default function EpisodesPage() {
         <h1 className="text-4xl font-black text-brand-dark sm:text-5xl">Episodes</h1>
         <p className="mt-4 max-w-3xl text-lg text-brand-dark/80">Weekly Premier League fantasy conversations focused on tactics, waivers, ranks, and real decisions for Fantrax managers.</p>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        <div className="mt-10 flex flex-row flex-wrap gap-4">
           <a
             href="#"
-            className="rounded-xl bg-brand-green px-8 py-4 text-center text-lg font-bold text-brand-cream shadow-md transition-colors hover:bg-brand-greenLight"
+            className="bg-brand-green text-brand-cream hover:bg-brand-greenLight px-8 py-4 rounded-lg font-semibold text-lg shadow-md transition-colors"
           >
             Listen on Spotify
           </a>
           <a
             href="#"
-            className="rounded-xl border-2 border-brand-green bg-brand-creamDark px-8 py-4 text-center text-lg font-bold text-brand-greenDark transition-colors hover:bg-brand-cream"
+            className="border-2 border-brand-green bg-brand-creamDark text-brand-greenDark hover:bg-brand-cream px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
           >
             Listen on Apple Podcasts
           </a>
