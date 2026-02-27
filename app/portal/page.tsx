@@ -31,7 +31,7 @@ export default async function PortalPage() {
   } = await supabase.auth.getUser();
 
   return (
-    <div className="bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
+    <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <h1 className="text-4xl font-black sm:text-5xl">Welcome to the Portal</h1>
         <p className="mt-3 text-brand-creamDark">Signed in as: {user?.email ?? "Unknown user"}</p>
