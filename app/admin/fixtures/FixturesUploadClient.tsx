@@ -41,7 +41,9 @@ export default function FixturesUploadClient() {
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
         <h1 className="text-3xl font-black">Upload Fixtures</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Upload your FixtureKey XLSX once per season.</p>
+        <p className="mt-2 text-sm text-brand-creamDark">
+          Upload a FixtureKey XLSX with columns: Gameweek, Home, Away. Expected: 380 rows (10 fixtures x 38 gameweeks).
+        </p>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="text-sm">

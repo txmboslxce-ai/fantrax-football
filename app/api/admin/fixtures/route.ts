@@ -4,6 +4,12 @@ import { isAdminEmail } from "@/lib/admin";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+type TeamRow = {
+  abbrev: string;
+  full_name: string | null;
+  name: string | null;
+};
+
 function getCellValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
     if (record[key] !== undefined && record[key] !== null) {
@@ -11,6 +17,48 @@ function getCellValue(record: Record<string, unknown>, keys: string[]): string {
     }
   }
   return "";
+}
+
+function normalize(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function resolveTeamAbbrev(teamNameRaw: string, teams: TeamRow[]): { abbrev: string | null; reason?: string } {
+  const teamName = normalize(teamNameRaw);
+  if (!teamName) {
+    return { abbrev: null, reason: "empty team name" };
+  }
+
+  const exactFullName = teams.find((team) => normalize(team.full_name ?? "") === teamName);
+  if (exactFullName) {
+    return { abbrev: exactFullName.abbrev };
+  }
+
+  const exactName = teams.find((team) => normalize(team.name ?? "") === teamName);
+  if (exactName) {
+    return { abbrev: exactName.abbrev };
+  }
+
+  const partialMatches = teams.filter((team) => {
+    const fullName = normalize(team.full_name ?? "");
+    const shortName = normalize(team.name ?? "");
+
+    return (
+      (fullName && (fullName.includes(teamName) || teamName.includes(fullName))) ||
+      (shortName && (shortName.includes(teamName) || teamName.includes(shortName)))
+    );
+  });
+
+  if (partialMatches.length === 1) {
+    return { abbrev: partialMatches[0].abbrev };
+  }
+
+  if (partialMatches.length > 1) {
+    const candidates = partialMatches.map((team) => team.full_name || team.name || team.abbrev).join(", ");
+    return { abbrev: null, reason: `ambiguous match (${candidates})` };
+  }
+
+  return { abbrev: null, reason: "no match found" };
 }
 
 export async function POST(request: Request) {
@@ -55,25 +103,69 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No fixture rows found in sheet"] }, { status: 400 });
   }
 
-  const upserts = rows
-    .map((row) => ({
-      season,
-      gameweek: Number(getCellValue(row, ["Gameweek", "gameweek"])),
-      home_team: getCellValue(row, ["HomeAbbrev", "homeabbrev"]).toUpperCase(),
-      away_team: getCellValue(row, ["AwayAbbrev", "awayabbrev"]).toUpperCase(),
-    }))
-    .filter((row) => row.gameweek >= 1 && row.gameweek <= 38 && row.home_team && row.away_team);
+  const db = createAdminSupabaseClient() ?? supabase;
 
-  if (upserts.length === 0) {
-    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No valid fixture rows"] }, { status: 400 });
+  const { data: teamsData, error: teamsError } = await db.from("teams").select("abbrev, full_name, name");
+  if (teamsError) {
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: [teamsError.message] }, { status: 500 });
   }
 
-  const db = createAdminSupabaseClient() ?? supabase;
+  const teams = (teamsData ?? []) as TeamRow[];
+  if (teams.length === 0) {
+    return NextResponse.json(
+      { success: false, rowsProcessed: 0, errors: ["No teams found. Upload team map before fixtures."] },
+      { status: 400 }
+    );
+  }
+
+  const errors: string[] = [];
+  const upserts: Array<{ season: string; gameweek: number; home_team: string; away_team: string }> = [];
+
+  rows.forEach((row, index) => {
+    const gameweekRaw = getCellValue(row, ["Gameweek", "gameweek"]);
+    const homeRaw = getCellValue(row, ["Home", "home"]);
+    const awayRaw = getCellValue(row, ["Away", "away"]);
+
+    const gameweek = Number(gameweekRaw);
+    if (!Number.isInteger(gameweek) || gameweek < 1 || gameweek > 38) {
+      errors.push(`Row ${index + 2}: invalid gameweek '${gameweekRaw}'`);
+      return;
+    }
+
+    if (!homeRaw || !awayRaw) {
+      errors.push(`Row ${index + 2}: missing Home or Away value`);
+      return;
+    }
+
+    const homeResult = resolveTeamAbbrev(homeRaw, teams);
+    if (!homeResult.abbrev) {
+      errors.push(`Row ${index + 2}: could not match Home '${homeRaw}' (${homeResult.reason})`);
+      return;
+    }
+
+    const awayResult = resolveTeamAbbrev(awayRaw, teams);
+    if (!awayResult.abbrev) {
+      errors.push(`Row ${index + 2}: could not match Away '${awayRaw}' (${awayResult.reason})`);
+      return;
+    }
+
+    upserts.push({
+      season,
+      gameweek,
+      home_team: homeResult.abbrev.toUpperCase(),
+      away_team: awayResult.abbrev.toUpperCase(),
+    });
+  });
+
+  if (upserts.length === 0) {
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: errors.length ? errors : ["No valid fixture rows"] }, { status: 400 });
+  }
+
   const { error } = await db.from("fixtures").upsert(upserts, { onConflict: "season,gameweek,home_team" });
 
   if (error) {
-    return NextResponse.json({ success: false, rowsProcessed: 0, errors: [error.message] }, { status: 500 });
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: [error.message, ...errors] }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, rowsProcessed: upserts.length, errors: [] });
+  return NextResponse.json({ success: true, rowsProcessed: upserts.length, errors });
 }
