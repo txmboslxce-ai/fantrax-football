@@ -177,13 +177,14 @@ export default function CompareClient({ players }: CompareClientProps) {
               </thead>
               <tbody>
                 {(() => {
-                  if (!selected.left || !selected.right) {
+                  const { left, right } = selected;
+                  if (!left || !right) {
                     return null;
                   }
 
                   return rows.map((row, index) => {
-                    const leftValue = selected.left.comparison[row.key];
-                    const rightValue = selected.right.comparison[row.key];
+                    const leftValue = left.comparison[row.key];
+                    const rightValue = right.comparison[row.key];
                     const leftBetter = leftValue > rightValue;
                     const rightBetter = rightValue > leftValue;
 
