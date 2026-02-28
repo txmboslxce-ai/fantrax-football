@@ -19,9 +19,9 @@ const navItems: NavItem[] = [
   { href: "/portal", label: "Dashboard" },
   { href: "/portal/players", label: "Players" },
   { href: "/portal/fixtures", label: "Fixtures" },
-  { href: "/portal/teams", label: "Teams", locked: true },
-  { href: "/portal/compare", label: "Compare", locked: true },
-  { href: "/portal/stats", label: "Stats", locked: true },
+  { href: "/portal/teams", label: "Teams" },
+  { href: "/portal/compare", label: "Compare" },
+  { href: "/portal/stats", label: "Stats" },
   { href: "/portal/my-league", label: "My League", locked: true },
 ];
 
