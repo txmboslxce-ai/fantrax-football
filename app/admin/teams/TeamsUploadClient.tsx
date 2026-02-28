@@ -1,28 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import * as XLSX from "xlsx";
 
 type UploadResult = {
   success: boolean;
   rowsProcessed: number;
   errors: string[];
 };
-
-type TeamRow = {
-  abbrev: string;
-  name: string;
-  full_name: string;
-};
-
-function getCellValue(record: Record<string, unknown>, keys: string[]): string {
-  for (const key of keys) {
-    if (record[key] !== undefined && record[key] !== null) {
-      return String(record[key]).trim();
-    }
-  }
-  return "";
-}
 
 export default function TeamsUploadClient() {
   const [file, setFile] = useState<File | null>(null);
@@ -38,24 +22,12 @@ export default function TeamsUploadClient() {
     setIsUploading(true);
     setResult(null);
 
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "array" });
-    const firstSheet = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheet];
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
-
-    const teams: TeamRow[] = rows
-      .map((row) => ({
-        abbrev: getCellValue(row, ["abbrev", "Abbrev", "Code", "Team", "team"]).toUpperCase(),
-        name: getCellValue(row, ["name", "Name", "Club"]),
-        full_name: getCellValue(row, ["full_name", "Full Name", "FullName", "Club Full Name"]),
-      }))
-      .filter((row) => row.abbrev && row.name && row.full_name);
+    const formData = new FormData();
+    formData.append("file", file);
 
     const response = await fetch("/api/admin/teams", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: teams }),
+      body: formData,
     });
 
     const data = (await response.json()) as UploadResult;

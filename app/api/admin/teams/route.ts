@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
+import * as XLSX from "xlsx";
 import { isAdminEmail } from "@/lib/admin";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-type TeamPayload = {
-  abbrev: string;
-  name: string;
-  full_name: string;
-};
+function getCellValue(record: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    if (record[key] !== undefined && record[key] !== null) {
+      return String(record[key]).trim();
+    }
+  }
+  return "";
+}
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -23,18 +27,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["Forbidden"] }, { status: 403 });
   }
 
-  const body = await request.json();
-  const rows = Array.isArray(body?.rows) ? (body.rows as TeamPayload[]) : [];
+  const formData = await request.formData();
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No team file supplied"] }, { status: 400 });
+  }
+
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName =
+    workbook.SheetNames.find((name) => name.trim().toLowerCase() === "teammap") ?? workbook.SheetNames[0];
+
+  if (!sheetName) {
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No sheets found in workbook"] }, { status: 400 });
+  }
+
+  const worksheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
 
   if (rows.length === 0) {
-    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No team rows supplied"] }, { status: 400 });
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No team rows found in sheet"] }, { status: 400 });
   }
 
   const upserts = rows
     .map((row) => ({
-      abbrev: String(row.abbrev ?? "").trim().toUpperCase(),
-      name: String(row.name ?? "").trim(),
-      full_name: String(row.full_name ?? "").trim(),
+      abbrev: getCellValue(row, ["TeamAbbrev", "teamabbrev", "abbrev", "Abbrev"]).toUpperCase(),
+      name: getCellValue(row, ["TeamName", "teamname", "name", "Name"]),
+      full_name: getCellValue(row, ["TeamFullName", "teamfullname", "full_name", "Full Name", "FullName"]),
     }))
     .filter((row) => row.abbrev && row.name && row.full_name);
 
