@@ -176,20 +176,29 @@ export default function CompareClient({ players }: CompareClientProps) {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => {
-                  const leftValue = selected.left.comparison[row.key];
-                  const rightValue = selected.right.comparison[row.key];
-                  const leftBetter = leftValue > rightValue;
-                  const rightBetter = rightValue > leftValue;
+                {(() => {
+                  if (!selected.left || !selected.right) {
+                    return null;
+                  }
 
-                  return (
-                    <tr key={row.key} className={index % 2 === 0 ? "bg-brand-dark/70 text-brand-cream" : "bg-brand-dark text-brand-cream"}>
-                      <td className="px-4 py-3 font-semibold">{row.label}</td>
-                      <td className={`px-4 py-3 ${leftBetter ? "font-bold text-brand-greenLight" : ""}`}>{leftValue.toFixed(2)}</td>
-                      <td className={`px-4 py-3 ${rightBetter ? "font-bold text-brand-greenLight" : ""}`}>{rightValue.toFixed(2)}</td>
-                    </tr>
-                  );
-                })}
+                  return rows.map((row, index) => {
+                    const leftValue = selected.left.comparison[row.key];
+                    const rightValue = selected.right.comparison[row.key];
+                    const leftBetter = leftValue > rightValue;
+                    const rightBetter = rightValue > leftValue;
+
+                    return (
+                      <tr
+                        key={row.key}
+                        className={index % 2 === 0 ? "bg-brand-dark/70 text-brand-cream" : "bg-brand-dark text-brand-cream"}
+                      >
+                        <td className="px-4 py-3 font-semibold">{row.label}</td>
+                        <td className={`px-4 py-3 ${leftBetter ? "font-bold text-brand-greenLight" : ""}`}>{leftValue.toFixed(2)}</td>
+                        <td className={`px-4 py-3 ${rightBetter ? "font-bold text-brand-greenLight" : ""}`}>{rightValue.toFixed(2)}</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
