@@ -53,7 +53,8 @@ export default async function StatsPage() {
       .select(
         "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
       )
-      .eq("season", SEASON),
+      .eq("season", SEASON)
+      .gt("games_played", 0),
     supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
     supabase.from("teams").select("abbrev, name, full_name"),
   ]);
@@ -103,8 +104,8 @@ export default async function StatsPage() {
       team: teamNames.get(player.team) ?? player.team,
       position: mapPosition(player.position),
       seasonPts: summary.season_total_pts,
-      avgGw: summary.avg_pts_per_game,
-      ghostGw: summary.avg_ghost_per_game,
+      avgGw: summary.avg_pts_per_gameweek,
+      ghostGw: summary.avg_ghost_per_gameweek,
       goals: summary.goals,
       assists: summary.assists,
       cleanSheets: summary.clean_sheets,
@@ -114,7 +115,7 @@ export default async function StatsPage() {
       clearances: summary.clearances,
       aerials: summary.aerials,
       keyPasses: summary.key_passes,
-      gamesPlayed: summary.games_played,
+      gamesPlayed: summary.gameweeks_played,
     };
   });
 

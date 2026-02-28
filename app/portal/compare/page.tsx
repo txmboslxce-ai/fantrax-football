@@ -61,7 +61,8 @@ export default async function ComparePage() {
       .select(
         "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
       )
-      .eq("season", SEASON),
+      .eq("season", SEASON)
+      .gt("games_played", 0),
     supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
     supabase.from("teams").select("abbrev, name, full_name"),
   ]);
@@ -106,7 +107,7 @@ export default async function ComparePage() {
     const decorated = decorateGameweeks(playerRows, player.team, playerFixtures);
     const summary = summarizePlayerSeason(decorated);
     const last5 = decorated
-      .filter((row) => row.games_played === 1)
+      .filter((row) => row.games_played > 0)
       .slice(-5)
       .map((row) => ({ gameweek: row.gameweek, points: row.raw_fantrax_pts }));
 
@@ -127,9 +128,9 @@ export default async function ComparePage() {
       last5,
       comparison: {
         seasonPts: summary.season_total_pts,
-        avgGw: summary.avg_pts_per_game,
+        avgGw: summary.avg_pts_per_gameweek,
         avgStart: summary.avg_pts_per_start,
-        ghostGw: summary.avg_ghost_per_game,
+        ghostGw: summary.avg_ghost_per_gameweek,
         ghostStart: summary.avg_ghost_per_start,
         goals: summary.goals,
         assists: summary.assists,

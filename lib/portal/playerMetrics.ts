@@ -68,13 +68,16 @@ export type DecoratedGameweek = {
 
 export type PlayerSeasonSummary = {
   season_total_pts: number;
+  gameweeks_played: number;
+  total_games_played: number;
+  total_games_started: number;
+  avg_pts_per_gameweek: number;
   avg_pts_per_game: number;
   avg_pts_per_start: number;
   total_ghost_pts: number;
+  avg_ghost_per_gameweek: number;
   avg_ghost_per_game: number;
   avg_ghost_per_start: number;
-  games_played: number;
-  games_started: number;
   home_avg: number;
   away_avg: number;
   home_pct: number;
@@ -161,31 +164,32 @@ export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtu
 }
 
 export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSummary {
-  const playedRows = rows.filter((row) => row.games_played === 1);
-  const startedRows = rows.filter((row) => row.games_started === 1);
+  const playedRows = rows.filter((row) => row.games_played > 0);
   const homeRows = playedRows.filter((row) => row.isHome === true);
   const awayRows = playedRows.filter((row) => row.isHome === false);
 
   const seasonTotalPts = playedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const totalGhostPts = playedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
   const attackPts = rows.reduce((sum, row) => sum + row.attack_pts, 0);
-  const startTotalPts = startedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
-  const startTotalGhostPts = startedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
   const homeTotalPts = homeRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const awayTotalPts = awayRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
 
-  const gamesPlayed = playedRows.length;
-  const gamesStarted = startedRows.length;
+  const gameweeksPlayed = playedRows.length;
+  const totalGamesPlayed = playedRows.reduce((sum, row) => sum + row.games_played, 0);
+  const totalGamesStarted = playedRows.reduce((sum, row) => sum + row.games_started, 0);
 
   return {
     season_total_pts: seasonTotalPts,
-    avg_pts_per_game: gamesPlayed > 0 ? seasonTotalPts / gamesPlayed : 0,
-    avg_pts_per_start: gamesStarted > 0 ? startTotalPts / gamesStarted : 0,
+    gameweeks_played: gameweeksPlayed,
+    total_games_played: totalGamesPlayed,
+    total_games_started: totalGamesStarted,
+    avg_pts_per_gameweek: gameweeksPlayed > 0 ? seasonTotalPts / gameweeksPlayed : 0,
+    avg_pts_per_game: totalGamesPlayed > 0 ? seasonTotalPts / totalGamesPlayed : 0,
+    avg_pts_per_start: totalGamesStarted > 0 ? seasonTotalPts / totalGamesStarted : 0,
     total_ghost_pts: totalGhostPts,
-    avg_ghost_per_game: gamesPlayed > 0 ? totalGhostPts / gamesPlayed : 0,
-    avg_ghost_per_start: gamesStarted > 0 ? startTotalGhostPts / gamesStarted : 0,
-    games_played: gamesPlayed,
-    games_started: gamesStarted,
+    avg_ghost_per_gameweek: gameweeksPlayed > 0 ? totalGhostPts / gameweeksPlayed : 0,
+    avg_ghost_per_game: totalGamesPlayed > 0 ? totalGhostPts / totalGamesPlayed : 0,
+    avg_ghost_per_start: totalGamesStarted > 0 ? totalGhostPts / totalGamesStarted : 0,
     home_avg: homeRows.length > 0 ? homeTotalPts / homeRows.length : 0,
     away_avg: awayRows.length > 0 ? awayTotalPts / awayRows.length : 0,
     home_pct: seasonTotalPts > 0 ? (homeTotalPts / seasonTotalPts) * 100 : 0,

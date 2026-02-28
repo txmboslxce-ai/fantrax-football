@@ -55,7 +55,8 @@ export default async function TeamsPage() {
       .select(
         "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
       )
-      .eq("season", SEASON),
+      .eq("season", SEASON)
+      .gt("games_played", 0),
     supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
   ]);
 
@@ -109,8 +110,8 @@ export default async function TeamsPage() {
       name: player.name,
       position: mapPosition(player.position),
       seasonPts: summary.season_total_pts,
-      avgGw: summary.avg_pts_per_game,
-      ghostGw: summary.avg_ghost_per_game,
+      avgGw: summary.avg_pts_per_gameweek,
+      ghostGw: summary.avg_ghost_per_gameweek,
     });
   }
 
@@ -120,8 +121,8 @@ export default async function TeamsPage() {
 
     const teamPlayerIds = new Set(teamPlayers.map((player) => player.id));
     const totalGames = ((gameweeks ?? []) as PlayerGameweekRow[])
-      .filter((row) => teamPlayerIds.has(row.player_id) && Number(row.games_played) === 1)
-      .length;
+      .filter((row) => teamPlayerIds.has(row.player_id) && Number(row.games_played) > 0)
+      .reduce((sum, row) => sum + Number(row.games_played ?? 0), 0);
 
     const topScorer = teamPlayers[0];
     const topGhost = [...teamPlayers].sort((a, b) => b.ghostGw - a.ghostGw)[0];

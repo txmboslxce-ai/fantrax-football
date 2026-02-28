@@ -78,7 +78,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const summary = summarizePlayerSeason(decorated);
   const upcoming = nextFixtures(player.team, fixturesForTeam, summary.current_gameweek, teamNames, 5);
 
-  const playedRows = decorated.filter((row) => row.games_played === 1);
+  const playedRows = decorated.filter((row) => row.games_played > 0);
   const pointsByGw = playedRows.map((row) => ({ gameweek: row.gameweek, points: row.raw_fantrax_pts }));
   const last5 = pointsByGw.slice(-5);
 
@@ -118,7 +118,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
             </article>
             <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
               <p className="text-xs uppercase tracking-wide text-brand-creamDark">Avg Pts/GW</p>
-              <p className="mt-2 text-4xl font-black">{formatFixed(summary.avg_pts_per_game)}</p>
+              <p className="mt-2 text-4xl font-black">{formatFixed(summary.avg_pts_per_gameweek)}</p>
             </article>
           </div>
 
@@ -127,13 +127,13 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
               Avg Pts/Start: <strong>{formatFixed(summary.avg_pts_per_start)}</strong>
             </div>
             <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Ghost Pts/GW: <strong>{formatFixed(summary.avg_ghost_per_game)}</strong>
+              Ghost Pts/GW: <strong>{formatFixed(summary.avg_ghost_per_gameweek)}</strong>
             </div>
             <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
               Ghost Pts/Start: <strong>{formatFixed(summary.avg_ghost_per_start)}</strong>
             </div>
             <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Games Played: <strong>{summary.games_played}</strong>
+              Games Played: <strong>{summary.total_games_played}</strong>
             </div>
           </div>
         </section>

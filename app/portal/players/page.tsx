@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 type PlayerWithStatsRow = {
   player_id: string;
   games_played: number;
+  games_started: number;
   raw_fantrax_pts: number;
   ghost_pts: number;
   players:
@@ -74,8 +75,9 @@ export default async function PlayersPage() {
     supabase.auth.getUser(),
     supabase
       .from("player_gameweeks")
-      .select("player_id, games_played, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct)")
-      .eq("season", SEASON),
+      .select("player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct)")
+      .eq("season", SEASON)
+      .gt("games_played", 0),
   ]);
 
   if (error) {
@@ -92,7 +94,8 @@ export default async function PlayersPage() {
       ownershipPct: number;
       seasonPts: number;
       ghostPts: number;
-      gamesPlayed: number;
+      gameweeksPlayed: number;
+      totalGamesPlayed: number;
     }
   >();
 
@@ -110,17 +113,19 @@ export default async function PlayersPage() {
         team: player.team,
         position: mapPosition(player.position),
         ownershipPct: parseOwnership(player.ownership_pct),
-        seasonPts: row.games_played === 1 ? Number(row.raw_fantrax_pts ?? 0) : 0,
-        ghostPts: row.games_played === 1 ? Number(row.ghost_pts ?? 0) : 0,
-        gamesPlayed: row.games_played === 1 ? 1 : 0,
+        seasonPts: row.games_played > 0 ? Number(row.raw_fantrax_pts ?? 0) : 0,
+        ghostPts: row.games_played > 0 ? Number(row.ghost_pts ?? 0) : 0,
+        gameweeksPlayed: row.games_played > 0 ? 1 : 0,
+        totalGamesPlayed: row.games_played > 0 ? Number(row.games_played ?? 0) : 0,
       });
       continue;
     }
 
-    if (row.games_played === 1) {
+    if (row.games_played > 0) {
       existing.seasonPts += Number(row.raw_fantrax_pts ?? 0);
       existing.ghostPts += Number(row.ghost_pts ?? 0);
-      existing.gamesPlayed += 1;
+      existing.gameweeksPlayed += 1;
+      existing.totalGamesPlayed += Number(row.games_played ?? 0);
     }
   }
 
@@ -130,8 +135,8 @@ export default async function PlayersPage() {
     team: player.team,
     position: player.position,
     seasonPts: player.seasonPts,
-    avgPtsPerGw: player.gamesPlayed > 0 ? player.seasonPts / player.gamesPlayed : 0,
-    ghostPtsPerGw: player.gamesPlayed > 0 ? player.ghostPts / player.gamesPlayed : 0,
+    avgPtsPerGw: player.gameweeksPlayed > 0 ? player.seasonPts / player.gameweeksPlayed : 0,
+    ghostPtsPerGw: player.gameweeksPlayed > 0 ? player.ghostPts / player.gameweeksPlayed : 0,
     ownershipPct: player.ownershipPct,
   }));
 
