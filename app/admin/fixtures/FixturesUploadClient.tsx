@@ -1,28 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import * as XLSX from "xlsx";
 
 type UploadResult = {
   success: boolean;
   rowsProcessed: number;
   errors: string[];
 };
-
-type FixtureRow = {
-  gameweek: number;
-  home_team: string;
-  away_team: string;
-};
-
-function getCellValue(record: Record<string, unknown>, keys: string[]): string {
-  for (const key of keys) {
-    if (record[key] !== undefined && record[key] !== null) {
-      return String(record[key]).trim();
-    }
-  }
-  return "";
-}
 
 export default function FixturesUploadClient() {
   const [file, setFile] = useState<File | null>(null);
@@ -39,24 +23,13 @@ export default function FixturesUploadClient() {
     setIsUploading(true);
     setResult(null);
 
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "array" });
-    const firstSheet = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheet];
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
-
-    const fixtures: FixtureRow[] = rows
-      .map((row) => ({
-        gameweek: Number(getCellValue(row, ["GW", "Gameweek", "gameweek"])),
-        home_team: getCellValue(row, ["Home", "home_team", "Home Team", "home"]),
-        away_team: getCellValue(row, ["Away", "away_team", "Away Team", "away"]),
-      }))
-      .filter((row) => row.gameweek >= 1 && row.gameweek <= 38 && row.home_team && row.away_team);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("season", season);
 
     const response = await fetch("/api/admin/fixtures", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ season, rows: fixtures }),
+      body: formData,
     });
 
     const data = (await response.json()) as UploadResult;

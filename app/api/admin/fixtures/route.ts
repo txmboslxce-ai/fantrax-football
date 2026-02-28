@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
+import * as XLSX from "xlsx";
 import { isAdminEmail } from "@/lib/admin";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-type FixturePayload = {
-  season: string;
-  gameweek: number;
-  home_team: string;
-  away_team: string;
-};
+function getCellValue(record: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    if (record[key] !== undefined && record[key] !== null) {
+      return String(record[key]).trim();
+    }
+  }
+  return "";
+}
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -24,24 +27,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["Forbidden"] }, { status: 403 });
   }
 
-  const body = await request.json();
-  const season = String(body?.season ?? "").trim();
-  const rows = Array.isArray(body?.rows) ? (body.rows as FixturePayload[]) : [];
+  const formData = await request.formData();
+  const season = String(formData.get("season") ?? "").trim();
+  const file = formData.get("file");
 
   if (!season) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["Season is required"] }, { status: 400 });
   }
 
+  if (!(file instanceof File)) {
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No fixture file supplied"] }, { status: 400 });
+  }
+
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName =
+    workbook.SheetNames.find((name) => name.trim().toLowerCase() === "fixturekey") ?? workbook.SheetNames[0];
+
+  if (!sheetName) {
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No sheets found in workbook"] }, { status: 400 });
+  }
+
+  const worksheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
+
   if (rows.length === 0) {
-    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No fixture rows supplied"] }, { status: 400 });
+    return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No fixture rows found in sheet"] }, { status: 400 });
   }
 
   const upserts = rows
     .map((row) => ({
       season,
-      gameweek: Number(row.gameweek),
-      home_team: String(row.home_team ?? "").trim().toUpperCase(),
-      away_team: String(row.away_team ?? "").trim().toUpperCase(),
+      gameweek: Number(getCellValue(row, ["Gameweek", "gameweek"])),
+      home_team: getCellValue(row, ["HomeAbbrev", "homeabbrev"]).toUpperCase(),
+      away_team: getCellValue(row, ["AwayAbbrev", "awayabbrev"]).toUpperCase(),
     }))
     .filter((row) => row.gameweek >= 1 && row.gameweek <= 38 && row.home_team && row.away_team);
 
