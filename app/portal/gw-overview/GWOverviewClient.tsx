@@ -278,7 +278,7 @@ function pointsGradientBackground(value: number): string {
 }
 
 function toDisplayValue(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 function isStatApplicable(position: GWOverviewPlayer["position"], stat: StatKey): boolean {
@@ -341,7 +341,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [minFormPts, setMinFormPts] = useState<string>("0");
-  const [sortState, setSortState] = useState<SortState>({ kind: "formPts", direction: "desc" });
+  const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
   const [activeColumnFilter, setActiveColumnFilter] = useState<ActiveColumnFilter | null>(null);
   const [gpDraftStatuses, setGpDraftStatuses] = useState<GPStatus[]>([]);
@@ -1039,7 +1039,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     className="sticky z-20 border-b border-r border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream"
                     style={{ left: STICKY_LEFT.formPts, minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
                   >
-                    {form.formPts.toFixed(1)}
+                    {form.formPts.toFixed(2)}
                   </td>
                   <td
                     className="sticky z-20 border-b border-r-4 border-r-green-500 border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream"

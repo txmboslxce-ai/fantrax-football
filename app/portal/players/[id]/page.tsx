@@ -114,7 +114,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
               <p className="text-xs uppercase tracking-wide text-brand-creamDark">Season Points</p>
-              <p className="mt-2 text-4xl font-black">{formatFixed(summary.season_total_pts, 1)}</p>
+              <p className="mt-2 text-4xl font-black">{formatFixed(summary.season_total_pts, 2)}</p>
             </article>
             <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
               <p className="text-xs uppercase tracking-wide text-brand-creamDark">Avg Pts/GW</p>
@@ -147,7 +147,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
           ]}
           breakdown={[
             { name: "Ghost Pts", value: summary.ghost_pts_total, color: "#2A7A3B" },
-            { name: "Attack Pts", value: summary.attack_pts, color: "#E8E4D9" },
+            { name: "G/A/CS", value: summary.attack_pts, color: "#E8E4D9" },
           ]}
         />
 
@@ -207,11 +207,11 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
                             : "A"}
                     </td>
                     <td className="px-3 py-3">{row.minutes_played}</td>
-                    <td className="px-3 py-3">{formatFixed(row.raw_fantrax_pts, 1)}</td>
+                    <td className="px-3 py-3">{formatFixed(row.raw_fantrax_pts, 2)}</td>
                     <td className="px-3 py-3">{row.goals}</td>
                     <td className="px-3 py-3">{row.assists}</td>
                     <td className="px-3 py-3">{row.clean_sheet}</td>
-                    <td className="px-3 py-3">{formatFixed(row.ghost_pts, 1)}</td>
+                    <td className="px-3 py-3">{formatFixed(row.ghost_pts, 2)}</td>
                     {primaryColumns.map((column) => (
                       <td key={`${row.id}-${column.key}`} className="px-3 py-3">
                         {String((row as Record<string, unknown>)[column.key] ?? "-")}

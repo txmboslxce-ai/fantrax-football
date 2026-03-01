@@ -134,7 +134,7 @@ export default function StatsTableClient({ rows }: { rows: StatsRow[] }) {
                 <td className="px-4 py-3">{row.player}</td>
                 <td className="px-4 py-3">{row.team}</td>
                 <td className="px-4 py-3">{row.position}</td>
-                <td className="px-4 py-3">{row.seasonPts.toFixed(1)}</td>
+                <td className="px-4 py-3">{row.seasonPts.toFixed(2)}</td>
                 <td className="px-4 py-3">{row.avgGw.toFixed(2)}</td>
                 <td className="px-4 py-3">{row.ghostGw.toFixed(2)}</td>
                 <td className="px-4 py-3">{row.goals}</td>

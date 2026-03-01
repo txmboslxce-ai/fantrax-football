@@ -68,7 +68,7 @@ export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakd
               <YAxis stroke="#E8E4D9" />
               <Tooltip contentStyle={{ backgroundColor: "#0F1F13", border: "1px solid #E8E4D933", color: "#E8E4D9" }} />
               <Line type="monotone" dataKey="points" stroke="#2A7A3B" strokeWidth={3} dot={{ r: 4, fill: "#2A7A3B" }}>
-                <LabelList dataKey="points" position="top" formatter={(value: number) => value.toFixed(1)} />
+                <LabelList dataKey="points" position="top" formatter={(value: number) => value.toFixed(2)} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -97,7 +97,7 @@ export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakd
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={breakdown} dataKey="value" nameKey="name" outerRadius={95} label={(entry) => `${entry.name}: ${entry.value.toFixed(1)}`}>
+              <Pie data={breakdown} dataKey="value" nameKey="name" outerRadius={95} label={(entry) => `${entry.name}: ${entry.value.toFixed(2)}`}>
                 {breakdown.map((slice) => (
                   <Cell key={slice.name} fill={slice.color} />
                 ))}

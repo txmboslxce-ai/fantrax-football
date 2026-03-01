@@ -114,7 +114,7 @@ export default async function PortalPage() {
         <div className="rounded-xl border border-brand-green/50 bg-brand-green p-5 text-brand-cream">
           <p className="text-xs uppercase tracking-widest text-brand-creamDark">Top Scorer</p>
           <p className="mt-2 text-lg font-black sm:text-xl">
-            {topScorer ? `${topScorer.name} (${topScorer.points.toFixed(1)} pts)` : "No data"}
+            {topScorer ? `${topScorer.name} (${topScorer.points.toFixed(2)} pts)` : "No data"}
           </p>
         </div>
       </div>

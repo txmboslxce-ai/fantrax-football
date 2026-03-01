@@ -37,9 +37,9 @@ export default function TeamsClient({ teamCards }: { teamCards: TeamCard[] }) {
             className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-4 text-left text-brand-cream transition-colors hover:bg-brand-greenDark"
           >
             <h2 className="text-lg font-black">{team.teamName}</h2>
-            <p className="mt-2 text-sm">Total Pts: {team.totalPoints.toFixed(1)}</p>
+            <p className="mt-2 text-sm">Total Pts: {team.totalPoints.toFixed(2)}</p>
             <p className="text-sm">Avg Pts/Player/G: {team.avgPointsPerPlayerPerGame.toFixed(2)}</p>
-            <p className="mt-2 text-xs text-brand-creamDark">Top Scorer: {team.topScorer} ({team.topScorerPts.toFixed(1)})</p>
+            <p className="mt-2 text-xs text-brand-creamDark">Top Scorer: {team.topScorer} ({team.topScorerPts.toFixed(2)})</p>
             <p className="text-xs text-brand-creamDark">Top Ghost: {team.topGhost} ({team.topGhostGw.toFixed(2)} / GW)</p>
           </button>
         ))}
@@ -64,7 +64,7 @@ export default function TeamsClient({ teamCards }: { teamCards: TeamCard[] }) {
                   <tr key={player.id} className={index % 2 === 0 ? "bg-brand-dark/75 text-brand-cream" : "bg-brand-dark text-brand-cream"}>
                     <td className="px-4 py-3">{player.name}</td>
                     <td className="px-4 py-3">{player.position}</td>
-                    <td className="px-4 py-3">{player.seasonPts.toFixed(1)}</td>
+                    <td className="px-4 py-3">{player.seasonPts.toFixed(2)}</td>
                     <td className="px-4 py-3">{player.avgGw.toFixed(2)}</td>
                     <td className="px-4 py-3">{player.ghostGw.toFixed(2)}</td>
                   </tr>

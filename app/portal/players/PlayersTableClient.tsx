@@ -168,7 +168,7 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                   </td>
                   <td className="px-4 py-3">
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      {player.seasonPts.toFixed(1)}
+                      {player.seasonPts.toFixed(2)}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
