@@ -7,9 +7,13 @@ import { SEASON } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type PageProps = {
-  searchParams?: {
-    startGw?: string;
-  };
+  searchParams?:
+    | {
+        startGw?: string | string[];
+      }
+    | Promise<{
+        startGw?: string | string[];
+      }>;
 };
 
 type PlayerRow = {
@@ -99,6 +103,8 @@ function parseOwnership(value: string | null): number {
 
 export default async function GWOverviewPage({ searchParams }: PageProps) {
   const supabase = await createServerSupabaseClient();
+  const resolvedSearchParams =
+    searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
 
   const [{ data: players, error: playersError }, { data: teams, error: teamsError }, { data: minGwRows, error: minGwError }, { data: maxGwRows, error: maxGwError }] =
     await Promise.all([
@@ -128,11 +134,14 @@ export default async function GWOverviewPage({ searchParams }: PageProps) {
   const maxGw = ((maxGwRows ?? []) as GwOnlyRow[])[0]?.gameweek ?? 5;
 
   const latestStartGw = Math.max(minGw, maxGw - 4);
-  const parsedStartGw = Number.parseInt(searchParams?.startGw ?? "", 10);
+  const rawStartGw = Array.isArray(resolvedSearchParams?.startGw)
+    ? resolvedSearchParams.startGw[0]
+    : resolvedSearchParams?.startGw;
+  const parsedStartGw = Number.parseInt(String(rawStartGw ?? ""), 10);
   const requestedStartGw = Number.isFinite(parsedStartGw) ? parsedStartGw : latestStartGw;
   const startGw = Math.min(latestStartGw, Math.max(minGw, requestedStartGw));
 
-  const selectedGwsAsc = [startGw, startGw + 1, startGw + 2, startGw + 3, startGw + 4].map((n) =>
+  const selectedGwsAsc: number[] = [startGw, startGw + 1, startGw + 2, startGw + 3, startGw + 4].map((n) =>
     Number.parseInt(String(n), 10)
   );
   const selectedGws = [...selectedGwsAsc].sort((a, b) => b - a);
@@ -143,7 +152,7 @@ export default async function GWOverviewPage({ searchParams }: PageProps) {
       "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, penalties_drawn, penalties_missed, clean_sheet, tackles_won, interceptions, clearances, aerials_won, blocked_shots, dribbles_succeeded, goals_against_outfield, saves, goals_against, penalty_saves, high_claims, smothers, yellow_cards, red_cards, own_goals"
     )
     .eq("season", SEASON)
-    .in("gameweek", selectedGwsAsc);
+    .in("gameweek", selectedGwsAsc.map((gw) => Number.parseInt(String(gw), 10)));
 
   if (gameweeksError) {
     throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
