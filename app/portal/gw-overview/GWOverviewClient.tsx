@@ -48,7 +48,32 @@ export type GWOverviewGameweekRow = {
 };
 
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
-type GWStartedFilter = "Any" | number;
+type GPStatus = "Started" | "Sub" | "DNP";
+type ColumnFilterKind = "stat" | "gp" | "mins";
+
+type OpenColumnFilter = {
+  gw: number;
+  kind: ColumnFilterKind;
+};
+
+type ActiveColumnFilter =
+  | {
+      gw: number;
+      kind: "gp";
+      statuses: GPStatus[];
+    }
+  | {
+      gw: number;
+      kind: "stat";
+      min: number | null;
+      max: number | null;
+    }
+  | {
+      gw: number;
+      kind: "mins";
+      min: number | null;
+      max: number | null;
+    };
 
 type StatOption = {
   label: string;
@@ -267,8 +292,12 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
-  const [gwStartedFilter, setGwStartedFilter] = useState<GWStartedFilter>("Any");
   const [minSeasonPoints, setMinSeasonPoints] = useState<string>("0");
+  const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
+  const [activeColumnFilter, setActiveColumnFilter] = useState<ActiveColumnFilter | null>(null);
+  const [gpDraftStatuses, setGpDraftStatuses] = useState<GPStatus[]>([]);
+  const [rangeDraftMin, setRangeDraftMin] = useState<string>("");
+  const [rangeDraftMax, setRangeDraftMax] = useState<string>("");
 
   const rowsByPlayerByGw = useMemo(() => {
     const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
@@ -292,6 +321,93 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
 
     return totals;
   }, [gameweeks]);
+
+  const statLabelByValue = useMemo(() => {
+    const labelMap = new Map<StatKey, string>();
+    for (const section of statSections) {
+      for (const option of section.options) {
+        labelMap.set(option.value, option.label);
+      }
+    }
+    return labelMap;
+  }, []);
+
+  function openFilterMenu(gw: number, kind: ColumnFilterKind) {
+    setOpenColumnFilter((prev) => (prev?.gw === gw && prev.kind === kind ? null : { gw, kind }));
+
+    if (activeColumnFilter?.gw === gw && activeColumnFilter.kind === kind) {
+      if (kind === "gp") {
+        setGpDraftStatuses(activeColumnFilter.statuses);
+        return;
+      }
+      setRangeDraftMin(activeColumnFilter.min === null ? "" : String(activeColumnFilter.min));
+      setRangeDraftMax(activeColumnFilter.max === null ? "" : String(activeColumnFilter.max));
+      return;
+    }
+
+    if (kind === "gp") {
+      setGpDraftStatuses([]);
+    } else {
+      setRangeDraftMin("");
+      setRangeDraftMax("");
+    }
+  }
+
+  function toggleGpDraftStatus(status: GPStatus) {
+    setGpDraftStatuses((prev) =>
+      prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status]
+    );
+  }
+
+  function applyGpFilter(gw: number) {
+    if (gpDraftStatuses.length === 0) {
+      setActiveColumnFilter(null);
+      setOpenColumnFilter(null);
+      return;
+    }
+    setActiveColumnFilter({ gw, kind: "gp", statuses: gpDraftStatuses });
+    setOpenColumnFilter(null);
+  }
+
+  function applyRangeFilter(gw: number, kind: "stat" | "mins") {
+    const parsedMin = rangeDraftMin.trim() === "" ? null : Number.parseFloat(rangeDraftMin);
+    const parsedMax = rangeDraftMax.trim() === "" ? null : Number.parseFloat(rangeDraftMax);
+
+    const min = parsedMin !== null && Number.isFinite(parsedMin) ? parsedMin : null;
+    const max = parsedMax !== null && Number.isFinite(parsedMax) ? parsedMax : null;
+
+    if (min === null && max === null) {
+      setActiveColumnFilter(null);
+      setOpenColumnFilter(null);
+      return;
+    }
+
+    setActiveColumnFilter({ gw, kind, min, max });
+    setOpenColumnFilter(null);
+  }
+
+  function isColumnFilterActive(gw: number, kind: ColumnFilterKind): boolean {
+    return activeColumnFilter?.gw === gw && activeColumnFilter.kind === kind;
+  }
+
+  function activeFilterChipLabel(): string {
+    if (!activeColumnFilter) {
+      return "";
+    }
+
+    if (activeColumnFilter.kind === "gp") {
+      return `GW${activeColumnFilter.gw} GP: ${activeColumnFilter.statuses.join(", ")}`;
+    }
+
+    const minLabel = activeColumnFilter.min === null ? "Any" : String(activeColumnFilter.min);
+    const maxLabel = activeColumnFilter.max === null ? "Any" : String(activeColumnFilter.max);
+
+    if (activeColumnFilter.kind === "stat") {
+      return `GW${activeColumnFilter.gw} ${statLabelByValue.get(selectedStat) ?? "Stat"}: ${minLabel} to ${maxLabel}`;
+    }
+
+    return `GW${activeColumnFilter.gw} MINS: ${minLabel} to ${maxLabel}`;
+  }
 
   const filteredPlayers = useMemo(() => {
     const minOwnership = ownershipMin.trim() === "" ? Number.NEGATIVE_INFINITY : Number.parseFloat(ownershipMin);
@@ -321,10 +437,36 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
           return false;
         }
 
-        if (gwStartedFilter !== "Any") {
-          const gwRow = rowsByPlayerByGw.get(player.id)?.get(gwStartedFilter);
-          if (!gwRow || gwRow.games_started < 1) {
+        if (activeColumnFilter) {
+          const gwRow = rowsByPlayerByGw.get(player.id)?.get(activeColumnFilter.gw);
+          if (!gwRow) {
             return false;
+          }
+
+          if (activeColumnFilter.kind === "gp") {
+            if (!activeColumnFilter.statuses.includes(gpStatus(gwRow))) {
+              return false;
+            }
+          } else if (activeColumnFilter.kind === "stat") {
+            if (!isStatApplicable(player.position, selectedStat)) {
+              return false;
+            }
+
+            const statValue = Number(gwRow[selectedStat] ?? 0);
+            if (activeColumnFilter.min !== null && statValue < activeColumnFilter.min) {
+              return false;
+            }
+            if (activeColumnFilter.max !== null && statValue > activeColumnFilter.max) {
+              return false;
+            }
+          } else {
+            const minsValue = Number(gwRow.minutes_played ?? 0);
+            if (activeColumnFilter.min !== null && minsValue < activeColumnFilter.min) {
+              return false;
+            }
+            if (activeColumnFilter.max !== null && minsValue > activeColumnFilter.max) {
+              return false;
+            }
           }
         }
 
@@ -340,12 +482,23 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
 
         return a.name.localeCompare(b.name);
       });
-  }, [gwStartedFilter, minSeasonPoints, ownershipMax, ownershipMin, players, positionFilter, rowsByPlayerByGw, teamFilter, totalPointsByPlayer]);
+  }, [
+    activeColumnFilter,
+    minSeasonPoints,
+    ownershipMax,
+    ownershipMin,
+    players,
+    positionFilter,
+    rowsByPlayerByGw,
+    selectedStat,
+    teamFilter,
+    totalPointsByPlayer,
+  ]);
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/80 p-4">
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <label className="space-y-1 text-xs">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Stat</span>
             <select
@@ -433,23 +586,6 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
           </div>
 
           <label className="space-y-1 text-xs">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">GW Started</span>
-            <select
-              value={gwStartedFilter === "Any" ? "Any" : String(gwStartedFilter)}
-              onChange={(event) => {
-                const value = event.target.value;
-                setGwStartedFilter(value === "Any" ? "Any" : Number(value));
-              }}
-              className="w-full rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
-            >
-              <option value="Any">Any GW</option>
-              {gameweekList.map((gw) => (
-                <option key={gw} value={gw}>{`Started in GW${gw}`}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-1 text-xs">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Min Season Points</span>
             <input
               type="number"
@@ -461,6 +597,19 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
           </label>
         </div>
       </div>
+
+      {activeColumnFilter && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveColumnFilter(null)}
+            className="inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+          >
+            <span>{activeFilterChipLabel()}</span>
+            <span aria-hidden="true">✕</span>
+          </button>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
         <table className="border-separate border-spacing-0 text-sm" style={{ minWidth: STICKY_LEFT.ros + CELL_WIDTHS.ros + gameweekList.length * 252 }}>
@@ -510,24 +659,130 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
                 <Fragment key={`gw-subheader-${gw}`}>
                   <th
                     key={`gw-${gw}-stat`}
-                    className="sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
+                    className="relative sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
                     style={{ minWidth: CELL_WIDTHS.stat, width: CELL_WIDTHS.stat }}
                   >
-                    Stat
+                    <button
+                      type="button"
+                      onClick={() => openFilterMenu(gw, "stat")}
+                      className={`inline-flex items-center gap-1 ${isColumnFilterActive(gw, "stat") ? "text-brand-green" : "text-brand-creamDark"}`}
+                    >
+                      <span>Stat</span>
+                      <span aria-hidden="true">▼</span>
+                    </button>
+                    {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
+                      <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark">{`GW${gw} Stat`}</p>
+                        <div className="mt-2 space-y-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={rangeDraftMin}
+                            onChange={(event) => setRangeDraftMin(event.target.value)}
+                            placeholder="Min value"
+                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                          />
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={rangeDraftMax}
+                            onChange={(event) => setRangeDraftMax(event.target.value)}
+                            placeholder="Max value"
+                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => applyRangeFilter(gw, "stat")}
+                            className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </th>
                   <th
                     key={`gw-${gw}-gp`}
-                    className="sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
+                    className="relative sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
                     style={{ minWidth: CELL_WIDTHS.gp, width: CELL_WIDTHS.gp }}
                   >
-                    GP
+                    <button
+                      type="button"
+                      onClick={() => openFilterMenu(gw, "gp")}
+                      className={`inline-flex items-center gap-1 ${isColumnFilterActive(gw, "gp") ? "text-brand-green" : "text-brand-creamDark"}`}
+                    >
+                      <span>GP</span>
+                      <span aria-hidden="true">▼</span>
+                    </button>
+                    {openColumnFilter?.gw === gw && openColumnFilter.kind === "gp" && (
+                      <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark">{`GW${gw} GP`}</p>
+                        <div className="mt-2 space-y-2">
+                          {(["Started", "Sub", "DNP"] as GPStatus[]).map((status) => (
+                            <label key={status} className="flex items-center gap-2 text-xs text-brand-cream">
+                              <input
+                                type="checkbox"
+                                checked={gpDraftStatuses.includes(status)}
+                                onChange={() => toggleGpDraftStatus(status)}
+                                className="h-3.5 w-3.5 rounded border-brand-cream/40 bg-brand-dark"
+                              />
+                              <span>{status}</span>
+                            </label>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => applyGpFilter(gw)}
+                            className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </th>
                   <th
                     key={`gw-${gw}-mins`}
-                    className="sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
+                    className="relative sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
                     style={{ minWidth: CELL_WIDTHS.mins, width: CELL_WIDTHS.mins }}
                   >
-                    Mins
+                    <button
+                      type="button"
+                      onClick={() => openFilterMenu(gw, "mins")}
+                      className={`inline-flex items-center gap-1 ${isColumnFilterActive(gw, "mins") ? "text-brand-green" : "text-brand-creamDark"}`}
+                    >
+                      <span>Mins</span>
+                      <span aria-hidden="true">▼</span>
+                    </button>
+                    {openColumnFilter?.gw === gw && openColumnFilter.kind === "mins" && (
+                      <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark">{`GW${gw} Mins`}</p>
+                        <div className="mt-2 space-y-2">
+                          <input
+                            type="number"
+                            step="1"
+                            value={rangeDraftMin}
+                            onChange={(event) => setRangeDraftMin(event.target.value)}
+                            placeholder="Min mins"
+                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                          />
+                          <input
+                            type="number"
+                            step="1"
+                            value={rangeDraftMax}
+                            onChange={(event) => setRangeDraftMax(event.target.value)}
+                            placeholder="Max mins"
+                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => applyRangeFilter(gw, "mins")}
+                            className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </th>
                 </Fragment>
               ))}
