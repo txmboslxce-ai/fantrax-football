@@ -98,7 +98,8 @@ export default async function GWOverviewPage() {
         .select(
           "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, penalties_drawn, penalties_missed, clean_sheet, tackles_won, interceptions, clearances, aerials_won, blocked_shots, dribbles_succeeded, goals_against_outfield, saves, goals_against, penalty_saves, high_claims, smothers, yellow_cards, red_cards, own_goals"
         )
-        .eq("season", SEASON),
+        .eq("season", SEASON)
+        .limit(50000),
       supabase.from("teams").select("abbrev").order("abbrev"),
     ]);
 

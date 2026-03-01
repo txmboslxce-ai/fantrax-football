@@ -50,6 +50,23 @@ export type GWOverviewGameweekRow = {
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
 type GPStatus = "Started" | "Sub" | "DNP";
 type ColumnFilterKind = "stat" | "gp" | "mins";
+type SortDirection = "asc" | "desc";
+
+type SortState =
+  | { kind: "seasonPoints"; direction: SortDirection }
+  | { kind: "player"; direction: SortDirection }
+  | { kind: "team"; direction: SortDirection }
+  | { kind: "position"; direction: SortDirection }
+  | { kind: "ownershipPct"; direction: SortDirection }
+  | { kind: "gwStat"; direction: SortDirection; gw: number };
+
+type SortTarget =
+  | { kind: "seasonPoints" }
+  | { kind: "player" }
+  | { kind: "team" }
+  | { kind: "position" }
+  | { kind: "ownershipPct" }
+  | { kind: "gwStat"; gw: number };
 
 type OpenColumnFilter = {
   gw: number;
@@ -286,13 +303,37 @@ function gpStatusClasses(status: "Started" | "Sub" | "DNP") {
   return "bg-[#fecaca] text-[#0f1f13]";
 }
 
+function compareText(a: string, b: string, direction: SortDirection): number {
+  const base = a.localeCompare(b);
+  return direction === "asc" ? base : -base;
+}
+
+function compareNumber(a: number, b: number, direction: SortDirection): number {
+  return direction === "asc" ? a - b : b - a;
+}
+
+function compareNullableNumber(a: number | null, b: number | null, direction: SortDirection): number {
+  if (a === null && b === null) {
+    return 0;
+  }
+  if (a === null) {
+    return 1;
+  }
+  if (b === null) {
+    return -1;
+  }
+  return compareNumber(a, b, direction);
+}
+
 export default function GWOverviewClient({ players, gameweeks, gameweekList, teams }: GWOverviewClientProps) {
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
+  const [searchPlayer, setSearchPlayer] = useState<string>("");
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [minSeasonPoints, setMinSeasonPoints] = useState<string>("0");
+  const [sortState, setSortState] = useState<SortState>({ kind: "seasonPoints", direction: "desc" });
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
   const [activeColumnFilter, setActiveColumnFilter] = useState<ActiveColumnFilter | null>(null);
   const [gpDraftStatuses, setGpDraftStatuses] = useState<GPStatus[]>([]);
@@ -421,13 +462,37 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
     return `GW${activeColumnFilter.gw} MINS: ${minLabel} to ${maxLabel}`;
   }
 
+  function toggleSort(next: SortTarget) {
+    setSortState((prev) => {
+      if (prev.kind === next.kind && (prev.kind !== "gwStat" || (next.kind === "gwStat" && prev.gw === next.gw))) {
+        return { ...prev, direction: prev.direction === "desc" ? "asc" : "desc" } as SortState;
+      }
+      return { ...next, direction: "desc" } as SortState;
+    });
+  }
+
+  function sortArrowForHeader(kind: SortState["kind"], gw?: number): string {
+    if (sortState.kind !== kind) {
+      return "";
+    }
+    if (kind === "gwStat" && sortState.kind === "gwStat" && sortState.gw !== gw) {
+      return "";
+    }
+    return sortState.direction === "desc" ? "↓" : "↑";
+  }
+
   const filteredPlayers = useMemo(() => {
+    const normalizedSearch = searchPlayer.trim().toLowerCase();
     const minOwnership = ownershipMin.trim() === "" ? Number.NEGATIVE_INFINITY : Number.parseFloat(ownershipMin);
     const maxOwnership = ownershipMax.trim() === "" ? Number.POSITIVE_INFINITY : Number.parseFloat(ownershipMax);
     const minPoints = minSeasonPoints.trim() === "" ? Number.NEGATIVE_INFINITY : Number.parseFloat(minSeasonPoints);
 
-    return players
+    const filtered = players
       .filter((player) => {
+        if (normalizedSearch && !player.name.toLowerCase().includes(normalizedSearch)) {
+          return false;
+        }
+
         if (positionFilter !== "All" && player.position !== positionFilter) {
           return false;
         }
@@ -483,17 +548,44 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
         }
 
         return true;
-      })
-      .sort((a, b) => {
-        const aPoints = totalPointsByPlayer.get(a.id) ?? 0;
-        const bPoints = totalPointsByPlayer.get(b.id) ?? 0;
-
-        if (bPoints !== aPoints) {
-          return bPoints - aPoints;
-        }
-
-        return a.name.localeCompare(b.name);
       });
+
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortState.kind === "seasonPoints") {
+        comparison = compareNumber(totalPointsByPlayer.get(a.id) ?? 0, totalPointsByPlayer.get(b.id) ?? 0, sortState.direction);
+      } else if (sortState.kind === "player") {
+        comparison = compareText(a.name, b.name, sortState.direction);
+      } else if (sortState.kind === "team") {
+        comparison = compareText(a.team, b.team, sortState.direction);
+      } else if (sortState.kind === "position") {
+        comparison = compareText(a.position, b.position, sortState.direction);
+      } else if (sortState.kind === "ownershipPct") {
+        comparison = compareNumber(a.ownershipPct, b.ownershipPct, sortState.direction);
+      } else {
+        const aRow = rowsByPlayerByGw.get(a.id)?.get(sortState.gw);
+        const bRow = rowsByPlayerByGw.get(b.id)?.get(sortState.gw);
+
+        const aValue =
+          aRow && isStatApplicable(a.position, selectedStat) ? Number(aRow[selectedStat] ?? 0) : null;
+        const bValue =
+          bRow && isStatApplicable(b.position, selectedStat) ? Number(bRow[selectedStat] ?? 0) : null;
+
+        comparison = compareNullableNumber(aValue, bValue, sortState.direction);
+      }
+
+      if (comparison !== 0) {
+        return comparison;
+      }
+
+      const pointsComparison = compareNumber(totalPointsByPlayer.get(a.id) ?? 0, totalPointsByPlayer.get(b.id) ?? 0, "desc");
+      if (pointsComparison !== 0) {
+        return pointsComparison;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
   }, [
     activeColumnFilter,
     minSeasonPoints,
@@ -502,7 +594,9 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
     players,
     positionFilter,
     rowsByPlayerByGw,
+    searchPlayer,
     selectedStat,
+    sortState,
     teamFilter,
     totalPointsByPlayer,
   ]);
@@ -510,7 +604,17 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/80 p-4">
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <label className="space-y-1 text-xs">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
+            <input
+              value={searchPlayer}
+              onChange={(event) => setSearchPlayer(event.target.value)}
+              placeholder="Type a player name"
+              className="w-full rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+            />
+          </label>
+
           <label className="space-y-1 text-xs">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Stat</span>
             <select
@@ -632,28 +736,44 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
                 className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-dark px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
                 style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
               >
-                Player
+                <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
+                  <span>Player</span>
+                  <span aria-hidden="true">{sortArrowForHeader("player")}</span>
+                </button>
               </th>
               <th
                 rowSpan={2}
                 className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-dark px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
                 style={{ left: STICKY_LEFT.team, minWidth: CELL_WIDTHS.team, width: CELL_WIDTHS.team }}
               >
-                Team
+                <button type="button" onClick={() => toggleSort({ kind: "team" })} className="inline-flex items-center gap-1">
+                  <span>Team</span>
+                  <span aria-hidden="true">{sortArrowForHeader("team")}</span>
+                </button>
               </th>
               <th
                 rowSpan={2}
                 className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-dark px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
                 style={{ left: STICKY_LEFT.pos, minWidth: CELL_WIDTHS.pos, width: CELL_WIDTHS.pos }}
               >
-                Pos
+                <button type="button" onClick={() => toggleSort({ kind: "position" })} className="inline-flex items-center gap-1">
+                  <span>Pos</span>
+                  <span aria-hidden="true">{sortArrowForHeader("position")}</span>
+                </button>
               </th>
               <th
                 rowSpan={2}
                 className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-dark px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
                 style={{ left: STICKY_LEFT.ros, minWidth: CELL_WIDTHS.ros, width: CELL_WIDTHS.ros }}
               >
-                Ros%
+                <button
+                  type="button"
+                  onClick={() => toggleSort({ kind: "ownershipPct" })}
+                  className="inline-flex items-center gap-1"
+                >
+                  <span>Ros%</span>
+                  <span aria-hidden="true">{sortArrowForHeader("ownershipPct")}</span>
+                </button>
               </th>
 
               {gameweekList.map((gw) => (
@@ -674,14 +794,20 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
                     className="relative sticky top-[37px] z-20 border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark"
                     style={{ minWidth: CELL_WIDTHS.stat, width: CELL_WIDTHS.stat }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => openFilterMenu(gw, "stat")}
-                      className={`inline-flex items-center gap-1 ${isColumnFilterActive(gw, "stat") ? "text-brand-green" : "text-brand-creamDark"}`}
-                    >
-                      <span>Stat</span>
-                      <span aria-hidden="true">▼</span>
-                    </button>
+                    <div className="inline-flex items-center gap-1">
+                      <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
+                        <span>Stat</span>
+                        <span aria-hidden="true">{sortArrowForHeader("gwStat", gw)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openFilterMenu(gw, "stat")}
+                        className={isColumnFilterActive(gw, "stat") ? "text-brand-green" : "text-brand-creamDark"}
+                        aria-label={`Filter GW${gw} stat`}
+                      >
+                        <span aria-hidden="true">▼</span>
+                      </button>
+                    </div>
                     {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
                       <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-creamDark">{`GW${gw} Stat`}</p>
