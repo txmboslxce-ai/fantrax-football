@@ -166,7 +166,7 @@ export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtu
       opponent,
       isHomeAll,
       opponents,
-      attack_pts: Number(row.goals ?? 0) + Number(row.assists ?? 0) + Number(row.clean_sheet ?? 0),
+      attack_pts: toNumber(row.raw_fantrax_pts) - toNumber(row.ghost_pts),
     };
   });
 }
