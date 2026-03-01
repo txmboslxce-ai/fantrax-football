@@ -190,8 +190,22 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
                 {decorated.map((row, index) => (
                   <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/70" : "bg-brand-dark/90"}>
                     <td className="px-3 py-3">{row.gameweek}</td>
-                    <td className="px-3 py-3">{row.opponent ? teamNames.get(row.opponent) ?? row.opponent : "-"}</td>
-                    <td className="px-3 py-3">{row.isHome == null ? "-" : row.isHome ? "H" : "A"}</td>
+                    <td className="px-3 py-3">
+                      {row.opponents.length === 2
+                        ? row.opponents.map((opponent) => teamNames.get(opponent) ?? opponent).join(" / ")
+                        : row.opponent
+                          ? teamNames.get(row.opponent) ?? row.opponent
+                          : "-"}
+                    </td>
+                    <td className="px-3 py-3">
+                      {row.isHomeAll.length === 2
+                        ? row.isHomeAll.map((isHome) => (isHome ? "H" : "A")).join(" / ")
+                        : row.isHome == null
+                          ? "-"
+                          : row.isHome
+                            ? "H"
+                            : "A"}
+                    </td>
                     <td className="px-3 py-3">{row.minutes_played}</td>
                     <td className="px-3 py-3">{formatFixed(row.raw_fantrax_pts, 1)}</td>
                     <td className="px-3 py-3">{row.goals}</td>

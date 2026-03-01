@@ -63,6 +63,8 @@ export type DecoratedGameweek = {
   aerials_won: number;
   isHome: boolean | null;
   opponent: string | null;
+  isHomeAll: boolean[];
+  opponents: string[];
   attack_pts: number;
 };
 
@@ -132,11 +134,15 @@ export function teamNameMap(teams: TeamRow[]): Map<string, string> {
 
 export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtures: FixtureRow[]): DecoratedGameweek[] {
   return rows.map((row) => {
-    const fixture = fixtures.find(
+    const fixturesInGameweek = fixtures.filter(
       (item) => item.gameweek === row.gameweek && (item.home_team === team || item.away_team === team)
     );
+    const relevantFixtures = Number(row.games_played ?? 0) === 2 ? fixturesInGameweek : fixturesInGameweek.slice(0, 1);
+    const fixture = relevantFixtures[0];
     const isHome = fixture ? fixture.home_team === team : null;
     const opponent = fixture ? (isHome ? fixture.away_team : fixture.home_team) : null;
+    const isHomeAll = relevantFixtures.map((item) => item.home_team === team);
+    const opponents = relevantFixtures.map((item) => (item.home_team === team ? item.away_team : item.home_team));
 
     return {
       id: row.id,
@@ -158,6 +164,8 @@ export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtu
       aerials_won: Number(row.aerials_won ?? 0),
       isHome,
       opponent,
+      isHomeAll,
+      opponents,
       attack_pts: Number(row.goals ?? 0) + Number(row.assists ?? 0) + Number(row.clean_sheet ?? 0),
     };
   });
