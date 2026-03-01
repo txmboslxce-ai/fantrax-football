@@ -216,7 +216,15 @@ export default function Navbar({ isLoggedIn }: NavbarProps) {
             </Link>
           ))}
           {isLoggedIn ? (
-            <PortalSearch />
+            <>
+              <PortalSearch />
+              <Link
+                href="/portal"
+                className="rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
+              >
+                Portal
+              </Link>
+            </>
           ) : (
             <Link
               href="/login"
@@ -252,9 +260,18 @@ export default function Navbar({ isLoggedIn }: NavbarProps) {
               </Link>
             ))}
             {isLoggedIn ? (
-              <div className="mt-2">
-                <PortalSearch compact onNavigate={() => setIsOpen(false)} />
-              </div>
+              <>
+                <div className="mt-2">
+                  <PortalSearch compact onNavigate={() => setIsOpen(false)} />
+                </div>
+                <Link
+                  href="/portal"
+                  className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Portal
+                </Link>
+              </>
             ) : (
               <Link
                 href="/login"
