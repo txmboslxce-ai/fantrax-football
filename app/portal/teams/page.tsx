@@ -35,7 +35,15 @@ type TeamCard = {
   players: TeamPlayerRow[];
 };
 
-export default async function TeamsPage() {
+type TeamsPageProps = {
+  searchParams?: Promise<{
+    team?: string;
+  }>;
+};
+
+export default async function TeamsPage({ searchParams }: TeamsPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const selectedTeam = (resolvedSearchParams?.team ?? "").toUpperCase().trim();
   const supabase = await createServerSupabaseClient();
 
   const [
@@ -140,6 +148,8 @@ export default async function TeamsPage() {
     };
   });
 
+  const filteredTeamCards = selectedTeam ? teamCards.filter((team) => team.team === selectedTeam) : teamCards;
+
   return (
     <PremiumGate isPremium={isPremiumUserEmail(user?.email)}>
       <div className="space-y-6">
@@ -147,7 +157,7 @@ export default async function TeamsPage() {
           <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Team Stats</h1>
           <p className="mt-2 text-sm text-brand-creamDark">Club-level season {SEASON} summary and top contributors.</p>
         </div>
-        <TeamsClient teamCards={teamCards} />
+        <TeamsClient teamCards={filteredTeamCards} />
       </div>
     </PremiumGate>
   );

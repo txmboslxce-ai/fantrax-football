@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,16 +9,21 @@ export const metadata: Metadata = {
   description: "The Fantrax Premier League fantasy podcast",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html lang="en">
       <body className="bg-brand-cream text-brand-dark antialiased">
         <div className="flex min-h-screen flex-col">
-          <Navbar />
+          <Navbar isLoggedIn={Boolean(user)} />
           <main className="flex-1">{children}</main>
           <Footer />
         </div>

@@ -1,8 +1,39 @@
 "use client";
 
+import { createClient } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+type NavbarProps = {
+  isLoggedIn: boolean;
+};
+
+type PlayerSearchRow = {
+  id: string;
+  name: string;
+};
+
+type TeamSearchRow = {
+  abbrev: string;
+  name: string | null;
+  full_name: string | null;
+};
+
+type SearchResult =
+  | {
+      type: "player";
+      id: string;
+      label: string;
+      href: string;
+    }
+  | {
+      type: "team";
+      id: string;
+      label: string;
+      href: string;
+    };
 
 const links = [
   { href: "/", label: "Home" },
@@ -11,7 +42,156 @@ const links = [
   { href: "/contact", label: "Contact" },
 ];
 
-export default function Navbar() {
+function normalizeSearchTerm(value: string): string {
+  return value.trim().replace(/[%_,]/g, " ");
+}
+
+function PortalSearch({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const runSearch = useCallback(
+    async (value: string) => {
+      const normalized = normalizeSearchTerm(value);
+      if (!normalized) {
+        setResults([]);
+        setShowDropdown(false);
+        return;
+      }
+
+      setIsLoading(true);
+      const pattern = `%${normalized}%`;
+
+      const [playersResponse, teamsResponse] = await Promise.all([
+        supabase.from("players").select("id, name").ilike("name", pattern).order("name").limit(5),
+        supabase
+          .from("teams")
+          .select("abbrev, name, full_name")
+          .or(`name.ilike.${pattern},full_name.ilike.${pattern}`)
+          .order("full_name")
+          .limit(5),
+      ]);
+
+      if (playersResponse.error || teamsResponse.error) {
+        setResults([]);
+        setShowDropdown(true);
+        setIsLoading(false);
+        return;
+      }
+
+      const playerResults = ((playersResponse.data ?? []) as PlayerSearchRow[]).map((player) => ({
+        type: "player" as const,
+        id: player.id,
+        label: player.name,
+        href: `/portal/players/${player.id}`,
+      }));
+
+      const teamResults = ((teamsResponse.data ?? []) as TeamSearchRow[]).map((team) => ({
+        type: "team" as const,
+        id: team.abbrev,
+        label: team.full_name || team.name || team.abbrev,
+        href: `/portal/teams?team=${encodeURIComponent(team.abbrev)}`,
+      }));
+
+      const mergedResults = [...playerResults, ...teamResults]
+        .sort((a, b) => a.label.localeCompare(b.label))
+        .slice(0, 5);
+
+      setResults(mergedResults);
+      setShowDropdown(true);
+      setIsLoading(false);
+    },
+    [supabase]
+  );
+
+  const handleSelect = useCallback(
+    (href: string) => {
+      setShowDropdown(false);
+      setResults([]);
+      router.push(href);
+      onNavigate?.();
+    },
+    [onNavigate, router]
+  );
+
+  return (
+    <div ref={containerRef} className={compact ? "relative w-full" : "relative w-64"}>
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setQuery(nextValue);
+          const normalized = normalizeSearchTerm(nextValue);
+          if (normalized.length >= 2) {
+            void runSearch(normalized);
+          } else {
+            setResults([]);
+            setShowDropdown(false);
+          }
+        }}
+        onFocus={() => {
+          const normalized = normalizeSearchTerm(query);
+          if (normalized.length >= 2) {
+            void runSearch(normalized);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            void runSearch(query);
+          }
+        }}
+        placeholder="Search players or teams"
+        className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+        aria-label="Search players and teams"
+      />
+
+      {showDropdown && (
+        <div className="absolute left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-md border border-brand-cream/20 bg-brand-dark shadow-lg">
+          {isLoading ? (
+            <p className="px-3 py-2 text-xs text-brand-creamDark">Searching...</p>
+          ) : results.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-brand-creamDark">No results</p>
+          ) : (
+            results.map((result) => (
+              <button
+                key={`${result.type}-${result.id}`}
+                type="button"
+                onClick={() => handleSelect(result.href)}
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-brand-cream transition-colors hover:bg-brand-green/20"
+              >
+                <span className="truncate">{result.label}</span>
+                <span className="ml-3 shrink-0 text-xs uppercase text-brand-creamDark">{result.type}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Navbar({ isLoggedIn }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -35,12 +215,16 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/login"
-            className="rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
-          >
-            Login
-          </Link>
+          {isLoggedIn ? (
+            <PortalSearch />
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
+            >
+              Login
+            </Link>
+          )}
         </nav>
 
         <button
@@ -67,13 +251,19 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/login"
-              className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream"
-              onClick={() => setIsOpen(false)}
-            >
-              Login
-            </Link>
+            {isLoggedIn ? (
+              <div className="mt-2">
+                <PortalSearch compact onNavigate={() => setIsOpen(false)} />
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream"
+                onClick={() => setIsOpen(false)}
+              >
+                Login
+              </Link>
+            )}
           </div>
         </nav>
       )}

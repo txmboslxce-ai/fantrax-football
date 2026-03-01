@@ -44,7 +44,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
       )
       .eq("player_id", id)
       .eq("season", SEASON)
-      .order("gameweek"),
+      .order("gameweek", { ascending: false }),
     supabase
       .from("fixtures")
       .select("id, season, gameweek, home_team, away_team")
