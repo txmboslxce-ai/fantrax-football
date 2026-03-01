@@ -214,7 +214,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
                     <td className="px-3 py-3">{formatFixed(row.ghost_pts, 1)}</td>
                     {primaryColumns.map((column) => (
                       <td key={`${row.id}-${column.key}`} className="px-3 py-3">
-                        {String((row as Record<string, number | string | boolean | null>)[column.key] ?? "-")}
+                        {String((row as Record<string, unknown>)[column.key] ?? "-")}
                       </td>
                     ))}
                   </tr>
