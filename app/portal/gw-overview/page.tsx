@@ -6,6 +6,12 @@ import GWOverviewClient, {
 import { SEASON } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+type PageProps = {
+  searchParams?: {
+    startGw?: string;
+  };
+};
+
 type PlayerRow = {
   id: string;
   name: string;
@@ -52,6 +58,10 @@ type TeamRow = {
   abbrev: string;
 };
 
+type GwOnlyRow = {
+  gameweek: number;
+};
+
 function toNumber(value: number | string | null | undefined): number {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -87,40 +97,16 @@ function parseOwnership(value: string | null): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export default async function GWOverviewPage() {
+export default async function GWOverviewPage({ searchParams }: PageProps) {
   const supabase = await createServerSupabaseClient();
 
-  const [{ data: players, error: playersError }, { data: teams, error: teamsError }] = await Promise.all([
-    supabase.from("players").select("id, name, team, position, ownership_pct").order("name"),
-    supabase.from("teams").select("abbrev").order("abbrev"),
-  ]);
-
-  let allGameweeks: GameweekRow[] = [];
-  let from = 0;
-  const batchSize = 1000;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from("player_gameweeks")
-      .select("*")
-      .eq("season", SEASON)
-      .range(from, from + batchSize - 1);
-
-    if (error) {
-      throw new Error(`Unable to load player gameweeks: ${error.message}`);
-    }
-
-    if (!data || data.length === 0) {
-      break;
-    }
-
-    allGameweeks = [...allGameweeks, ...(data as GameweekRow[])];
-
-    if (data.length < batchSize) {
-      break;
-    }
-    from += batchSize;
-  }
+  const [{ data: players, error: playersError }, { data: teams, error: teamsError }, { data: minGwRows, error: minGwError }, { data: maxGwRows, error: maxGwError }] =
+    await Promise.all([
+      supabase.from("players").select("id, name, team, position, ownership_pct").order("name"),
+      supabase.from("teams").select("abbrev").order("abbrev"),
+      supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: true }).limit(1),
+      supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
+    ]);
 
   if (playersError) {
     throw new Error(`Unable to load players: ${playersError.message}`);
@@ -130,8 +116,39 @@ export default async function GWOverviewPage() {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
 
+  if (minGwError) {
+    throw new Error(`Unable to load min gameweek: ${minGwError.message}`);
+  }
+
+  if (maxGwError) {
+    throw new Error(`Unable to load max gameweek: ${maxGwError.message}`);
+  }
+
+  const minGw = ((minGwRows ?? []) as GwOnlyRow[])[0]?.gameweek ?? 1;
+  const maxGw = ((maxGwRows ?? []) as GwOnlyRow[])[0]?.gameweek ?? 5;
+
+  const latestStartGw = Math.max(minGw, maxGw - 4);
+  const parsedStartGw = Number.parseInt(searchParams?.startGw ?? "", 10);
+  const requestedStartGw = Number.isFinite(parsedStartGw) ? parsedStartGw : latestStartGw;
+  const startGw = Math.min(latestStartGw, Math.max(minGw, requestedStartGw));
+
+  const selectedGwsAsc = Array.from({ length: 5 }, (_, index) => startGw + index);
+  const selectedGws = [...selectedGwsAsc].sort((a, b) => b - a);
+
+  const { data: gameweeks, error: gameweeksError } = await supabase
+    .from("player_gameweeks")
+    .select(
+      "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, penalties_drawn, penalties_missed, clean_sheet, tackles_won, interceptions, clearances, aerials_won, blocked_shots, dribbles_succeeded, goals_against_outfield, saves, goals_against, penalty_saves, high_claims, smothers, yellow_cards, red_cards, own_goals"
+    )
+    .eq("season", SEASON)
+    .in("gameweek", selectedGwsAsc);
+
+  if (gameweeksError) {
+    throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
+  }
+
   const playerRows = (players ?? []) as PlayerRow[];
-  const gameweekRows = allGameweeks;
+  const gameweekRows = (gameweeks ?? []) as GameweekRow[];
 
   const normalizedPlayers: GWOverviewPlayer[] = playerRows.map((player) => ({
     id: player.id,
@@ -175,8 +192,6 @@ export default async function GWOverviewPage() {
     own_goals: Number(row.own_goals ?? 0),
   }));
 
-  const gameweekList = Array.from(new Set(normalizedGameweeks.map((row) => row.gameweek))).sort((a, b) => b - a);
-
   const teamAbbrevs = ((teams ?? []) as TeamRow[]).map((team) => team.abbrev);
   const playerTeams = Array.from(new Set(normalizedPlayers.map((player) => player.team)));
   const normalizedTeams: GWOverviewTeam[] = Array.from(new Set([...teamAbbrevs, ...playerTeams])).sort((a, b) =>
@@ -184,13 +199,20 @@ export default async function GWOverviewPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="rounded-xl border border-brand-cream/20 bg-brand-dark px-5 py-4">
         <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">GW Overview</h1>
         <p className="mt-2 text-sm text-brand-creamDark">Season 2025-26 - gameweek by gameweek output for every player</p>
       </header>
 
-      <GWOverviewClient players={normalizedPlayers} gameweeks={normalizedGameweeks} gameweekList={gameweekList} teams={normalizedTeams} />
+      <GWOverviewClient
+        players={normalizedPlayers}
+        gameweeks={normalizedGameweeks}
+        selectedGws={selectedGws}
+        teams={normalizedTeams}
+        minGw={minGw}
+        maxGw={maxGw}
+      />
     </div>
   );
 }
