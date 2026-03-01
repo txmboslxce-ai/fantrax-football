@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Fragment, type CSSProperties, useMemo, useState, useTransition } from "react";
+import { Fragment, type CSSProperties, useMemo, useState } from "react";
 
 export type GWOverviewTeam = string;
 
@@ -335,10 +334,6 @@ function compareNullableNumber(a: number | null, b: number | null, direction: So
 }
 
 export default function GWOverviewClient({ players, gameweeks, selectedGws, teams, minGw, maxGw }: GWOverviewClientProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
-
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
   const [searchPlayer, setSearchPlayer] = useState<string>("");
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
@@ -358,9 +353,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
 
   function navigateWindow(nextStartGw: number) {
     const clamped = Math.min(latestStartGw, Math.max(minGw, nextStartGw));
-    startTransition(() => {
-      router.push(`${pathname}?startGw=${clamped}`);
-    });
+    window.location.href = `/portal/gw-overview?startGw=${clamped}`;
   }
 
   const rowsByPlayerByGw = useMemo(() => {
@@ -642,7 +635,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
           <button
             type="button"
             onClick={() => navigateWindow(currentStartGw - 1)}
-            disabled={currentStartGw <= minGw || isPending}
+            disabled={currentStartGw <= minGw}
             className="rounded border border-brand-cream/35 px-2 py-1 disabled:opacity-40"
           >
             ←
@@ -651,7 +644,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
           <button
             type="button"
             onClick={() => navigateWindow(currentStartGw + 1)}
-            disabled={currentStartGw >= latestStartGw || isPending}
+            disabled={currentStartGw >= latestStartGw}
             className="rounded border border-brand-cream/35 px-2 py-1 disabled:opacity-40"
           >
             →
@@ -659,7 +652,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
           <button
             type="button"
             onClick={() => navigateWindow(latestStartGw)}
-            disabled={currentStartGw === latestStartGw || isPending}
+            disabled={currentStartGw === latestStartGw}
             className="ml-1 rounded border border-brand-green bg-brand-green/20 px-2 py-1 text-xs font-semibold disabled:opacity-40"
           >
             Latest 5
@@ -842,7 +835,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-cream"
+                className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
                 style={{ left: STICKY_LEFT.formPts, minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
               >
                 <button type="button" onClick={() => toggleSort({ kind: "formPts" })} className="inline-flex items-center gap-1">
@@ -852,7 +845,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r-2 border-r-brand-green border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-cream"
+                className="sticky top-0 z-30 border-b border-r-4 border-r-green-500 border-brand-cream/25 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
                 style={{ left: STICKY_LEFT.formPPG, minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
               >
                 <button type="button" onClick={() => toggleSort({ kind: "formPPG" })} className="inline-flex items-center gap-1">
@@ -1043,13 +1036,13 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     {player.ownershipPct.toFixed(1)}%
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r border-brand-cream/10 bg-brand-greenDark px-2 py-1.5 font-semibold text-brand-cream"
+                    className="sticky z-20 border-b border-r border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream"
                     style={{ left: STICKY_LEFT.formPts, minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
                   >
                     {form.formPts.toFixed(1)}
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r-2 border-r-brand-green border-brand-cream/10 bg-brand-greenDark px-2 py-1.5 font-semibold text-brand-cream"
+                    className="sticky z-20 border-b border-r-4 border-r-green-500 border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream"
                     style={{ left: STICKY_LEFT.formPPG, minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
                   >
                     {form.formPPG.toFixed(2)}

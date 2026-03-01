@@ -132,7 +132,9 @@ export default async function GWOverviewPage({ searchParams }: PageProps) {
   const requestedStartGw = Number.isFinite(parsedStartGw) ? parsedStartGw : latestStartGw;
   const startGw = Math.min(latestStartGw, Math.max(minGw, requestedStartGw));
 
-  const selectedGwsAsc = Array.from({ length: 5 }, (_, index) => startGw + index);
+  const selectedGwsAsc = [startGw, startGw + 1, startGw + 2, startGw + 3, startGw + 4].map((n) =>
+    Number.parseInt(String(n), 10)
+  );
   const selectedGws = [...selectedGwsAsc].sort((a, b) => b - a);
 
   const { data: gameweeks, error: gameweeksError } = await supabase
