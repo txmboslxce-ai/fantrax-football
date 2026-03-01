@@ -60,7 +60,7 @@ type ActiveColumnFilter =
   | {
       gw: number;
       kind: "gp";
-      statuses: GPStatus[];
+      statuses: string[];
     }
   | {
       gw: number;
@@ -335,14 +335,25 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
   function openFilterMenu(gw: number, kind: ColumnFilterKind) {
     setOpenColumnFilter((prev) => (prev?.gw === gw && prev.kind === kind ? null : { gw, kind }));
 
-    if (activeColumnFilter?.gw === gw && activeColumnFilter.kind === kind) {
-      if (kind === "gp") {
-        setGpDraftStatuses(activeColumnFilter.statuses);
+    if (activeColumnFilter?.gw === gw) {
+      if (kind === "gp" && activeColumnFilter.kind === "gp") {
+        setGpDraftStatuses(
+          activeColumnFilter.statuses.filter(
+            (status): status is GPStatus => status === "Started" || status === "Sub" || status === "DNP"
+          )
+        );
         return;
       }
-      setRangeDraftMin(activeColumnFilter.min === null ? "" : String(activeColumnFilter.min));
-      setRangeDraftMax(activeColumnFilter.max === null ? "" : String(activeColumnFilter.max));
-      return;
+      if (kind === "stat" && activeColumnFilter.kind === "stat") {
+        setRangeDraftMin(activeColumnFilter.min === null ? "" : String(activeColumnFilter.min));
+        setRangeDraftMax(activeColumnFilter.max === null ? "" : String(activeColumnFilter.max));
+        return;
+      }
+      if (kind === "mins" && activeColumnFilter.kind === "mins") {
+        setRangeDraftMin(activeColumnFilter.min === null ? "" : String(activeColumnFilter.min));
+        setRangeDraftMax(activeColumnFilter.max === null ? "" : String(activeColumnFilter.max));
+        return;
+      }
     }
 
     if (kind === "gp") {
@@ -399,13 +410,14 @@ export default function GWOverviewClient({ players, gameweeks, gameweekList, tea
       return `GW${activeColumnFilter.gw} GP: ${activeColumnFilter.statuses.join(", ")}`;
     }
 
-    const minLabel = activeColumnFilter.min === null ? "Any" : String(activeColumnFilter.min);
-    const maxLabel = activeColumnFilter.max === null ? "Any" : String(activeColumnFilter.max);
-
     if (activeColumnFilter.kind === "stat") {
+      const minLabel = activeColumnFilter.min === null ? "Any" : String(activeColumnFilter.min);
+      const maxLabel = activeColumnFilter.max === null ? "Any" : String(activeColumnFilter.max);
       return `GW${activeColumnFilter.gw} ${statLabelByValue.get(selectedStat) ?? "Stat"}: ${minLabel} to ${maxLabel}`;
     }
 
+    const minLabel = activeColumnFilter.min === null ? "Any" : String(activeColumnFilter.min);
+    const maxLabel = activeColumnFilter.max === null ? "Any" : String(activeColumnFilter.max);
     return `GW${activeColumnFilter.gw} MINS: ${minLabel} to ${maxLabel}`;
   }
 
