@@ -90,25 +90,40 @@ function parseOwnership(value: string | null): number {
 export default async function GWOverviewPage() {
   const supabase = await createServerSupabaseClient();
 
-  const [{ data: players, error: playersError }, { data: gameweeks, error: gameweeksError }, { data: teams, error: teamsError }] =
-    await Promise.all([
-      supabase.from("players").select("id, name, team, position, ownership_pct").order("name"),
-      supabase
-        .from("player_gameweeks")
-        .select(
-          "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, penalties_drawn, penalties_missed, clean_sheet, tackles_won, interceptions, clearances, aerials_won, blocked_shots, dribbles_succeeded, goals_against_outfield, saves, goals_against, penalty_saves, high_claims, smothers, yellow_cards, red_cards, own_goals"
-        )
-        .eq("season", SEASON)
-        .limit(50000),
-      supabase.from("teams").select("abbrev").order("abbrev"),
-    ]);
+  const [{ data: players, error: playersError }, { data: teams, error: teamsError }] = await Promise.all([
+    supabase.from("players").select("id, name, team, position, ownership_pct").order("name"),
+    supabase.from("teams").select("abbrev").order("abbrev"),
+  ]);
+
+  let allGameweeks: GameweekRow[] = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("player_gameweeks")
+      .select("*")
+      .eq("season", SEASON)
+      .range(from, from + batchSize - 1);
+
+    if (error) {
+      throw new Error(`Unable to load player gameweeks: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    allGameweeks = [...allGameweeks, ...(data as GameweekRow[])];
+
+    if (data.length < batchSize) {
+      break;
+    }
+    from += batchSize;
+  }
 
   if (playersError) {
     throw new Error(`Unable to load players: ${playersError.message}`);
-  }
-
-  if (gameweeksError) {
-    throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
   }
 
   if (teamsError) {
@@ -116,7 +131,7 @@ export default async function GWOverviewPage() {
   }
 
   const playerRows = (players ?? []) as PlayerRow[];
-  const gameweekRows = (gameweeks ?? []) as GameweekRow[];
+  const gameweekRows = allGameweeks;
 
   const normalizedPlayers: GWOverviewPlayer[] = playerRows.map((player) => ({
     id: player.id,
