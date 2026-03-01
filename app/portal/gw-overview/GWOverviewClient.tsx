@@ -629,7 +629,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   ]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 overflow-x-hidden">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
         <div className="flex items-center gap-2 text-sm text-brand-cream">
           <button
