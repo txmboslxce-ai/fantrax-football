@@ -159,6 +159,8 @@ export default async function GWOverviewPage({ searchParams }: PageProps) {
     throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
   }
 
+  console.log("GW query:", selectedGwsAsc, "rows returned:", gameweeks?.length);
+
   const playerRows = (players ?? []) as PlayerRow[];
   const gameweekRows = (gameweeks ?? []) as GameweekRow[];
 
