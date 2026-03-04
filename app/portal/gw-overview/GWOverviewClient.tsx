@@ -347,6 +347,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   const [gpDraftStatuses, setGpDraftStatuses] = useState<GPStatus[]>([]);
   const [rangeDraftMin, setRangeDraftMin] = useState<string>("");
   const [rangeDraftMax, setRangeDraftMax] = useState<string>("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const currentStartGw = selectedGws.length > 0 ? Math.min(...selectedGws) : minGw;
   const latestStartGw = Math.max(minGw, maxGw - 4);
@@ -1004,11 +1005,17 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               const rowShade = index % 2 === 0 ? "bg-[#142318]" : "bg-[#0F1F13]";
               const playerRowsByGw = rowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
+              const isSelectedRow = selectedPlayerId === player.id;
+              const selectedRowClass = isSelectedRow ? "shadow-[inset_0_0_0_1px_rgba(134,239,172,0.5)]" : "";
 
               return (
-                <tr key={player.id} className={rowShade}>
+                <tr
+                  key={player.id}
+                  className={`${rowShade} cursor-pointer`}
+                  onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
+                >
                   <td
-                    className="sticky left-0 z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 font-semibold text-brand-cream"
+                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 font-semibold text-brand-cream ${selectedRowClass}`}
                     style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
                   >
                     <Link href={`/portal/players/${player.id}`} className="hover:text-brand-greenLight">
@@ -1016,13 +1023,13 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     </Link>
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 text-brand-cream"
+                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 text-brand-cream ${selectedRowClass}`}
                     style={{ left: STICKY_LEFT.team, minWidth: CELL_WIDTHS.team, width: CELL_WIDTHS.team }}
                   >
                     {player.team}
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5"
+                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 ${selectedRowClass}`}
                     style={{ left: STICKY_LEFT.pos, minWidth: CELL_WIDTHS.pos, width: CELL_WIDTHS.pos }}
                   >
                     <span className="inline-flex rounded-full border border-brand-cream/30 px-1.5 py-0.5 text-[11px] font-semibold text-brand-cream">
@@ -1030,19 +1037,19 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     </span>
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 text-brand-cream"
+                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 text-brand-cream ${selectedRowClass}`}
                     style={{ left: STICKY_LEFT.ros, minWidth: CELL_WIDTHS.ros, width: CELL_WIDTHS.ros }}
                   >
                     {player.ownershipPct.toFixed(1)}%
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream"
+                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream ${selectedRowClass}`}
                     style={{ left: STICKY_LEFT.formPts, minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className="sticky z-20 border-b border-r-4 border-r-green-500 border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream"
+                    className={`sticky z-20 border-b border-r-4 border-r-green-500 border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream ${selectedRowClass}`}
                     style={{ left: STICKY_LEFT.formPPG, minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
                   >
                     {form.formPPG.toFixed(2)}
@@ -1081,11 +1088,15 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
 
                     return (
                       <Fragment key={`${player.id}-${gw}`}>
-                        <td className={`${statCellClass} px-2 py-1.5 text-center text-xs`} style={statCellStyle}>
+                        <td className={`${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs`} style={statCellStyle}>
                           {statCellContent}
                         </td>
-                        <td className={`${gpCellClass} px-2 py-1.5 text-center text-xs font-semibold`}>{gpCellContent}</td>
-                        <td className={`${minsCellClass} px-2 py-1.5 text-center text-xs`}>{minsCellContent}</td>
+                        <td className={`${gpCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs font-semibold`}>
+                          {gpCellContent}
+                        </td>
+                        <td className={`${minsCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs`}>
+                          {minsCellContent}
+                        </td>
                       </Fragment>
                     );
                   })}
