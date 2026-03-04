@@ -1006,7 +1006,10 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               const playerRowsByGw = rowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
               const isSelectedRow = selectedPlayerId === player.id;
-              const selectedRowClass = isSelectedRow ? "shadow-[inset_0_0_0_1px_rgba(134,239,172,0.5)]" : "";
+              const selectedRowClass = isSelectedRow
+                ? "shadow-[inset_0_0_0_2px_rgba(232,228,217,0.78),inset_0_0_0_9999px_rgba(7,16,10,0.14)]"
+                : "";
+              const selectedLeadCellClass = isSelectedRow ? "border-l-2 border-l-[#E8E4D9]" : "";
 
               return (
                 <tr
@@ -1015,7 +1018,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 font-semibold text-brand-cream ${selectedRowClass}`}
+                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 font-semibold text-brand-cream ${selectedRowClass} ${selectedLeadCellClass}`}
                     style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
                   >
                     <Link href={`/portal/players/${player.id}`} className="hover:text-brand-greenLight">
