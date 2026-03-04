@@ -52,6 +52,7 @@ type FixtureTabRow = {
   avgPerStart: number | null;
   byPosition: Record<"GK" | "DEF" | "MID" | "FWD", number | null>;
 };
+type MaxGameweekRow = { gameweek: number };
 
 type TeamDetailPageProps = {
   params: Promise<{
@@ -368,18 +369,54 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   }
 
   if (activeTab === "fixtures") {
-    const { data: fixtures, error: fixturesError } = await supabase
-      .from("fixtures")
-      .select("id, season, gameweek, home_team, away_team")
-      .eq("season", SEASON)
-      .or(`home_team.eq.${teamAbbrev},away_team.eq.${teamAbbrev}`)
-      .order("gameweek", { ascending: true });
+    const { data: teamPlayers, error: teamPlayersError } = await supabase.from("players").select("id").eq("team", teamAbbrev);
+    if (teamPlayersError) {
+      throw new Error(`Unable to load team players: ${teamPlayersError.message}`);
+    }
+    const teamPlayerIds = (teamPlayers ?? []).map((row) => row.id);
+
+    let latestUploadedGw = 0;
+    if (teamPlayerIds.length > 0) {
+      const { data: latestRows, error: latestGwError } = await supabase
+        .from("player_gameweeks")
+        .select("gameweek")
+        .eq("season", SEASON)
+        .in("player_id", teamPlayerIds)
+        .order("gameweek", { ascending: false })
+        .limit(1);
+      if (latestGwError) {
+        throw new Error(`Unable to load latest uploaded gameweek: ${latestGwError.message}`);
+      }
+      latestUploadedGw = ((latestRows ?? []) as MaxGameweekRow[])[0]?.gameweek ?? 0;
+    }
+
+    const [
+      { data: fixtures, error: fixturesError },
+      { data: allUploadedFixtures, error: allUploadedFixturesError },
+    ] = await Promise.all([
+      supabase
+        .from("fixtures")
+        .select("id, season, gameweek, home_team, away_team")
+        .eq("season", SEASON)
+        .or(`home_team.eq.${teamAbbrev},away_team.eq.${teamAbbrev}`)
+        .order("gameweek", { ascending: true }),
+      supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON).lte("gameweek", latestUploadedGw),
+    ]);
     if (fixturesError) {
       throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
     }
+    if (allUploadedFixturesError) {
+      throw new Error(`Unable to load uploaded fixtures: ${allUploadedFixturesError.message}`);
+    }
 
-    const teamFixtures = (fixtures ?? []) as FixtureRow[];
-    const fixtureGameweeks = Array.from(new Set(teamFixtures.map((fixture) => fixture.gameweek)));
+    const teamFixtures = ((fixtures ?? []) as FixtureRow[]).filter((fixture) => fixture.gameweek > latestUploadedGw);
+    const upcomingOpponents = Array.from(
+      new Set(teamFixtures.map((fixture) => (fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team)))
+    );
+    const opponentFixtures = ((allUploadedFixtures ?? []) as FixtureRow[]).filter(
+      (fixture) => upcomingOpponents.includes(fixture.home_team) || upcomingOpponents.includes(fixture.away_team)
+    );
+    const fixtureGameweeks = Array.from(new Set(opponentFixtures.map((fixture) => fixture.gameweek)));
 
     const fixtureAggByGwAndOpponent = new Map<
       string,
@@ -390,9 +427,8 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       }
     >();
 
-    for (const fixture of teamFixtures) {
-      const opponent = fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team;
-      fixtureAggByGwAndOpponent.set(`${fixture.gameweek}:${opponent}`, {
+    for (const opponent of upcomingOpponents) {
+      fixtureAggByGwAndOpponent.set(opponent, {
         totalPoints: 0,
         totalStarts: 0,
         byPosition: {
@@ -402,6 +438,22 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           FWD: { points: 0, starts: 0 },
         },
       });
+    }
+
+    const opponentsByGwAndTeam = new Map<string, string[]>();
+    for (const fixture of opponentFixtures) {
+      if (upcomingOpponents.includes(fixture.home_team)) {
+        const key = `${fixture.gameweek}:${fixture.away_team}`;
+        const existing = opponentsByGwAndTeam.get(key) ?? [];
+        existing.push(fixture.home_team);
+        opponentsByGwAndTeam.set(key, existing);
+      }
+      if (upcomingOpponents.includes(fixture.away_team)) {
+        const key = `${fixture.gameweek}:${fixture.home_team}`;
+        const existing = opponentsByGwAndTeam.get(key) ?? [];
+        existing.push(fixture.away_team);
+        opponentsByGwAndTeam.set(key, existing);
+      }
     }
 
     if (fixtureGameweeks.length > 0) {
@@ -417,29 +469,33 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
 
       for (const row of (opponentGameweeks ?? []) as OpponentGameweekJoinedRow[]) {
         const player = Array.isArray(row.players) ? row.players[0] : row.players;
-        if (!player || player.team === teamAbbrev || Number(row.games_started ?? 0) < 1) {
+        if (!player || Number(row.games_started ?? 0) < 1) {
           continue;
         }
 
-        const aggregate = fixtureAggByGwAndOpponent.get(`${Number(row.gameweek ?? 0)}:${player.team}`);
-        if (!aggregate) {
+        const opponentKeys = opponentsByGwAndTeam.get(`${Number(row.gameweek ?? 0)}:${player.team}`) ?? [];
+        if (opponentKeys.length === 0) {
           continue;
         }
 
         const points = Number(row.raw_fantrax_pts ?? 0);
         const position = mapPosition(player.position);
-
-        aggregate.totalPoints += points;
-        aggregate.totalStarts += 1;
-        aggregate.byPosition[position].points += points;
-        aggregate.byPosition[position].starts += 1;
+        for (const opponent of opponentKeys) {
+          const aggregate = fixtureAggByGwAndOpponent.get(opponent);
+          if (!aggregate) {
+            continue;
+          }
+          aggregate.totalPoints += points;
+          aggregate.totalStarts += 1;
+          aggregate.byPosition[position].points += points;
+          aggregate.byPosition[position].starts += 1;
+        }
       }
     }
 
     fixturesRows = teamFixtures.map((fixture) => {
       const opponentCode = fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team;
-      const key = `${fixture.gameweek}:${opponentCode}`;
-      const aggregate = fixtureAggByGwAndOpponent.get(key);
+      const aggregate = fixtureAggByGwAndOpponent.get(opponentCode);
       const avgPerStart = aggregate && aggregate.totalStarts > 0 ? aggregate.totalPoints / aggregate.totalStarts : null;
 
       const byPosition: FixtureTabRow["byPosition"] = {
