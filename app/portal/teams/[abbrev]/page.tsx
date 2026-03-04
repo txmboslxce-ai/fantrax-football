@@ -1,8 +1,8 @@
 import PremiumGate from "@/components/PremiumGate";
+import TeamSquadClient from "@/components/portal/TeamSquadClient";
 import { SEASON, mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { isPremiumUserEmail } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import SquadTableClient from "@/app/portal/teams/[abbrev]/SquadTableClient";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -428,7 +428,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           ) : activeTab === "squad" ? (
             <div className="space-y-3">
               <h2 className="text-2xl font-black">Squad</h2>
-              <SquadTableClient players={squadRows ?? []} />
+              <TeamSquadClient players={squadRows ?? []} />
             </div>
           ) : (
             <>
