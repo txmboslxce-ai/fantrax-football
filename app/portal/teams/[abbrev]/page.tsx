@@ -44,6 +44,14 @@ type OpponentGameweekJoinedRow = {
       }>
     | null;
 };
+type FixtureTabRow = {
+  id: string;
+  gameweek: number;
+  opponentName: string;
+  isHome: boolean;
+  avgPerStart: number | null;
+  byPosition: Record<"GK" | "DEF" | "MID" | "FWD", number | null>;
+};
 
 type TeamDetailPageProps = {
   params: Promise<{
@@ -66,6 +74,25 @@ function parseOwnership(value: string | null): number {
 
   const numeric = Number.parseFloat(value.replace("%", "").trim());
   return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
+  const safeRatio = Math.max(0, Math.min(1, ratio));
+  const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
+  const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
+  const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
+  return `rgb(${r}, ${g}, ${blue})`;
+}
+
+function gradientCellColor(value: number, min: number, max: number): string {
+  const red: [number, number, number] = [239, 68, 68];
+  const yellow: [number, number, number] = [234, 179, 8];
+  const green: [number, number, number] = [42, 122, 59];
+  const ratio = max > min ? (value - min) / (max - min) : 0.5;
+  if (ratio <= 0.5) {
+    return mixColor(red, yellow, ratio * 2);
+  }
+  return mixColor(yellow, green, (ratio - 0.5) * 2);
 }
 
 export default async function TeamDetailPage({ params, searchParams }: TeamDetailPageProps) {
@@ -113,6 +140,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
         ownershipPct: number;
       }>
     | undefined;
+  let fixturesRows: FixtureTabRow[] | undefined;
 
   if (activeTab === "overview") {
     const { data: teamPlayers, error: playersError } = await supabase
@@ -339,6 +367,99 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       .sort((a, b) => b.seasonPts - a.seasonPts);
   }
 
+  if (activeTab === "fixtures") {
+    const { data: fixtures, error: fixturesError } = await supabase
+      .from("fixtures")
+      .select("id, season, gameweek, home_team, away_team")
+      .eq("season", SEASON)
+      .or(`home_team.eq.${teamAbbrev},away_team.eq.${teamAbbrev}`)
+      .order("gameweek", { ascending: true });
+    if (fixturesError) {
+      throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
+    }
+
+    const teamFixtures = (fixtures ?? []) as FixtureRow[];
+    const fixtureGameweeks = Array.from(new Set(teamFixtures.map((fixture) => fixture.gameweek)));
+
+    const fixtureAggByGwAndOpponent = new Map<
+      string,
+      {
+        totalPoints: number;
+        totalStarts: number;
+        byPosition: Record<"GK" | "DEF" | "MID" | "FWD", { points: number; starts: number }>;
+      }
+    >();
+
+    for (const fixture of teamFixtures) {
+      const opponent = fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team;
+      fixtureAggByGwAndOpponent.set(`${fixture.gameweek}:${opponent}`, {
+        totalPoints: 0,
+        totalStarts: 0,
+        byPosition: {
+          GK: { points: 0, starts: 0 },
+          DEF: { points: 0, starts: 0 },
+          MID: { points: 0, starts: 0 },
+          FWD: { points: 0, starts: 0 },
+        },
+      });
+    }
+
+    if (fixtureGameweeks.length > 0) {
+      const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
+        .from("player_gameweeks")
+        .select("gameweek, games_started, raw_fantrax_pts, players!inner(team, position)")
+        .eq("season", SEASON)
+        .gt("games_played", 0)
+        .in("gameweek", fixtureGameweeks);
+      if (opponentGameweeksError) {
+        throw new Error(`Unable to load opponent player gameweeks: ${opponentGameweeksError.message}`);
+      }
+
+      for (const row of (opponentGameweeks ?? []) as OpponentGameweekJoinedRow[]) {
+        const player = Array.isArray(row.players) ? row.players[0] : row.players;
+        if (!player || player.team === teamAbbrev || Number(row.games_started ?? 0) < 1) {
+          continue;
+        }
+
+        const aggregate = fixtureAggByGwAndOpponent.get(`${Number(row.gameweek ?? 0)}:${player.team}`);
+        if (!aggregate) {
+          continue;
+        }
+
+        const points = Number(row.raw_fantrax_pts ?? 0);
+        const position = mapPosition(player.position);
+
+        aggregate.totalPoints += points;
+        aggregate.totalStarts += 1;
+        aggregate.byPosition[position].points += points;
+        aggregate.byPosition[position].starts += 1;
+      }
+    }
+
+    fixturesRows = teamFixtures.map((fixture) => {
+      const opponentCode = fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team;
+      const key = `${fixture.gameweek}:${opponentCode}`;
+      const aggregate = fixtureAggByGwAndOpponent.get(key);
+      const avgPerStart = aggregate && aggregate.totalStarts > 0 ? aggregate.totalPoints / aggregate.totalStarts : null;
+
+      const byPosition: FixtureTabRow["byPosition"] = {
+        GK: aggregate && aggregate.byPosition.GK.starts > 0 ? aggregate.byPosition.GK.points / aggregate.byPosition.GK.starts : null,
+        DEF: aggregate && aggregate.byPosition.DEF.starts > 0 ? aggregate.byPosition.DEF.points / aggregate.byPosition.DEF.starts : null,
+        MID: aggregate && aggregate.byPosition.MID.starts > 0 ? aggregate.byPosition.MID.points / aggregate.byPosition.MID.starts : null,
+        FWD: aggregate && aggregate.byPosition.FWD.starts > 0 ? aggregate.byPosition.FWD.points / aggregate.byPosition.FWD.starts : null,
+      };
+
+      return {
+        id: fixture.id,
+        gameweek: fixture.gameweek,
+        opponentName: teamNames.get(opponentCode) ?? opponentCode,
+        isHome: fixture.home_team === teamAbbrev,
+        avgPerStart,
+        byPosition,
+      };
+    });
+  }
+
   const panelContent: Record<Exclude<TeamTabKey, "overview">, { title: string; description: string }> = {
     squad: {
       title: "Squad",
@@ -429,6 +550,109 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
             <div className="space-y-3">
               <h2 className="text-2xl font-black">Squad</h2>
               <TeamSquadClient players={squadRows ?? []} />
+            </div>
+          ) : activeTab === "fixtures" ? (
+            <div className="space-y-3">
+              <h2 className="text-2xl font-black">Fixtures</h2>
+              {(() => {
+                const rows = fixturesRows ?? [];
+                const rangeFor = (values: Array<number | null>) => {
+                  const numeric = values.filter((value): value is number => value != null);
+                  return {
+                    min: numeric.length > 0 ? Math.min(...numeric) : 0,
+                    max: numeric.length > 0 ? Math.max(...numeric) : 0,
+                  };
+                };
+
+                const ranges = {
+                  overall: rangeFor(rows.map((row) => row.avgPerStart)),
+                  GK: rangeFor(rows.map((row) => row.byPosition.GK)),
+                  DEF: rangeFor(rows.map((row) => row.byPosition.DEF)),
+                  MID: rangeFor(rows.map((row) => row.byPosition.MID)),
+                  FWD: rangeFor(rows.map((row) => row.byPosition.FWD)),
+                };
+
+                const leftGw = 0;
+                const leftOpponent = 72;
+                const leftHa = 312;
+
+                return (
+                  <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+                    <table className="min-w-[980px] text-left text-sm">
+                      <thead className="text-brand-creamDark">
+                        <tr>
+                          <th
+                            className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-4 py-3 font-semibold"
+                            style={{ left: leftGw, minWidth: 72 }}
+                          >
+                            GW
+                          </th>
+                          <th
+                            className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-4 py-3 font-semibold"
+                            style={{ left: leftOpponent, minWidth: 240 }}
+                          >
+                            Opponent
+                          </th>
+                          <th
+                            className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-4 py-3 font-semibold"
+                            style={{ left: leftHa, minWidth: 72 }}
+                          >
+                            H/A
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">
+                            Avg/Start
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">GK</th>
+                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">DEF</th>
+                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">MID</th>
+                          <th className="sticky top-0 z-20 border-b border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">FWD</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, index) => {
+                          const rowBg = index % 2 === 0 ? "bg-brand-dark/75" : "bg-brand-dark";
+
+                          const statCell = (value: number | null, min: number, max: number) => {
+                            if (value == null) {
+                              return <span className="text-brand-creamDark">-</span>;
+                            }
+                            return (
+                              <span
+                                className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
+                                style={{ backgroundColor: gradientCellColor(value, min, max) }}
+                              >
+                                {value.toFixed(2)}
+                              </span>
+                            );
+                          };
+
+                          return (
+                            <tr key={row.id} className={`${rowBg} text-brand-cream`}>
+                              <td
+                                className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 font-semibold ${rowBg}`}
+                                style={{ left: leftGw, minWidth: 72 }}
+                              >
+                                {row.gameweek}
+                              </td>
+                              <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftOpponent, minWidth: 240 }}>
+                                {row.opponentName}
+                              </td>
+                              <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftHa, minWidth: 72 }}>
+                                {row.isHome ? "H" : "A"}
+                              </td>
+                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.avgPerStart, ranges.overall.min, ranges.overall.max)}</td>
+                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.GK, ranges.GK.min, ranges.GK.max)}</td>
+                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.DEF, ranges.DEF.min, ranges.DEF.max)}</td>
+                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.MID, ranges.MID.min, ranges.MID.max)}</td>
+                              <td className="border-b border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.FWD, ranges.FWD.min, ranges.FWD.max)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <>
