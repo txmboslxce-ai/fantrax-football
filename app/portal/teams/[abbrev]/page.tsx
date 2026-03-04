@@ -20,7 +20,20 @@ type TeamGameweekRow = {
   games_played: number;
   raw_fantrax_pts: number | string | null;
 };
-type OpponentPlayerRow = { id: string; team: string; position: string };
+type OpponentGameweekJoinedRow = {
+  gameweek: number;
+  raw_fantrax_pts: number | string | null;
+  players:
+    | {
+        team: string;
+        position: string;
+      }
+    | Array<{
+        team: string;
+        position: string;
+      }>
+    | null;
+};
 
 type TeamDetailPageProps = {
   params: Promise<{
@@ -137,8 +150,6 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       opponentTeamsByGameweek.get(fixture.gameweek)?.add(opponent);
     }
 
-    const opponentTeams = Array.from(new Set(fixturesForTeamPlayed.map((fixture) => (fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team))));
-
     let concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
       GK: 0,
       DEF: 0,
@@ -146,59 +157,47 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       FWD: 0,
     };
 
-    if (opponentTeams.length > 0) {
-      const { data: opponentPlayers, error: opponentPlayersError } = await supabase
-        .from("players")
-        .select("id, team, position")
-        .in("team", opponentTeams);
-      if (opponentPlayersError) {
-        throw new Error(`Unable to load opponent players: ${opponentPlayersError.message}`);
+    const playedGameweeks = Array.from(new Set(fixturesForTeamPlayed.map((fixture) => fixture.gameweek)));
+    if (playedGameweeks.length > 0) {
+      const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
+        .from("player_gameweeks")
+        .select("gameweek, raw_fantrax_pts, players!inner(team, position)")
+        .eq("season", SEASON)
+        .gt("games_played", 0)
+        .in("gameweek", playedGameweeks);
+      if (opponentGameweeksError) {
+        throw new Error(`Unable to load opponent player gameweeks: ${opponentGameweeksError.message}`);
       }
 
-      const opponentPlayerRows = (opponentPlayers ?? []) as OpponentPlayerRow[];
-      const opponentPlayerIds = opponentPlayerRows.map((row) => row.id);
-      const opponentPlayerById = new Map(opponentPlayerRows.map((row) => [row.id, row]));
+      const totalsByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
+        GK: 0,
+        DEF: 0,
+        MID: 0,
+        FWD: 0,
+      };
 
-      if (opponentPlayerIds.length > 0) {
-        const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
-          .from("player_gameweeks")
-          .select("player_id, gameweek, games_played, raw_fantrax_pts")
-          .eq("season", SEASON)
-          .gt("games_played", 0)
-          .in("player_id", opponentPlayerIds);
-        if (opponentGameweeksError) {
-          throw new Error(`Unable to load opponent player gameweeks: ${opponentGameweeksError.message}`);
+      for (const row of (opponentGameweeks ?? []) as OpponentGameweekJoinedRow[]) {
+        const player = Array.isArray(row.players) ? row.players[0] : row.players;
+        if (!player || player.team === teamAbbrev) {
+          continue;
         }
 
-        const totalsByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
-          GK: 0,
-          DEF: 0,
-          MID: 0,
-          FWD: 0,
-        };
-
-        for (const row of (opponentGameweeks ?? []) as TeamGameweekRow[]) {
-          const player = opponentPlayerById.get(row.player_id);
-          if (!player) {
-            continue;
-          }
-          const opponentsThisGw = opponentTeamsByGameweek.get(Number(row.gameweek ?? 0));
-          if (!opponentsThisGw?.has(player.team)) {
-            continue;
-          }
-
-          const position = mapPosition(player.position);
-          totalsByPosition[position] += Number(row.raw_fantrax_pts ?? 0);
+        const opponentsThisGw = opponentTeamsByGameweek.get(Number(row.gameweek ?? 0));
+        if (!opponentsThisGw?.has(player.team)) {
+          continue;
         }
 
-        const gamesPlayed = fixturesForTeamPlayed.length;
-        concededByPosition = {
-          GK: gamesPlayed > 0 ? totalsByPosition.GK / gamesPlayed : 0,
-          DEF: gamesPlayed > 0 ? totalsByPosition.DEF / gamesPlayed : 0,
-          MID: gamesPlayed > 0 ? totalsByPosition.MID / gamesPlayed : 0,
-          FWD: gamesPlayed > 0 ? totalsByPosition.FWD / gamesPlayed : 0,
-        };
+        const position = mapPosition(player.position);
+        totalsByPosition[position] += Number(row.raw_fantrax_pts ?? 0);
       }
+
+      const gamesPlayed = fixturesForTeamPlayed.length;
+      concededByPosition = {
+        GK: gamesPlayed > 0 ? totalsByPosition.GK / gamesPlayed : 0,
+        DEF: gamesPlayed > 0 ? totalsByPosition.DEF / gamesPlayed : 0,
+        MID: gamesPlayed > 0 ? totalsByPosition.MID / gamesPlayed : 0,
+        FWD: gamesPlayed > 0 ? totalsByPosition.FWD / gamesPlayed : 0,
+      };
     }
 
     const upcoming = nextFixtures(teamAbbrev, (fixtures ?? []) as FixtureRow[], currentGameweek, teamNames, 5);
