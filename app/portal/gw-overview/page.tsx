@@ -219,14 +219,16 @@ export default async function GWOverviewPage({ searchParams }: PageProps) {
         <p className="mt-2 text-sm text-brand-creamDark">Season 2025-26 - gameweek by gameweek output for every player</p>
       </header>
 
-      <GWOverviewClient
-        players={normalizedPlayers}
-        gameweeks={normalizedGameweeks}
-        selectedGws={selectedGws}
-        teams={normalizedTeams}
-        minGw={minGw}
-        maxGw={maxGw}
-      />
+      <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+        <GWOverviewClient
+          players={normalizedPlayers}
+          gameweeks={normalizedGameweeks}
+          selectedGws={selectedGws}
+          teams={normalizedTeams}
+          minGw={minGw}
+          maxGw={maxGw}
+        />
+      </div>
     </div>
   );
 }
