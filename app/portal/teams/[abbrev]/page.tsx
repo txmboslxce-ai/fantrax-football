@@ -1,4 +1,5 @@
 import PremiumGate from "@/components/PremiumGate";
+import { SEASON, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { isPremiumUserEmail } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
@@ -12,6 +13,13 @@ const TEAM_TABS = [
 ] as const;
 
 type TeamTabKey = (typeof TEAM_TABS)[number]["key"];
+type TeamPlayerRow = { id: string; name: string };
+type TeamGameweekRow = {
+  player_id: string;
+  gameweek: number;
+  games_played: number;
+  raw_fantrax_pts: number | string | null;
+};
 
 type TeamDetailPageProps = {
   params: Promise<{
@@ -37,24 +45,89 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     {
       data: { user },
     },
-    { data: team, error: teamError },
+    { data: teams, error: teamsError },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("teams").select("abbrev, full_name").eq("abbrev", teamAbbrev).maybeSingle(),
+    supabase.from("teams").select("abbrev, name, full_name").order("full_name"),
   ]);
 
-  if (teamError) {
-    throw new Error(`Unable to load team: ${teamError.message}`);
+  if (teamsError) {
+    throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
+  const team = ((teams ?? []) as TeamRow[]).find((item) => item.abbrev === teamAbbrev);
   if (!team) {
     notFound();
   }
+  const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
 
-  const panelContent: Record<TeamTabKey, { title: string; description: string }> = {
-    overview: {
-      title: "Overview",
-      description: "Team summary widgets and trend snapshots will appear here.",
-    },
+  let overviewData:
+    | {
+        totalTeamPoints: number;
+        topScorers: Array<{ id: string; name: string; points: number }>;
+        upcoming: ReturnType<typeof nextFixtures>;
+      }
+    | undefined;
+
+  if (activeTab === "overview") {
+    const { data: teamPlayers, error: playersError } = await supabase
+      .from("players")
+      .select("id, name")
+      .eq("team", teamAbbrev)
+      .order("name");
+    if (playersError) {
+      throw new Error(`Unable to load team players: ${playersError.message}`);
+    }
+
+    const playerRows = (teamPlayers ?? []) as TeamPlayerRow[];
+    const playerIds = playerRows.map((player) => player.id);
+
+    const [{ data: gameweeks, error: gameweeksError }, { data: fixtures, error: fixturesError }] = await Promise.all([
+      playerIds.length
+        ? supabase
+            .from("player_gameweeks")
+            .select("player_id, gameweek, games_played, raw_fantrax_pts")
+            .eq("season", SEASON)
+            .in("player_id", playerIds)
+        : Promise.resolve({ data: [], error: null }),
+      supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
+    ]);
+
+    if (gameweeksError) {
+      throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
+    }
+    if (fixturesError) {
+      throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
+    }
+
+    const pointsByPlayer = new Map(playerRows.map((player) => [player.id, 0]));
+    let totalTeamPoints = 0;
+    let currentGameweek = 0;
+
+    for (const row of (gameweeks ?? []) as TeamGameweekRow[]) {
+      if (Number(row.games_played ?? 0) <= 0) {
+        continue;
+      }
+
+      const rowPoints = Number(row.raw_fantrax_pts ?? 0);
+      totalTeamPoints += rowPoints;
+      currentGameweek = Math.max(currentGameweek, Number(row.gameweek ?? 0));
+      pointsByPlayer.set(row.player_id, (pointsByPlayer.get(row.player_id) ?? 0) + rowPoints);
+    }
+
+    const topScorers = playerRows
+      .map((player) => ({
+        id: player.id,
+        name: player.name,
+        points: pointsByPlayer.get(player.id) ?? 0,
+      }))
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 3);
+
+    const upcoming = nextFixtures(teamAbbrev, (fixtures ?? []) as FixtureRow[], currentGameweek, teamNames, 5);
+    overviewData = { totalTeamPoints, topScorers, upcoming };
+  }
+
+  const panelContent: Record<Exclude<TeamTabKey, "overview">, { title: string; description: string }> = {
     squad: {
       title: "Squad",
       description: "Squad depth, player roles, and position breakdowns will appear here.",
@@ -94,8 +167,43 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
         </nav>
 
         <section className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-6 text-brand-cream">
-          <h2 className="text-xl font-black">{panelContent[activeTab].title}</h2>
-          <p className="mt-2 text-sm text-brand-creamDark">{panelContent[activeTab].description}</p>
+          {activeTab === "overview" ? (
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
+                  <p className="text-xs uppercase tracking-wide text-brand-creamDark">Team Total Points</p>
+                  <p className="mt-2 text-3xl font-black">{(overviewData?.totalTeamPoints ?? 0).toFixed(2)}</p>
+                  <p className="mt-1 text-xs text-brand-creamDark">Season {SEASON}</p>
+                </article>
+
+                {(overviewData?.topScorers ?? []).map((player, index) => (
+                  <article key={player.id} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-5">
+                    <p className="text-xs uppercase tracking-wide text-brand-creamDark">Top Scorer #{index + 1}</p>
+                    <p className="mt-2 text-lg font-black">{player.name}</p>
+                    <p className="mt-1 text-sm text-brand-creamDark">{player.points.toFixed(2)} pts</p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-2xl font-black">Next 5 Fixtures</h2>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  {(overviewData?.upcoming ?? []).map((fixture) => (
+                    <article key={fixture.id} className="rounded-xl border border-brand-cream/20 bg-brand-greenDark p-4 text-brand-cream">
+                      <p className="text-xs uppercase tracking-wider text-brand-creamDark">GW {fixture.gameweek}</p>
+                      <p className="mt-2 font-bold">{fixture.opponentName}</p>
+                      <p className="mt-1 text-sm">{fixture.isHome ? "H" : "A"}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-xl font-black">{panelContent[activeTab].title}</h2>
+              <p className="mt-2 text-sm text-brand-creamDark">{panelContent[activeTab].description}</p>
+            </>
+          )}
         </section>
       </div>
     </PremiumGate>
