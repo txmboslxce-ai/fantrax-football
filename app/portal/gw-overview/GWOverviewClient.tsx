@@ -786,7 +786,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+      <div className="w-full max-w-none overflow-x-auto rounded-xl border border-brand-cream/20">
         <table
           className="border-separate border-spacing-0 text-sm"
           style={{ minWidth: STICKY_LEFT.formPPG + CELL_WIDTHS.formPPG + selectedGws.length * (CELL_WIDTHS.stat + CELL_WIDTHS.gp + CELL_WIDTHS.mins) }}
