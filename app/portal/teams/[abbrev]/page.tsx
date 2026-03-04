@@ -1,5 +1,5 @@
 import PremiumGate from "@/components/PremiumGate";
-import { SEASON, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
+import { SEASON, mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { isPremiumUserEmail } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
@@ -20,6 +20,7 @@ type TeamGameweekRow = {
   games_played: number;
   raw_fantrax_pts: number | string | null;
 };
+type OpponentPlayerRow = { id: string; team: string; position: string };
 
 type TeamDetailPageProps = {
   params: Promise<{
@@ -63,9 +64,10 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   let overviewData:
     | {
         totalTeamPoints: number;
-        topScorers: Array<{ id: string; name: string; points: number }>;
-        upcoming: ReturnType<typeof nextFixtures>;
-      }
+      topScorers: Array<{ id: string; name: string; points: number }>;
+      concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number>;
+      upcoming: ReturnType<typeof nextFixtures>;
+    }
     | undefined;
 
   if (activeTab === "overview") {
@@ -123,8 +125,84 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       .sort((a, b) => b.points - a.points)
       .slice(0, 3);
 
+    const fixturesForTeamPlayed = ((fixtures ?? []) as FixtureRow[]).filter(
+      (fixture) => fixture.gameweek <= currentGameweek && (fixture.home_team === teamAbbrev || fixture.away_team === teamAbbrev)
+    );
+    const opponentTeamsByGameweek = new Map<number, Set<string>>();
+    for (const fixture of fixturesForTeamPlayed) {
+      const opponent = fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team;
+      if (!opponentTeamsByGameweek.has(fixture.gameweek)) {
+        opponentTeamsByGameweek.set(fixture.gameweek, new Set());
+      }
+      opponentTeamsByGameweek.get(fixture.gameweek)?.add(opponent);
+    }
+
+    const opponentTeams = Array.from(new Set(fixturesForTeamPlayed.map((fixture) => (fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team))));
+
+    let concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
+      GK: 0,
+      DEF: 0,
+      MID: 0,
+      FWD: 0,
+    };
+
+    if (opponentTeams.length > 0) {
+      const { data: opponentPlayers, error: opponentPlayersError } = await supabase
+        .from("players")
+        .select("id, team, position")
+        .in("team", opponentTeams);
+      if (opponentPlayersError) {
+        throw new Error(`Unable to load opponent players: ${opponentPlayersError.message}`);
+      }
+
+      const opponentPlayerRows = (opponentPlayers ?? []) as OpponentPlayerRow[];
+      const opponentPlayerIds = opponentPlayerRows.map((row) => row.id);
+      const opponentPlayerById = new Map(opponentPlayerRows.map((row) => [row.id, row]));
+
+      if (opponentPlayerIds.length > 0) {
+        const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
+          .from("player_gameweeks")
+          .select("player_id, gameweek, games_played, raw_fantrax_pts")
+          .eq("season", SEASON)
+          .gt("games_played", 0)
+          .in("player_id", opponentPlayerIds);
+        if (opponentGameweeksError) {
+          throw new Error(`Unable to load opponent player gameweeks: ${opponentGameweeksError.message}`);
+        }
+
+        const totalsByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
+          GK: 0,
+          DEF: 0,
+          MID: 0,
+          FWD: 0,
+        };
+
+        for (const row of (opponentGameweeks ?? []) as TeamGameweekRow[]) {
+          const player = opponentPlayerById.get(row.player_id);
+          if (!player) {
+            continue;
+          }
+          const opponentsThisGw = opponentTeamsByGameweek.get(Number(row.gameweek ?? 0));
+          if (!opponentsThisGw?.has(player.team)) {
+            continue;
+          }
+
+          const position = mapPosition(player.position);
+          totalsByPosition[position] += Number(row.raw_fantrax_pts ?? 0);
+        }
+
+        const gamesPlayed = fixturesForTeamPlayed.length;
+        concededByPosition = {
+          GK: gamesPlayed > 0 ? totalsByPosition.GK / gamesPlayed : 0,
+          DEF: gamesPlayed > 0 ? totalsByPosition.DEF / gamesPlayed : 0,
+          MID: gamesPlayed > 0 ? totalsByPosition.MID / gamesPlayed : 0,
+          FWD: gamesPlayed > 0 ? totalsByPosition.FWD / gamesPlayed : 0,
+        };
+      }
+    }
+
     const upcoming = nextFixtures(teamAbbrev, (fixtures ?? []) as FixtureRow[], currentGameweek, teamNames, 5);
-    overviewData = { totalTeamPoints, topScorers, upcoming };
+    overviewData = { totalTeamPoints, topScorers, concededByPosition, upcoming };
   }
 
   const panelContent: Record<Exclude<TeamTabKey, "overview">, { title: string; description: string }> = {
@@ -183,6 +261,19 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                     <p className="mt-1 text-sm text-brand-creamDark">{player.points.toFixed(2)} pts</p>
                   </article>
                 ))}
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-2xl font-black">Points Conceded by Position</h2>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {(["GK", "DEF", "MID", "FWD"] as const).map((position) => (
+                    <article key={position} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
+                      <p className="text-xs uppercase tracking-wider text-brand-creamDark">{position}</p>
+                      <p className="mt-2 text-2xl font-black">{(overviewData?.concededByPosition[position] ?? 0).toFixed(2)}</p>
+                      <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / game</p>
+                    </article>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-3">
