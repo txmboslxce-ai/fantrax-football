@@ -71,6 +71,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 export default function PortalShell({ email, children }: PortalShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isGwOverviewRoute = pathname.startsWith("/portal/gw-overview");
 
   return (
     <div className="min-h-full bg-brand-dark text-brand-cream">
@@ -106,7 +107,11 @@ export default function PortalShell({ email, children }: PortalShellProps) {
         )}
       </div>
 
-      <div className="mx-auto flex min-h-full max-w-[1440px] md:min-h-[calc(100vh-8rem)]">
+      <div
+        className={`flex min-h-full md:min-h-[calc(100vh-8rem)] ${
+          isGwOverviewRoute ? "w-full max-w-none" : "mx-auto max-w-[1440px]"
+        }`}
+      >
         <aside className="hidden w-72 flex-col border-r border-brand-cream/20 bg-brand-dark px-4 py-6 md:flex">
           <p className="px-3 text-xs font-bold uppercase tracking-widest text-brand-creamDark">Subscriber Portal</p>
           <div className="mt-4 flex-1">
@@ -126,7 +131,9 @@ export default function PortalShell({ email, children }: PortalShellProps) {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className={`flex-1 overflow-x-hidden px-4 py-6 sm:px-6 ${isGwOverviewRoute ? "lg:px-5" : "lg:px-8"}`}>
+          {children}
+        </main>
       </div>
     </div>
   );
