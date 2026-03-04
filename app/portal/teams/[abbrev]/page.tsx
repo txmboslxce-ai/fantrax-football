@@ -18,10 +18,12 @@ type TeamGameweekRow = {
   player_id: string;
   gameweek: number;
   games_played: number;
+  games_started?: number;
   raw_fantrax_pts: number | string | null;
 };
 type OpponentGameweekJoinedRow = {
   gameweek: number;
+  games_started: number;
   raw_fantrax_pts: number | string | null;
   players:
     | {
@@ -78,7 +80,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     | {
         totalTeamPoints: number;
       topScorers: Array<{ id: string; name: string; points: number }>;
-      concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number>;
+      concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", { perGame: number; perStart: number }>;
       upcoming: ReturnType<typeof nextFixtures>;
     }
     | undefined;
@@ -141,27 +143,19 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     const fixturesForTeamPlayed = ((fixtures ?? []) as FixtureRow[]).filter(
       (fixture) => fixture.gameweek <= currentGameweek && (fixture.home_team === teamAbbrev || fixture.away_team === teamAbbrev)
     );
-    const opponentTeamsByGameweek = new Map<number, Set<string>>();
-    for (const fixture of fixturesForTeamPlayed) {
-      const opponent = fixture.home_team === teamAbbrev ? fixture.away_team : fixture.home_team;
-      if (!opponentTeamsByGameweek.has(fixture.gameweek)) {
-        opponentTeamsByGameweek.set(fixture.gameweek, new Set());
-      }
-      opponentTeamsByGameweek.get(fixture.gameweek)?.add(opponent);
-    }
 
-    let concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
-      GK: 0,
-      DEF: 0,
-      MID: 0,
-      FWD: 0,
+    let concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", { perGame: number; perStart: number }> = {
+      GK: { perGame: 0, perStart: 0 },
+      DEF: { perGame: 0, perStart: 0 },
+      MID: { perGame: 0, perStart: 0 },
+      FWD: { perGame: 0, perStart: 0 },
     };
 
     const playedGameweeks = Array.from(new Set(fixturesForTeamPlayed.map((fixture) => fixture.gameweek)));
     if (playedGameweeks.length > 0) {
       const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
         .from("player_gameweeks")
-        .select("gameweek, raw_fantrax_pts, players!inner(team, position)")
+        .select("gameweek, games_started, raw_fantrax_pts, players!inner(team, position)")
         .eq("season", SEASON)
         .gt("games_played", 0)
         .in("gameweek", playedGameweeks);
@@ -175,6 +169,18 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
         MID: 0,
         FWD: 0,
       };
+      const startedTotalsByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
+        GK: 0,
+        DEF: 0,
+        MID: 0,
+        FWD: 0,
+      };
+      const startedCountByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = {
+        GK: 0,
+        DEF: 0,
+        MID: 0,
+        FWD: 0,
+      };
 
       for (const row of (opponentGameweeks ?? []) as OpponentGameweekJoinedRow[]) {
         const player = Array.isArray(row.players) ? row.players[0] : row.players;
@@ -182,21 +188,43 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           continue;
         }
 
-        const opponentsThisGw = opponentTeamsByGameweek.get(Number(row.gameweek ?? 0));
-        if (!opponentsThisGw?.has(player.team)) {
+        const matchesFixtureJoin = fixturesForTeamPlayed.some(
+          (fixture) =>
+            fixture.gameweek === Number(row.gameweek ?? 0) &&
+            ((fixture.home_team === teamAbbrev && fixture.away_team === player.team) ||
+              (fixture.away_team === teamAbbrev && fixture.home_team === player.team))
+        );
+        if (!matchesFixtureJoin) {
           continue;
         }
 
         const position = mapPosition(player.position);
-        totalsByPosition[position] += Number(row.raw_fantrax_pts ?? 0);
+        const rowPoints = Number(row.raw_fantrax_pts ?? 0);
+        totalsByPosition[position] += rowPoints;
+        if (Number(row.games_started ?? 0) >= 1) {
+          startedTotalsByPosition[position] += rowPoints;
+          startedCountByPosition[position] += 1;
+        }
       }
 
-      const gamesPlayed = fixturesForTeamPlayed.length;
+      const distinctGameweeks = new Set(fixturesForTeamPlayed.map((fixture) => fixture.gameweek)).size;
       concededByPosition = {
-        GK: gamesPlayed > 0 ? totalsByPosition.GK / gamesPlayed : 0,
-        DEF: gamesPlayed > 0 ? totalsByPosition.DEF / gamesPlayed : 0,
-        MID: gamesPlayed > 0 ? totalsByPosition.MID / gamesPlayed : 0,
-        FWD: gamesPlayed > 0 ? totalsByPosition.FWD / gamesPlayed : 0,
+        GK: {
+          perGame: distinctGameweeks > 0 ? totalsByPosition.GK / distinctGameweeks : 0,
+          perStart: startedCountByPosition.GK > 0 ? startedTotalsByPosition.GK / startedCountByPosition.GK : 0,
+        },
+        DEF: {
+          perGame: distinctGameweeks > 0 ? totalsByPosition.DEF / distinctGameweeks : 0,
+          perStart: startedCountByPosition.DEF > 0 ? startedTotalsByPosition.DEF / startedCountByPosition.DEF : 0,
+        },
+        MID: {
+          perGame: distinctGameweeks > 0 ? totalsByPosition.MID / distinctGameweeks : 0,
+          perStart: startedCountByPosition.MID > 0 ? startedTotalsByPosition.MID / startedCountByPosition.MID : 0,
+        },
+        FWD: {
+          perGame: distinctGameweeks > 0 ? totalsByPosition.FWD / distinctGameweeks : 0,
+          perStart: startedCountByPosition.FWD > 0 ? startedTotalsByPosition.FWD / startedCountByPosition.FWD : 0,
+        },
       };
     }
 
@@ -268,8 +296,10 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                   {(["GK", "DEF", "MID", "FWD"] as const).map((position) => (
                     <article key={position} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
                       <p className="text-xs uppercase tracking-wider text-brand-creamDark">{position}</p>
-                      <p className="mt-2 text-2xl font-black">{(overviewData?.concededByPosition[position] ?? 0).toFixed(2)}</p>
+                      <p className="mt-2 text-2xl font-black">{(overviewData?.concededByPosition[position].perGame ?? 0).toFixed(2)}</p>
                       <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / game</p>
+                      <p className="mt-3 text-xl font-black">{(overviewData?.concededByPosition[position].perStart ?? 0).toFixed(2)}</p>
+                      <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / start</p>
                     </article>
                   ))}
                 </div>
