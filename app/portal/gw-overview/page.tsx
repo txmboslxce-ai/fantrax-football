@@ -3,7 +3,6 @@ import GWOverviewClient, {
   type GWOverviewPlayer,
   type GWOverviewTeam,
 } from "@/app/portal/gw-overview/GWOverviewClient";
-import PortalShell from "@/components/portal/PortalShell";
 import { SEASON } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -104,9 +103,6 @@ function parseOwnership(value: string | null): number {
 
 export default async function GWOverviewPage({ searchParams }: PageProps) {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const resolvedSearchParams =
     searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
 
@@ -217,22 +213,20 @@ export default async function GWOverviewPage({ searchParams }: PageProps) {
   );
 
   return (
-    <PortalShell email={user?.email ?? null} isFullWidth={true} dataPage="gw-overview">
-      <div className="space-y-4">
-        <header className="rounded-xl border border-brand-cream/20 bg-brand-dark px-5 py-4">
-          <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">GW Overview</h1>
-          <p className="mt-2 text-sm text-brand-creamDark">Season 2025-26 - gameweek by gameweek output for every player</p>
-        </header>
+    <div className="space-y-4">
+      <header className="rounded-xl border border-brand-cream/20 bg-brand-dark px-5 py-4">
+        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">GW Overview</h1>
+        <p className="mt-2 text-sm text-brand-creamDark">Season 2025-26 - gameweek by gameweek output for every player</p>
+      </header>
 
-        <GWOverviewClient
-          players={normalizedPlayers}
-          gameweeks={normalizedGameweeks}
-          selectedGws={selectedGws}
-          teams={normalizedTeams}
-          minGw={minGw}
-          maxGw={maxGw}
-        />
-      </div>
-    </PortalShell>
+      <GWOverviewClient
+        players={normalizedPlayers}
+        gameweeks={normalizedGameweeks}
+        selectedGws={selectedGws}
+        teams={normalizedTeams}
+        minGw={minGw}
+        maxGw={maxGw}
+      />
+    </div>
   );
 }

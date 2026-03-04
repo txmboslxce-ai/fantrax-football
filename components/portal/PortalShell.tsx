@@ -7,8 +7,6 @@ import { useState } from "react";
 type PortalShellProps = {
   email: string | null;
   children: React.ReactNode;
-  isFullWidth?: boolean;
-  dataPage?: string;
 };
 
 type NavItem = {
@@ -70,12 +68,12 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   );
 }
 
-export default function PortalShell({ email, children, isFullWidth = false, dataPage }: PortalShellProps) {
+export default function PortalShell({ email, children }: PortalShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-full bg-brand-dark text-brand-cream" data-page={dataPage}>
+    <div className="min-h-full bg-brand-dark text-brand-cream">
       <div className="border-b border-brand-cream/20 px-4 py-3 md:hidden">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-wide">Portal</p>
@@ -128,7 +126,7 @@ export default function PortalShell({ email, children, isFullWidth = false, data
           </div>
         </aside>
 
-        <main className={`flex-1 overflow-x-hidden ${isFullWidth ? "p-0" : "px-4 py-6 sm:px-6 lg:px-8"}`}>{children}</main>
+        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
