@@ -24,6 +24,20 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("seasonPts");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  const statRanges = useMemo(() => {
+    const rangeFor = (values: number[]) => ({
+      min: values.length > 0 ? Math.min(...values) : 0,
+      max: values.length > 0 ? Math.max(...values) : 0,
+    });
+
+    return {
+      seasonPts: rangeFor(players.map((player) => player.seasonPts)),
+      avgPtsPerGw: rangeFor(players.map((player) => player.avgPtsPerGw)),
+      avgPtsPerGame: rangeFor(players.map((player) => player.avgPtsPerGame)),
+      ghostPtsPerGw: rangeFor(players.map((player) => player.ghostPtsPerGw)),
+    };
+  }, [players]);
+
   const filteredAndSorted = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -58,6 +72,26 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
       return;
     }
     setSortDir("desc");
+  }
+
+  function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
+    const safeRatio = Math.max(0, Math.min(1, ratio));
+    const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
+    const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
+    const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
+    return `rgb(${r}, ${g}, ${blue})`;
+  }
+
+  function gradientBackground(value: number, min: number, max: number): string {
+    const red: [number, number, number] = [239, 68, 68];
+    const yellow: [number, number, number] = [234, 179, 8];
+    const green: [number, number, number] = [42, 122, 59];
+
+    const ratio = max > min ? (value - min) / (max - min) : 0.5;
+    if (ratio <= 0.5) {
+      return mixColor(red, yellow, ratio * 2);
+    }
+    return mixColor(yellow, green, (ratio - 0.5) * 2);
   }
 
   return (
@@ -148,22 +182,58 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
                       {player.position}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td
+                    className="px-4 py-3 font-semibold text-[#0f1f13]"
+                    style={{
+                      backgroundColor: gradientBackground(
+                        player.seasonPts,
+                        statRanges.seasonPts.min,
+                        statRanges.seasonPts.max
+                      ),
+                    }}
+                  >
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
                       {player.seasonPts.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td
+                    className="px-4 py-3 font-semibold text-[#0f1f13]"
+                    style={{
+                      backgroundColor: gradientBackground(
+                        player.avgPtsPerGw,
+                        statRanges.avgPtsPerGw.min,
+                        statRanges.avgPtsPerGw.max
+                      ),
+                    }}
+                  >
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
                       {player.avgPtsPerGw.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td
+                    className="px-4 py-3 font-semibold text-[#0f1f13]"
+                    style={{
+                      backgroundColor: gradientBackground(
+                        player.avgPtsPerGame,
+                        statRanges.avgPtsPerGame.min,
+                        statRanges.avgPtsPerGame.max
+                      ),
+                    }}
+                  >
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
                       {player.avgPtsPerGame.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td
+                    className="px-4 py-3 font-semibold text-[#0f1f13]"
+                    style={{
+                      backgroundColor: gradientBackground(
+                        player.ghostPtsPerGw,
+                        statRanges.ghostPtsPerGw.min,
+                        statRanges.ghostPtsPerGw.max
+                      ),
+                    }}
+                  >
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
                       {player.ghostPtsPerGw.toFixed(2)}
                     </Link>
