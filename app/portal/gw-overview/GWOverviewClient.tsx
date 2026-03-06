@@ -49,7 +49,7 @@ export type GWOverviewGameweekRow = {
 
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
 type GPStatus = "Started" | "Sub" | "DNP";
-type ColumnFilterKind = "stat" | "gp" | "mins";
+type ColumnFilterKind = "stat";
 type SortDirection = "asc" | "desc";
 
 type SortState =
@@ -74,25 +74,6 @@ type OpenColumnFilter = {
   gw: number;
   kind: ColumnFilterKind;
 };
-
-type ActiveColumnFilter =
-  | {
-      gw: number;
-      kind: "gp";
-      statuses: string[];
-    }
-  | {
-      gw: number;
-      kind: "stat";
-      min: number | null;
-      max: number | null;
-    }
-  | {
-      gw: number;
-      kind: "mins";
-      min: number | null;
-      max: number | null;
-    };
 
 type StatOption = {
   label: string;
@@ -340,12 +321,10 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
-  const [gpStatusFilter, setGpStatusFilter] = useState<GPStatus[]>(["Started", "Sub", "DNP"]);
+  const [gpStatusDraft, setGpStatusDraft] = useState<GPStatus[]>(["Started", "Sub", "DNP"]);
+  const [gwStatusFilters, setGwStatusFilters] = useState<Record<number, GPStatus[]>>({});
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
-  const [activeColumnFilter, setActiveColumnFilter] = useState<ActiveColumnFilter | null>(null);
-  const [rangeDraftMin, setRangeDraftMin] = useState<string>("");
-  const [rangeDraftMax, setRangeDraftMax] = useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const currentStartGw = selectedGws.length > 0 ? Math.min(...selectedGws) : minGw;
@@ -396,80 +375,30 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
     return map;
   }, [players, rowsByPlayerByGw, selectedGws]);
 
-  const statLabelByValue = useMemo(() => {
-    const labelMap = new Map<StatKey, string>();
-    for (const section of statSections) {
-      for (const option of section.options) {
-        labelMap.set(option.value, option.label);
-      }
-    }
-    return labelMap;
-  }, []);
-
   function openFilterMenu(gw: number, kind: ColumnFilterKind) {
-    setOpenColumnFilter((prev) => (prev?.gw === gw && prev.kind === kind ? null : { gw, kind }));
-
-    if (activeColumnFilter?.gw === gw) {
-      if (kind === "gp" && activeColumnFilter.kind === "gp") {
-        return;
-      }
-      if (kind === "stat" && activeColumnFilter.kind === "stat") {
-        setRangeDraftMin(activeColumnFilter.min === null ? "" : String(activeColumnFilter.min));
-        setRangeDraftMax(activeColumnFilter.max === null ? "" : String(activeColumnFilter.max));
-        return;
-      }
-      if (kind === "mins" && activeColumnFilter.kind === "mins") {
-        setRangeDraftMin(activeColumnFilter.min === null ? "" : String(activeColumnFilter.min));
-        setRangeDraftMax(activeColumnFilter.max === null ? "" : String(activeColumnFilter.max));
-        return;
-      }
-    }
-
-    if (kind !== "gp") {
-      setRangeDraftMin("");
-      setRangeDraftMax("");
-    }
-  }
-
-  function applyRangeFilter(gw: number, kind: "stat" | "mins") {
-    const parsedMin = rangeDraftMin.trim() === "" ? null : Number.parseFloat(rangeDraftMin);
-    const parsedMax = rangeDraftMax.trim() === "" ? null : Number.parseFloat(rangeDraftMax);
-
-    const min = parsedMin !== null && Number.isFinite(parsedMin) ? parsedMin : null;
-    const max = parsedMax !== null && Number.isFinite(parsedMax) ? parsedMax : null;
-
-    if (min === null && max === null) {
-      setActiveColumnFilter(null);
+    if (openColumnFilter?.gw === gw && openColumnFilter.kind === kind) {
       setOpenColumnFilter(null);
       return;
     }
 
-    setActiveColumnFilter({ gw, kind, min, max });
+    setGpStatusDraft(gwStatusFilters[gw] ?? [...gpStatusFilters]);
+    setOpenColumnFilter({ gw, kind });
+  }
+
+  function toggleGpStatusDraft(status: GPStatus) {
+    setGpStatusDraft((prev) =>
+      prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status]
+    );
+  }
+
+  function applyGwStatusFilter(gw: number) {
+    setGwStatusFilters((prev) => ({ ...prev, [gw]: gpStatusDraft }));
     setOpenColumnFilter(null);
   }
 
-  function isColumnFilterActive(gw: number, kind: ColumnFilterKind): boolean {
-    return activeColumnFilter?.gw === gw && activeColumnFilter.kind === kind;
-  }
-
-  function activeFilterChipLabel(): string {
-    if (!activeColumnFilter) {
-      return "";
-    }
-
-    if (activeColumnFilter.kind === "gp") {
-      return `GW${activeColumnFilter.gw} GP: ${activeColumnFilter.statuses.join(", ")}`;
-    }
-
-    if (activeColumnFilter.kind === "stat") {
-      const minLabel = activeColumnFilter.min === null ? "Any" : String(activeColumnFilter.min);
-      const maxLabel = activeColumnFilter.max === null ? "Any" : String(activeColumnFilter.max);
-      return `GW${activeColumnFilter.gw} ${statLabelByValue.get(selectedStat) ?? "Stat"}: ${minLabel} to ${maxLabel}`;
-    }
-
-    const minLabel = activeColumnFilter.min === null ? "Any" : String(activeColumnFilter.min);
-    const maxLabel = activeColumnFilter.max === null ? "Any" : String(activeColumnFilter.max);
-    return `GW${activeColumnFilter.gw} MINS: ${minLabel} to ${maxLabel}`;
+  function isColumnFilterActive(gw: number): boolean {
+    const statuses = gwStatusFilters[gw] ?? gpStatusFilters;
+    return statuses.length !== gpStatusFilters.length;
   }
 
   function toggleSort(next: SortTarget) {
@@ -495,7 +424,6 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
     const normalizedSearch = searchPlayer.trim().toLowerCase();
     const minOwnership = ownershipMin.trim() === "" ? Number.NEGATIVE_INFINITY : Number.parseFloat(ownershipMin);
     const maxOwnership = ownershipMax.trim() === "" ? Number.POSITIVE_INFINITY : Number.parseFloat(ownershipMax);
-    const mostRecentGw = Math.max(...selectedGws);
 
     const filtered = players.filter((player) => {
       if (normalizedSearch && !player.name.toLowerCase().includes(normalizedSearch)) {
@@ -518,44 +446,16 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
         return false;
       }
 
-      const latestGwRow = rowsByPlayerByGw.get(player.id)?.get(mostRecentGw);
-      if (latestGwRow) {
-        const latestStatus = gpStatus(latestGwRow);
-        if (!gpStatusFilter.includes(latestStatus)) {
-          return false;
-        }
-      }
-
-      if (activeColumnFilter) {
-        const gwRow = rowsByPlayerByGw.get(player.id)?.get(activeColumnFilter.gw);
-        if (!gwRow) {
-          return false;
+      for (const gw of selectedGws) {
+        const allowedStatuses = gwStatusFilters[gw] ?? gpStatusFilters;
+        if (allowedStatuses.length === gpStatusFilters.length) {
+          continue;
         }
 
-        if (activeColumnFilter.kind === "gp") {
-          if (!activeColumnFilter.statuses.includes(gpStatus(gwRow))) {
-            return false;
-          }
-        } else if (activeColumnFilter.kind === "stat") {
-          if (!isStatApplicable(player.position, selectedStat)) {
-            return false;
-          }
-
-          const statValue = Number(gwRow[selectedStat] ?? 0);
-          if (activeColumnFilter.min !== null && statValue < activeColumnFilter.min) {
-            return false;
-          }
-          if (activeColumnFilter.max !== null && statValue > activeColumnFilter.max) {
-            return false;
-          }
-        } else {
-          const minsValue = Number(gwRow.minutes_played ?? 0);
-          if (activeColumnFilter.min !== null && minsValue < activeColumnFilter.min) {
-            return false;
-          }
-          if (activeColumnFilter.max !== null && minsValue > activeColumnFilter.max) {
-            return false;
-          }
+        const gwRow = rowsByPlayerByGw.get(player.id)?.get(gw);
+        const status = gwRow ? gpStatus(gwRow) : "DNP";
+        if (!allowedStatuses.includes(status)) {
+          return false;
         }
       }
 
@@ -594,9 +494,8 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
       return compareText(a.name, b.name, "asc");
     });
   }, [
-    activeColumnFilter,
     formByPlayer,
-    gpStatusFilter,
+    gwStatusFilters,
     ownershipMax,
     ownershipMin,
     players,
@@ -740,48 +639,9 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </div>
             </div>
 
-            <div className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">GP Status</span>
-              <div className="flex gap-1">
-                {gpStatusFilters.map((status) => {
-                  const active = gpStatusFilter.includes(status);
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() =>
-                        setGpStatusFilter((prev) =>
-                          prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status]
-                        )
-                      }
-                      className={`rounded border px-2 py-1 text-[11px] font-semibold ${
-                        active
-                          ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         </div>
       </div>
-
-      {activeColumnFilter && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveColumnFilter(null)}
-            className="inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
-          >
-            <span>{activeFilterChipLabel()}</span>
-            <span aria-hidden="true">✕</span>
-          </button>
-        </div>
-      )}
 
       <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
         <table
@@ -830,20 +690,20 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               {selectedGws.map((gw, gwIndex) => (
                 <th
                   key={`gw-header-${gw}`}
-                  className={`relative sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-semibold text-brand-cream/90 ${
+                  className={`relative sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream ${
                     gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
                   }`}
                   style={{ minWidth: CELL_WIDTHS.stat, width: CELL_WIDTHS.stat }}
                 >
                   <div className="inline-flex items-center gap-1">
                     <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
-                      <span>{`GW${gw} Stat`}</span>
+                      <span>{`GW${gw}`}</span>
                       <span aria-hidden="true">{sortArrowForHeader("gwStat", gw)}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => openFilterMenu(gw, "stat")}
-                      className={isColumnFilterActive(gw, "stat") ? "text-brand-green" : "text-brand-cream/90"}
+                      className={isColumnFilterActive(gw) ? "text-brand-green" : "text-brand-cream/90"}
                       aria-label={`Filter GW${gw} stat`}
                     >
                       <span aria-hidden="true">▼</span>
@@ -852,25 +712,20 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
                     <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
                       <div className="space-y-2">
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={rangeDraftMin}
-                          onChange={(event) => setRangeDraftMin(event.target.value)}
-                          placeholder="Min value"
-                          className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                        />
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={rangeDraftMax}
-                          onChange={(event) => setRangeDraftMax(event.target.value)}
-                          placeholder="Max value"
-                          className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                        />
+                        {gpStatusFilters.map((status) => (
+                          <label key={`${gw}-${status}`} className="flex items-center gap-2 text-xs text-brand-cream">
+                            <input
+                              type="checkbox"
+                              checked={gpStatusDraft.includes(status)}
+                              onChange={() => toggleGpStatusDraft(status)}
+                              className="h-3.5 w-3.5 rounded border-brand-cream/40 bg-brand-dark"
+                            />
+                            <span>{status}</span>
+                          </label>
+                        ))}
                         <button
                           type="button"
-                          onClick={() => applyRangeFilter(gw, "stat")}
+                          onClick={() => applyGwStatusFilter(gw)}
                           className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
                         >
                           Apply
