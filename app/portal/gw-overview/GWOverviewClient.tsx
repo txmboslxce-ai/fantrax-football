@@ -225,23 +225,11 @@ const outfieldOnlyStats = new Set<StatKey>(["goals_against_outfield"]);
 
 const CELL_WIDTHS = {
   player: 220,
-  team: 72,
-  pos: 64,
-  ros: 76,
   formPts: 106,
   formPPG: 106,
   stat: 78,
   gp: 88,
   mins: 64,
-};
-
-const STICKY_LEFT = {
-  player: 0,
-  team: CELL_WIDTHS.player,
-  pos: CELL_WIDTHS.player + CELL_WIDTHS.team,
-  ros: CELL_WIDTHS.player + CELL_WIDTHS.team + CELL_WIDTHS.pos,
-  formPts: CELL_WIDTHS.player + CELL_WIDTHS.team + CELL_WIDTHS.pos + CELL_WIDTHS.ros,
-  formPPG: CELL_WIDTHS.player + CELL_WIDTHS.team + CELL_WIDTHS.pos + CELL_WIDTHS.ros + CELL_WIDTHS.formPts,
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -790,7 +778,13 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
       <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
         <table
           className="border-separate border-spacing-0 text-sm"
-          style={{ minWidth: STICKY_LEFT.formPPG + CELL_WIDTHS.formPPG + selectedGws.length * (CELL_WIDTHS.stat + CELL_WIDTHS.gp + CELL_WIDTHS.mins) }}
+          style={{
+            minWidth:
+              CELL_WIDTHS.player +
+              CELL_WIDTHS.formPts +
+              CELL_WIDTHS.formPPG +
+              selectedGws.length * (CELL_WIDTHS.stat + CELL_WIDTHS.gp + CELL_WIDTHS.mins),
+          }}
         >
           <thead>
             <tr>
@@ -800,44 +794,14 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                 style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
-                  <span>Player</span>
+                  <span>Name</span>
                   <span aria-hidden="true">{sortArrowForHeader("player")}</span>
                 </button>
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
-                style={{ left: STICKY_LEFT.team, minWidth: CELL_WIDTHS.team, width: CELL_WIDTHS.team }}
-              >
-                <button type="button" onClick={() => toggleSort({ kind: "team" })} className="inline-flex items-center gap-1">
-                  <span>Team</span>
-                  <span aria-hidden="true">{sortArrowForHeader("team")}</span>
-                </button>
-              </th>
-              <th
-                rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
-                style={{ left: STICKY_LEFT.pos, minWidth: CELL_WIDTHS.pos, width: CELL_WIDTHS.pos }}
-              >
-                <button type="button" onClick={() => toggleSort({ kind: "position" })} className="inline-flex items-center gap-1">
-                  <span>Pos</span>
-                  <span aria-hidden="true">{sortArrowForHeader("position")}</span>
-                </button>
-              </th>
-              <th
-                rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
-                style={{ left: STICKY_LEFT.ros, minWidth: CELL_WIDTHS.ros, width: CELL_WIDTHS.ros }}
-              >
-                <button type="button" onClick={() => toggleSort({ kind: "ownershipPct" })} className="inline-flex items-center gap-1">
-                  <span>Ros%</span>
-                  <span aria-hidden="true">{sortArrowForHeader("ownershipPct")}</span>
-                </button>
-              </th>
-              <th
-                rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
-                style={{ left: STICKY_LEFT.formPts, minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
+                className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
+                style={{ minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
               >
                 <button type="button" onClick={() => toggleSort({ kind: "formPts" })} className="inline-flex items-center gap-1">
                   <span>Form Pts</span>
@@ -846,8 +810,8 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-30 border-b border-r-4 border-r-green-500 border-brand-cream/25 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
-                style={{ left: STICKY_LEFT.formPPG, minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
+                className="sticky top-0 z-20 border-b border-r-4 border-r-green-500 border-brand-cream/25 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
+                style={{ minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
               >
                 <button type="button" onClick={() => toggleSort({ kind: "formPPG" })} className="inline-flex items-center gap-1">
                   <span>Form PPG</span>
@@ -1021,39 +985,22 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 font-semibold text-brand-cream ${selectedRowClass} ${selectedLeadCellClass}`}
                     style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
                   >
-                    <Link href={`/portal/players/${player.id}`} className="hover:text-brand-greenLight">
+                    <Link href={`/portal/players/${player.id}`} className="block text-sm leading-tight hover:text-brand-greenLight">
                       {player.name}
                     </Link>
+                    <div className="mt-0.5 text-xs font-medium text-brand-creamDark">
+                      {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
+                    </div>
                   </td>
                   <td
-                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 text-brand-cream ${selectedRowClass}`}
-                    style={{ left: STICKY_LEFT.team, minWidth: CELL_WIDTHS.team, width: CELL_WIDTHS.team }}
-                  >
-                    {player.team}
-                  </td>
-                  <td
-                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 ${selectedRowClass}`}
-                    style={{ left: STICKY_LEFT.pos, minWidth: CELL_WIDTHS.pos, width: CELL_WIDTHS.pos }}
-                  >
-                    <span className="inline-flex rounded-full border border-brand-cream/30 px-1.5 py-0.5 text-[11px] font-semibold text-brand-cream">
-                      {player.position === "DEF" ? "D" : player.position === "MID" ? "M" : player.position === "FWD" ? "F" : "G"}
-                    </span>
-                  </td>
-                  <td
-                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#0F1F13] px-2 py-1.5 text-brand-cream ${selectedRowClass}`}
-                    style={{ left: STICKY_LEFT.ros, minWidth: CELL_WIDTHS.ros, width: CELL_WIDTHS.ros }}
-                  >
-                    {player.ownershipPct.toFixed(1)}%
-                  </td>
-                  <td
-                    className={`sticky z-20 border-b border-r border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream ${selectedRowClass}`}
-                    style={{ left: STICKY_LEFT.formPts, minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
+                    className={`border-b border-r border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream ${selectedRowClass}`}
+                    style={{ minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className={`sticky z-20 border-b border-r-4 border-r-green-500 border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream ${selectedRowClass}`}
-                    style={{ left: STICKY_LEFT.formPPG, minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
+                    className={`border-b border-r-4 border-r-green-500 border-brand-cream/10 bg-[#1a3a22] px-2 py-1.5 font-bold text-brand-cream ${selectedRowClass}`}
+                    style={{ minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
                   >
                     {form.formPPG.toFixed(2)}
                   </td>
