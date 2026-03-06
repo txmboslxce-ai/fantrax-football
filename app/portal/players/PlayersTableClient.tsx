@@ -55,16 +55,31 @@ function pointsBadgeBackground(value: number, min: number, max: number): string 
 export default function PlayersTableClient({ players, isPremiumUser }: PlayersTableClientProps) {
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
+  const [teamFilter, setTeamFilter] = useState("All");
+  const [ownershipMin, setOwnershipMin] = useState("0");
+  const [ownershipMax, setOwnershipMax] = useState("100");
   const [sortKey, setSortKey] = useState<SortKey>("seasonPts");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  const teams = useMemo(() => {
+    return [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b));
+  }, [players]);
+
   const filteredAndSorted = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
+    const parsedOwnershipMin = Number(ownershipMin);
+    const parsedOwnershipMax = Number(ownershipMax);
+    const safeOwnershipMin = Number.isFinite(parsedOwnershipMin) ? parsedOwnershipMin : 0;
+    const safeOwnershipMax = Number.isFinite(parsedOwnershipMax) ? parsedOwnershipMax : 100;
+    const lowerOwnershipBound = Math.max(0, Math.min(safeOwnershipMin, safeOwnershipMax));
+    const upperOwnershipBound = Math.min(100, Math.max(safeOwnershipMin, safeOwnershipMax));
 
     const filtered = players.filter((player) => {
       const matchesPosition = positionFilter === "All" || player.position === positionFilter;
+      const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesSearch = !normalizedSearch || player.name.toLowerCase().includes(normalizedSearch);
-      return matchesPosition && matchesSearch;
+      const matchesOwnership = player.ownershipPct >= lowerOwnershipBound && player.ownershipPct <= upperOwnershipBound;
+      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership;
     });
 
     const sorted = [...filtered].sort((a, b) => {
@@ -80,7 +95,7 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
     });
 
     return sorted;
-  }, [players, positionFilter, search, sortDir, sortKey]);
+  }, [ownershipMax, ownershipMin, players, positionFilter, search, sortDir, sortKey, teamFilter]);
 
   const visibleRanges = useMemo(() => {
     if (filteredAndSorted.length === 0) {
@@ -150,7 +165,7 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                       key={filter}
                       type="button"
                       onClick={() => setPositionFilter(filter)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      className={`rounded-md border px-3 py-1 text-xs font-semibold ${
                         active
                           ? "border-brand-green bg-brand-green text-brand-cream"
                           : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -160,6 +175,48 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            <label className="shrink-0 space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+              <select
+                value={teamFilter}
+                onChange={(event) => setTeamFilter(event.target.value)}
+                className="w-24 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+              >
+                <option value="All">All</option>
+                {teams.map((team) => (
+                  <option key={team} value={team}>
+                    {team}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="shrink-0 space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
+              <div className="flex gap-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.1"
+                  value={ownershipMin}
+                  onChange={(event) => setOwnershipMin(event.target.value)}
+                  placeholder="Min"
+                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.1"
+                  value={ownershipMax}
+                  onChange={(event) => setOwnershipMax(event.target.value)}
+                  placeholder="Max"
+                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                />
               </div>
             </div>
           </div>
@@ -215,7 +272,7 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
 
               return (
                 <tr key={player.id} className="text-brand-cream">
-                  <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/35 px-4 py-3 ${rowShade}`}>
+                  <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
                       <div className="font-semibold leading-tight">
                         <span className="mr-2" aria-hidden="true">
@@ -228,10 +285,10 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                       </div>
                     </Link>
                   </td>
-                  <td className={`border-b border-r border-brand-cream/35 px-4 py-3 text-center ${rowShade}`}>
+                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
                     <Link href={rowHref} className="inline-flex">
                       <span
-                        className="inline-flex rounded-full px-2 py-0.5 text-xs font-bold text-white"
+                        className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
                         style={{
                           backgroundColor: pointsBadgeBackground(
                             player.seasonPts,
@@ -244,10 +301,10 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                       </span>
                     </Link>
                   </td>
-                  <td className={`border-b border-r border-brand-cream/35 px-4 py-3 text-center ${rowShade}`}>
+                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
                     <Link href={rowHref} className="inline-flex">
                       <span
-                        className="inline-flex rounded-full px-2 py-0.5 text-xs font-bold text-white"
+                        className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
                         style={{
                           backgroundColor: pointsBadgeBackground(
                             player.avgPtsPerGw,
@@ -260,10 +317,10 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                       </span>
                     </Link>
                   </td>
-                  <td className={`border-b border-r border-brand-cream/35 px-4 py-3 text-center ${rowShade}`}>
+                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
                     <Link href={rowHref} className="inline-flex">
                       <span
-                        className="inline-flex rounded-full px-2 py-0.5 text-xs font-bold text-white"
+                        className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
                         style={{
                           backgroundColor: pointsBadgeBackground(
                             player.ghostPtsPerGw,
@@ -281,7 +338,7 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
             })}
             {filteredAndSorted.length === 0 && (
               <tr>
-                <td colSpan={4} className="border-b border-brand-cream/35 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark">
+                <td colSpan={4} className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark">
                   No players match the current filters.
                 </td>
               </tr>
