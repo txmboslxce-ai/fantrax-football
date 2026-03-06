@@ -48,7 +48,6 @@ export type GWOverviewGameweekRow = {
 };
 
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
-type GPStatus = "Started" | "Sub" | "DNP";
 type ColumnFilterKind = "stat" | "gp" | "mins";
 type SortDirection = "asc" | "desc";
 
@@ -227,9 +226,7 @@ const CELL_WIDTHS = {
   player: 220,
   formPts: 106,
   formPPG: 106,
-  stat: 78,
-  gp: 88,
-  mins: 64,
+  stat: 118,
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -291,12 +288,12 @@ function gpStatus(row: GWOverviewGameweekRow): "Started" | "Sub" | "DNP" {
 
 function gpStatusBadgeClasses(status: "Started" | "Sub" | "DNP") {
   if (status === "Started") {
-    return "bg-brand-cream/10 text-brand-cream";
+    return "bg-green-700 text-white";
   }
   if (status === "Sub") {
     return "bg-yellow-600 text-white";
   }
-  return "bg-red-800 text-white";
+  return "bg-red-900/80 text-white";
 }
 
 function positionLetter(position: GWOverviewPlayer["position"]): "G" | "D" | "M" | "F" {
@@ -345,7 +342,6 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
   const [activeColumnFilter, setActiveColumnFilter] = useState<ActiveColumnFilter | null>(null);
-  const [gpDraftStatuses, setGpDraftStatuses] = useState<GPStatus[]>([]);
   const [rangeDraftMin, setRangeDraftMin] = useState<string>("");
   const [rangeDraftMax, setRangeDraftMax] = useState<string>("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -413,11 +409,6 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
 
     if (activeColumnFilter?.gw === gw) {
       if (kind === "gp" && activeColumnFilter.kind === "gp") {
-        setGpDraftStatuses(
-          activeColumnFilter.statuses.filter(
-            (status): status is GPStatus => status === "Started" || status === "Sub" || status === "DNP"
-          )
-        );
         return;
       }
       if (kind === "stat" && activeColumnFilter.kind === "stat") {
@@ -432,28 +423,10 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
       }
     }
 
-    if (kind === "gp") {
-      setGpDraftStatuses([]);
-    } else {
+    if (kind !== "gp") {
       setRangeDraftMin("");
       setRangeDraftMax("");
     }
-  }
-
-  function toggleGpDraftStatus(status: GPStatus) {
-    setGpDraftStatuses((prev) =>
-      prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status]
-    );
-  }
-
-  function applyGpFilter(gw: number) {
-    if (gpDraftStatuses.length === 0) {
-      setActiveColumnFilter(null);
-      setOpenColumnFilter(null);
-      return;
-    }
-    setActiveColumnFilter({ gw, kind: "gp", statuses: gpDraftStatuses });
-    setOpenColumnFilter(null);
   }
 
   function applyRangeFilter(gw: number, kind: "stat" | "mins") {
@@ -796,7 +769,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               CELL_WIDTHS.player +
               CELL_WIDTHS.formPts +
               CELL_WIDTHS.formPPG +
-              selectedGws.length * (CELL_WIDTHS.stat + CELL_WIDTHS.gp + CELL_WIDTHS.mins),
+              selectedGws.length * CELL_WIDTHS.stat,
           }}
         >
           <thead>
@@ -835,148 +808,55 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               {selectedGws.map((gw, gwIndex) => (
                 <th
                   key={`gw-header-${gw}`}
-                  colSpan={3}
-                  className={`sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-sm font-bold text-brand-cream ${
-                    gwIndex === 0 ? "border-l-4 border-l-brand-cream/60" : ""
+                  className={`relative sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-semibold text-brand-cream/90 ${
+                    gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
                   }`}
+                  style={{ minWidth: CELL_WIDTHS.stat, width: CELL_WIDTHS.stat }}
                 >
-                  {`GW${gw}`}
-                </th>
-              ))}
-            </tr>
-            <tr>
-              {selectedGws.map((gw, gwIndex) => (
-                <Fragment key={`gw-subheader-${gw}`}>
-                  <th
-                    className={`relative sticky top-[31px] z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-semibold text-brand-cream/90 ${
-                      gwIndex === 0 ? "border-l-4 border-l-brand-cream/60" : ""
-                    }`}
-                    style={{ minWidth: CELL_WIDTHS.stat, width: CELL_WIDTHS.stat }}
-                  >
-                    <div className="inline-flex items-center gap-1">
-                      <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
-                        <span>Stat</span>
-                        <span aria-hidden="true">{sortArrowForHeader("gwStat", gw)}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openFilterMenu(gw, "stat")}
-                        className={isColumnFilterActive(gw, "stat") ? "text-brand-green" : "text-brand-cream/90"}
-                        aria-label={`Filter GW${gw} stat`}
-                      >
-                        <span aria-hidden="true">▼</span>
-                      </button>
+                  <div className="inline-flex items-center gap-1">
+                    <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
+                      <span>{`GW${gw} Stat`}</span>
+                      <span aria-hidden="true">{sortArrowForHeader("gwStat", gw)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openFilterMenu(gw, "stat")}
+                      className={isColumnFilterActive(gw, "stat") ? "text-brand-green" : "text-brand-cream/90"}
+                      aria-label={`Filter GW${gw} stat`}
+                    >
+                      <span aria-hidden="true">▼</span>
+                    </button>
+                  </div>
+                  {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
+                    <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
+                      <div className="space-y-2">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rangeDraftMin}
+                          onChange={(event) => setRangeDraftMin(event.target.value)}
+                          placeholder="Min value"
+                          className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                        />
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rangeDraftMax}
+                          onChange={(event) => setRangeDraftMax(event.target.value)}
+                          placeholder="Max value"
+                          className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => applyRangeFilter(gw, "stat")}
+                          className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
+                        >
+                          Apply
+                        </button>
+                      </div>
                     </div>
-                    {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
-                      <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
-                        <div className="space-y-2">
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={rangeDraftMin}
-                            onChange={(event) => setRangeDraftMin(event.target.value)}
-                            placeholder="Min value"
-                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                          />
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={rangeDraftMax}
-                            onChange={(event) => setRangeDraftMax(event.target.value)}
-                            placeholder="Max value"
-                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => applyRangeFilter(gw, "stat")}
-                            className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </th>
-                  <th
-                    className="relative sticky top-[31px] z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-semibold text-brand-cream/90"
-                    style={{ minWidth: CELL_WIDTHS.gp, width: CELL_WIDTHS.gp }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openFilterMenu(gw, "gp")}
-                      className={`inline-flex items-center gap-1 ${isColumnFilterActive(gw, "gp") ? "text-brand-green" : "text-brand-cream/90"}`}
-                    >
-                      <span>GP</span>
-                      <span aria-hidden="true">▼</span>
-                    </button>
-                    {openColumnFilter?.gw === gw && openColumnFilter.kind === "gp" && (
-                      <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
-                        <div className="space-y-2">
-                          {(["Started", "Sub", "DNP"] as GPStatus[]).map((status) => (
-                            <label key={status} className="flex items-center gap-2 text-xs text-brand-cream">
-                              <input
-                                type="checkbox"
-                                checked={gpDraftStatuses.includes(status)}
-                                onChange={() => toggleGpDraftStatus(status)}
-                                className="h-3.5 w-3.5 rounded border-brand-cream/40 bg-brand-dark"
-                              />
-                              <span>{status}</span>
-                            </label>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => applyGpFilter(gw)}
-                            className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </th>
-                  <th
-                    className="relative sticky top-[31px] z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-semibold text-brand-cream/90"
-                    style={{ minWidth: CELL_WIDTHS.mins, width: CELL_WIDTHS.mins }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openFilterMenu(gw, "mins")}
-                      className={`inline-flex items-center gap-1 ${isColumnFilterActive(gw, "mins") ? "text-brand-green" : "text-brand-cream/90"}`}
-                    >
-                      <span>Mins</span>
-                      <span aria-hidden="true">▼</span>
-                    </button>
-                    {openColumnFilter?.gw === gw && openColumnFilter.kind === "mins" && (
-                      <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
-                        <div className="space-y-2">
-                          <input
-                            type="number"
-                            step="1"
-                            value={rangeDraftMin}
-                            onChange={(event) => setRangeDraftMin(event.target.value)}
-                            placeholder="Min mins"
-                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                          />
-                          <input
-                            type="number"
-                            step="1"
-                            value={rangeDraftMax}
-                            onChange={(event) => setRangeDraftMax(event.target.value)}
-                            placeholder="Max mins"
-                            className="w-full rounded border border-brand-cream/30 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => applyRangeFilter(gw, "mins")}
-                            className="w-full rounded bg-brand-green px-2 py-1 text-xs font-semibold text-brand-cream"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </th>
-                </Fragment>
+                  )}
+                </th>
               ))}
             </tr>
           </thead>
@@ -1045,43 +925,40 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                       }
                     }
 
-                    const gpCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
                     const gpValue = noRow ? null : gpStatus(row);
-
-                    const minsCellContent = noRow ? "-" : String(row.minutes_played ?? 0);
-                    const minsCellClass = noRow
-                      ? `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream/85`
-                      : `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
+                    const minsCellContent = noRow ? null : String(row.minutes_played ?? 0);
 
                     return (
                       <Fragment key={`${player.id}-${gw}`}>
                         <td
                           className={`${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs ${
-                            gwIndex === 0 ? "border-l-4 border-l-brand-cream/60" : ""
+                            gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
                           }`}
                         >
-                          {showStatBadge ? (
-                            <span
-                              className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                              style={statBadgeStyle}
-                            >
-                              {statCellContent}
-                            </span>
-                          ) : (
-                            statCellContent
-                          )}
-                        </td>
-                        <td className={`${gpCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs font-semibold`}>
-                          {gpValue ? (
-                            <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-bold ${gpStatusBadgeClasses(gpValue)}`}>
-                              {gpValue}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className={`${minsCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs`}>
-                          {minsCellContent}
+                          <div className="flex flex-col items-center gap-1">
+                            <div>
+                              {showStatBadge ? (
+                                <span
+                                  className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
+                                  style={statBadgeStyle}
+                                >
+                                  {statCellContent}
+                                </span>
+                              ) : (
+                                <span>{statCellContent}</span>
+                              )}
+                            </div>
+                            {gpValue ? (
+                              <div className="inline-flex items-center gap-1">
+                                <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-semibold text-white ${gpStatusBadgeClasses(gpValue)}`}>
+                                  {gpValue}
+                                </span>
+                                {gpValue !== "DNP" && minsCellContent && (
+                                  <span className="text-xs text-brand-creamDark/60">{`· ${minsCellContent}`}</span>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
                         </td>
                       </Fragment>
                     );
