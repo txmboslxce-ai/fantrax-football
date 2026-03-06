@@ -984,6 +984,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
           <tbody>
             {filteredPlayers.map((player, index) => {
               const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+              const stickyRowShade = index % 2 === 0 ? "bg-[#15221a]" : "bg-[#0f1a14]";
               const playerRowsByGw = rowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
               const isSelectedRow = selectedPlayerId === player.id;
@@ -999,13 +1000,13 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/30 px-2 py-1.5 font-semibold text-brand-cream ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
+                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream ${stickyRowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
                     style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
                   >
                     <Link href={`/portal/players/${player.id}`} className="block text-sm leading-tight hover:text-brand-greenLight">
                       {player.name}
                     </Link>
-                    <div className="mt-0.5 text-xs font-medium text-brand-creamDark">
+                    <div className="mt-0.5 text-xs text-brand-creamDark/60">
                       {player.team} / {positionLetter(player.position)} / {player.ownershipPct.toFixed(1)}%
                     </div>
                   </td>
