@@ -44,7 +44,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
       )
       .eq("player_id", id)
       .eq("season", SEASON)
-      .order("gameweek", { ascending: false }),
+      .order("gameweek", { ascending: true }),
     supabase
       .from("fixtures")
       .select("id, season, gameweek, home_team, away_team")
@@ -187,7 +187,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
                 </tr>
               </thead>
               <tbody>
-                {decorated.map((row, index) => (
+                {decorated.slice().reverse().map((row, index) => (
                   <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/70" : "bg-brand-dark/90"}>
                     <td className="px-3 py-3">{row.gameweek}</td>
                     <td className="px-3 py-3">
