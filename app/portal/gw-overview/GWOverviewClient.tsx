@@ -48,6 +48,7 @@ export type GWOverviewGameweekRow = {
 };
 
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
+type GPStatus = "Started" | "Sub" | "DNP";
 type ColumnFilterKind = "stat" | "gp" | "mins";
 type SortDirection = "asc" | "desc";
 
@@ -152,6 +153,7 @@ type StatKey =
   | "own_goals";
 
 const positionFilters: PositionFilter[] = ["All", "GK", "DEF", "MID", "FWD"];
+const gpStatusFilters: GPStatus[] = ["Started", "Sub", "DNP"];
 
 const statSections: StatSection[] = [
   {
@@ -286,14 +288,14 @@ function gpStatus(row: GWOverviewGameweekRow): "Started" | "Sub" | "DNP" {
   return "Sub";
 }
 
-function gpStatusBadgeClasses(status: "Started" | "Sub" | "DNP") {
+function gpStatusTextClasses(status: "Started" | "Sub" | "DNP") {
   if (status === "Started") {
-    return "bg-green-700 text-white";
+    return "text-white";
   }
   if (status === "Sub") {
-    return "bg-yellow-600 text-white";
+    return "text-orange-400";
   }
-  return "bg-red-900/80 text-white";
+  return "text-red-500";
 }
 
 function positionLetter(position: GWOverviewPlayer["position"]): "G" | "D" | "M" | "F" {
@@ -338,7 +340,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
-  const [minFormPts, setMinFormPts] = useState<string>("0");
+  const [gpStatusFilter, setGpStatusFilter] = useState<GPStatus[]>(["Started", "Sub", "DNP"]);
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
   const [activeColumnFilter, setActiveColumnFilter] = useState<ActiveColumnFilter | null>(null);
@@ -493,7 +495,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
     const normalizedSearch = searchPlayer.trim().toLowerCase();
     const minOwnership = ownershipMin.trim() === "" ? Number.NEGATIVE_INFINITY : Number.parseFloat(ownershipMin);
     const maxOwnership = ownershipMax.trim() === "" ? Number.POSITIVE_INFINITY : Number.parseFloat(ownershipMax);
-    const minFormPtsValue = minFormPts.trim() === "" ? Number.NEGATIVE_INFINITY : Number.parseFloat(minFormPts);
+    const mostRecentGw = Math.max(...selectedGws);
 
     const filtered = players.filter((player) => {
       if (normalizedSearch && !player.name.toLowerCase().includes(normalizedSearch)) {
@@ -516,9 +518,12 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
         return false;
       }
 
-      const form = formByPlayer.get(player.id);
-      if (Number.isFinite(minFormPtsValue) && (form?.formPts ?? 0) < minFormPtsValue) {
-        return false;
+      const latestGwRow = rowsByPlayerByGw.get(player.id)?.get(mostRecentGw);
+      if (latestGwRow) {
+        const latestStatus = gpStatus(latestGwRow);
+        if (!gpStatusFilter.includes(latestStatus)) {
+          return false;
+        }
       }
 
       if (activeColumnFilter) {
@@ -591,7 +596,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
   }, [
     activeColumnFilter,
     formByPlayer,
-    minFormPts,
+    gpStatusFilter,
     ownershipMax,
     ownershipMin,
     players,
@@ -599,6 +604,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
     rowsByPlayerByGw,
     searchPlayer,
     selectedStat,
+    selectedGws,
     sortState,
     teamFilter,
   ]);
@@ -734,16 +740,32 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </div>
             </div>
 
-            <label className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Min Form Pts</span>
-              <input
-                type="number"
-                step="0.1"
-                value={minFormPts}
-                onChange={(event) => setMinFormPts(event.target.value)}
-                className="w-20 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-              />
-            </label>
+            <div className="shrink-0 space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">GP Status</span>
+              <div className="flex gap-1">
+                {gpStatusFilters.map((status) => {
+                  const active = gpStatusFilter.includes(status);
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() =>
+                        setGpStatusFilter((prev) =>
+                          prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status]
+                        )
+                      }
+                      className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                        active
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -950,7 +972,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                             </div>
                             {gpValue ? (
                               <div className="inline-flex items-center gap-1">
-                                <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-semibold text-white ${gpStatusBadgeClasses(gpValue)}`}>
+                                <span className={`text-xs font-semibold ${gpStatusTextClasses(gpValue)}`}>
                                   {gpValue}
                                 </span>
                                 {gpValue !== "DNP" && minsCellContent && (
