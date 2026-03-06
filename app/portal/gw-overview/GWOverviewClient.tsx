@@ -289,14 +289,14 @@ function gpStatus(row: GWOverviewGameweekRow): "Started" | "Sub" | "DNP" {
   return "Sub";
 }
 
-function gpStatusClasses(status: "Started" | "Sub" | "DNP") {
+function gpStatusBadgeClasses(status: "Started" | "Sub" | "DNP") {
   if (status === "Started") {
-    return "bg-[#bbf7d0] text-[#0f1f13]";
+    return "bg-brand-cream/10 text-brand-cream";
   }
   if (status === "Sub") {
-    return "bg-[#fef08a] text-[#0f1f13]";
+    return "bg-yellow-600 text-white";
   }
-  return "bg-[#fecaca] text-[#0f1f13]";
+  return "bg-red-800 text-white";
 }
 
 function positionLetter(position: GWOverviewPlayer["position"]): "G" | "D" | "M" | "F" {
@@ -983,8 +983,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
 
           <tbody>
             {filteredPlayers.map((player, index) => {
-              const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
-              const stickyRowShade = index % 2 === 0 ? "bg-[#15221a]" : "bg-[#0f1a14]";
+              const rowShade = index % 2 === 0 ? "bg-[#15221a]" : "bg-[#0f1a14]";
               const playerRowsByGw = rowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
               const isSelectedRow = selectedPlayerId === player.id;
@@ -1000,7 +999,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream ${stickyRowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
+                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
                     style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
                   >
                     <Link href={`/portal/players/${player.id}`} className="block text-sm leading-tight hover:text-brand-greenLight">
@@ -1030,24 +1029,24 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
 
                     let statCellContent = "-";
                     let statCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream/85`;
-                    let statCellStyle: CSSProperties | undefined;
+                    let statBadgeStyle: CSSProperties | undefined;
+                    let showStatBadge = false;
 
                     if (!noRow && applicable) {
                       const value = Number(row[selectedStat] ?? 0);
                       statCellContent = toDisplayValue(value);
 
                       if (selectedStat === "raw_fantrax_pts") {
-                        statCellStyle = { backgroundColor: pointsGradientBackground(value) };
-                        statCellClass = "border-b border-r border-brand-cream/30 text-[#0f1f13]";
+                        showStatBadge = true;
+                        statBadgeStyle = { backgroundColor: pointsGradientBackground(value) };
+                        statCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
                       } else {
                         statCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
                       }
                     }
 
-                    const gpCellContent = noRow ? "-" : gpStatus(row);
-                    const gpCellClass = noRow
-                      ? `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream/85`
-                      : `border-b border-r border-brand-cream/30 ${gpStatusClasses(gpStatus(row))}`;
+                    const gpCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
+                    const gpValue = noRow ? null : gpStatus(row);
 
                     const minsCellContent = noRow ? "-" : String(row.minutes_played ?? 0);
                     const minsCellClass = noRow
@@ -1060,12 +1059,26 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                           className={`${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs ${
                             gwIndex === 0 ? "border-l-4 border-l-brand-cream/60" : ""
                           }`}
-                          style={statCellStyle}
                         >
-                          {statCellContent}
+                          {showStatBadge ? (
+                            <span
+                              className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
+                              style={statBadgeStyle}
+                            >
+                              {statCellContent}
+                            </span>
+                          ) : (
+                            statCellContent
+                          )}
                         </td>
                         <td className={`${gpCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs font-semibold`}>
-                          {gpCellContent}
+                          {gpValue ? (
+                            <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-bold ${gpStatusBadgeClasses(gpValue)}`}>
+                              {gpValue}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className={`${minsCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs`}>
                           {minsCellContent}
