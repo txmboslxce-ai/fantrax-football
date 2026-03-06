@@ -668,20 +668,28 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 style={{ minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
               >
-                <button type="button" onClick={() => toggleSort({ kind: "formPts" })} className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSort({ kind: "formPts" })}
+                  className="inline-flex w-full items-center justify-center gap-1"
+                >
                   <span>Form Pts</span>
                   <span aria-hidden="true">{sortArrowForHeader("formPts")}</span>
                 </button>
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 style={{ minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
               >
-                <button type="button" onClick={() => toggleSort({ kind: "formPPG" })} className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSort({ kind: "formPPG" })}
+                  className="inline-flex w-full items-center justify-center gap-1"
+                >
                   <span>Form PPG</span>
                   <span aria-hidden="true">{sortArrowForHeader("formPPG")}</span>
                 </button>
@@ -767,13 +775,13 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     </div>
                   </td>
                   <td
-                    className={`border-b border-r border-brand-cream/30 px-2 py-1.5 font-bold text-brand-cream ${rowShade} ${selectedRowClass}`}
+                    className={`border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream ${rowShade} ${selectedRowClass}`}
                     style={{ minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className={`border-b border-r border-brand-cream/30 px-2 py-1.5 font-bold text-brand-cream ${rowShade} ${selectedRowClass}`}
+                    className={`border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream ${rowShade} ${selectedRowClass}`}
                     style={{ minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
                   >
                     {form.formPPG.toFixed(2)}
