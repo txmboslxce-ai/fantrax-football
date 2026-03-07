@@ -18,7 +18,6 @@ type SortKey = "name" | "seasonPts" | "avgPtsPerGw" | "ghostPtsPerGw";
 
 type PlayersTableClientProps = {
   players: PlayerRow[];
-  isPremiumUser: boolean;
 };
 
 const positionFilters: Array<"All" | "GK" | "DEF" | "MID" | "FWD"> = ["All", "GK", "DEF", "MID", "FWD"];
@@ -52,7 +51,7 @@ function pointsBadgeBackground(value: number, min: number, max: number): string 
   return mixColor(yellow, green, (normalized - 0.5) * 2);
 }
 
-export default function PlayersTableClient({ players, isPremiumUser }: PlayersTableClientProps) {
+export default function PlayersTableClient({ players }: PlayersTableClientProps) {
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
   const [teamFilter, setTeamFilter] = useState("All");
@@ -138,7 +137,6 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
-  const indicator = isPremiumUser ? "👑" : "🔒";
 
   return (
     <div className="space-y-3">
@@ -274,12 +272,7 @@ export default function PlayersTableClient({ players, isPremiumUser }: PlayersTa
                 <tr key={player.id} className="text-brand-cream">
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      <div className="font-semibold leading-tight">
-                        <span className="mr-2" aria-hidden="true">
-                          {indicator}
-                        </span>
-                        {player.name}
-                      </div>
+                      <div className="font-semibold leading-tight">{player.name}</div>
                       <div className="mt-0.5 text-xs text-brand-creamDark/70">
                         {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
                       </div>

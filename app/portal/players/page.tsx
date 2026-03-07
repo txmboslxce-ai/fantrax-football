@@ -1,5 +1,4 @@
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
-import { isPremiumUser } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type PlayerWithStatsRow = {
@@ -66,19 +65,11 @@ function parseOwnership(value: string | null): number {
 export default async function PlayersPage() {
   const supabase = await createServerSupabaseClient();
 
-  const [
-    {
-      data: { user },
-    },
-    { data, error },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase
-      .from("player_gameweeks")
-      .select("player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct)")
-      .eq("season", SEASON)
-      .gt("games_played", 0),
-  ]);
+  const { data, error } = await supabase
+    .from("player_gameweeks")
+    .select("player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct)")
+    .eq("season", SEASON)
+    .gt("games_played", 0);
 
   if (error) {
     throw new Error(`Unable to load players: ${error.message}`);
@@ -141,15 +132,13 @@ export default async function PlayersPage() {
   }));
 
   players.sort((a, b) => b.seasonPts - a.seasonPts);
-  const hasPremiumAccess = await isPremiumUser(user?.id);
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Players</h1>
         <p className="mt-2 text-sm text-brand-creamDark">Season {SEASON} player outputs. Click any row for player detail.</p>
       </div>
-      <PlayersTableClient players={players} isPremiumUser={hasPremiumAccess} />
+      <PlayersTableClient players={players} />
     </div>
   );
 }
