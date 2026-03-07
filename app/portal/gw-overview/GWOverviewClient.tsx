@@ -658,8 +658,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
-                style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
+                className="sticky left-0 top-0 z-30 w-[184px] min-w-[184px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark sm:w-[220px] sm:min-w-[220px]"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -764,10 +763,12 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
-                    style={{ minWidth: CELL_WIDTHS.player, width: CELL_WIDTHS.player }}
+                    className={`sticky left-0 z-20 w-[184px] min-w-[184px] overflow-hidden border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream sm:w-[220px] sm:min-w-[220px] ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
                   >
-                    <Link href={`/portal/players/${player.id}`} className="block text-sm leading-tight hover:text-brand-greenLight">
+                    <Link
+                      href={`/portal/players/${player.id}`}
+                      className="block max-w-[21ch] overflow-hidden text-ellipsis whitespace-nowrap text-sm leading-tight hover:text-brand-greenLight sm:max-w-none sm:overflow-visible sm:whitespace-normal"
+                    >
                       {player.name}
                     </Link>
                     <div className="mt-0.5 text-xs text-brand-creamDark/60">
