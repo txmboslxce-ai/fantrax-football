@@ -1,6 +1,6 @@
 import TeamsTableClient from "@/components/portal/TeamsTableClient";
 import PremiumGate from "@/components/PremiumGate";
-import { isPremiumUserEmail } from "@/lib/premium";
+import { isPremiumUser } from "@/lib/premium";
 import { SEASON, mapPosition, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -179,9 +179,10 @@ export default async function TeamsPage() {
       concededGk: avgPerStart(stats?.concededByPosition.GK.points ?? 0, stats?.concededByPosition.GK.starts ?? 0),
     };
   });
+  const hasPremiumAccess = await isPremiumUser(user?.id);
 
   return (
-    <PremiumGate isPremium={isPremiumUserEmail(user?.email)}>
+    <PremiumGate isPremium={hasPremiumAccess}>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Team Stats</h1>

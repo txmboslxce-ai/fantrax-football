@@ -1,7 +1,7 @@
 import PremiumGate from "@/components/PremiumGate";
 import TeamSquadClient from "@/components/portal/TeamSquadClient";
 import { SEASON, mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
-import { isPremiumUserEmail } from "@/lib/premium";
+import { isPremiumUser } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -530,9 +530,10 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       description: "Team-level performance metrics and splits will appear here.",
     },
   };
+  const hasPremiumAccess = await isPremiumUser(user?.id);
 
   return (
-    <PremiumGate isPremium={isPremiumUserEmail(user?.email)}>
+    <PremiumGate isPremium={hasPremiumAccess}>
       <div className="space-y-6">
         <header className="rounded-xl border border-brand-cream/20 bg-brand-dark px-5 py-4">
           <p className="text-xs uppercase tracking-widest text-brand-creamDark">{team.abbrev}</p>

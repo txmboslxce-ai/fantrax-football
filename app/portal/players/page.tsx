@@ -1,5 +1,5 @@
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
-import { isPremiumUserEmail } from "@/lib/premium";
+import { isPremiumUser } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type PlayerWithStatsRow = {
@@ -141,6 +141,7 @@ export default async function PlayersPage() {
   }));
 
   players.sort((a, b) => b.seasonPts - a.seasonPts);
+  const hasPremiumAccess = await isPremiumUser(user?.id);
 
   return (
     <div className="space-y-6">
@@ -148,7 +149,7 @@ export default async function PlayersPage() {
         <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Players</h1>
         <p className="mt-2 text-sm text-brand-creamDark">Season {SEASON} player outputs. Click any row for player detail.</p>
       </div>
-      <PlayersTableClient players={players} isPremiumUser={isPremiumUserEmail(user?.email)} />
+      <PlayersTableClient players={players} isPremiumUser={hasPremiumAccess} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import PremiumGate from "@/components/PremiumGate";
 import CompareClient from "@/app/portal/compare/CompareClient";
-import { isPremiumUserEmail } from "@/lib/premium";
+import { isPremiumUser } from "@/lib/premium";
 import {
   SEASON,
   decorateGameweeks,
@@ -140,9 +140,10 @@ export default async function ComparePage() {
       },
     };
   });
+  const hasPremiumAccess = await isPremiumUser(user?.id);
 
   return (
-    <PremiumGate isPremium={isPremiumUserEmail(user?.email)}>
+    <PremiumGate isPremium={hasPremiumAccess}>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Compare Players</h1>

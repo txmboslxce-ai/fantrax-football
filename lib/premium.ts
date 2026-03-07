@@ -1,19 +1,16 @@
-export function isPremiumUserEmail(email: string | null | undefined): boolean {
-  if (!email) {
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+export async function isPremiumUser(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) {
     return false;
   }
 
-  const raw = process.env.PREMIUM_USERS ?? "";
-  if (!raw.trim()) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.from("profiles").select("is_premium").eq("id", userId).maybeSingle();
+
+  if (error || !data) {
     return false;
   }
 
-  const premiumEmails = new Set(
-    raw
-      .split(",")
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean)
-  );
-
-  return premiumEmails.has(email.toLowerCase());
+  return Boolean(data.is_premium);
 }

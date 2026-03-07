@@ -1,6 +1,6 @@
 import PremiumGate from "@/components/PremiumGate";
 import PlayerDetailCharts from "@/components/portal/charts/PlayerDetailCharts";
-import { isPremiumUserEmail } from "@/lib/premium";
+import { isPremiumUser } from "@/lib/premium";
 import {
   SEASON,
   decorateGameweeks,
@@ -69,7 +69,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
     throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
 
-  const isPremium = isPremiumUserEmail(user?.email);
+  const isPremium = await isPremiumUser(user?.id);
   const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
   const fixturesForTeam = ((teamFixtures ?? []) as FixtureRow[]).filter(
     (fixture) => fixture.home_team === player.team || fixture.away_team === player.team
