@@ -658,7 +658,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
+                className="sticky left-0 top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
