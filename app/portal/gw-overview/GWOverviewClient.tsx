@@ -541,24 +541,23 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
       </div>
 
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max items-end gap-2 text-xs">
-            <label className="shrink-0 space-y-1">
+        <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+            <label className="space-y-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
               <input
                 value={searchPlayer}
                 onChange={(event) => setSearchPlayer(event.target.value)}
                 placeholder="Player"
-                className="w-40 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none md:w-40"
               />
             </label>
 
-            <label className="shrink-0 space-y-1">
+            <label className="space-y-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Stat</span>
               <select
                 value={selectedStat}
                 onChange={(event) => setSelectedStat(event.target.value as StatKey)}
-                className="w-36 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-36"
               >
                 {statSelectEntries.map((entry) =>
                   entry.type === "heading" ? (
@@ -574,9 +573,9 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </select>
             </label>
 
-            <div className="shrink-0 space-y-1">
+            <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
-              <div className="flex gap-1">
+              <div className="flex flex-nowrap gap-1">
                 {positionFilters.map((filter) => {
                   const active = positionFilter === filter;
                   return (
@@ -597,12 +596,12 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </div>
             </div>
 
-            <label className="shrink-0 space-y-1">
+            <label className="space-y-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
               <select
                 value={teamFilter}
                 onChange={(event) => setTeamFilter(event.target.value)}
-                className="w-24 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-24"
               >
                 <option value="All">All</option>
                 {teams.map((team) => (
@@ -613,9 +612,9 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </select>
             </label>
 
-            <div className="shrink-0 space-y-1">
+            <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
-              <div className="flex gap-1">
+              <div className="grid grid-cols-2 gap-1 md:flex">
                 <input
                   type="number"
                   min={0}
@@ -624,7 +623,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   value={ownershipMin}
                   onChange={(event) => setOwnershipMin(event.target.value)}
                   placeholder="Min"
-                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                  className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
                 />
                 <input
                   type="number"
@@ -634,12 +633,10 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   value={ownershipMax}
                   onChange={(event) => setOwnershipMax(event.target.value)}
                   placeholder="Max"
-                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                  className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
                 />
               </div>
             </div>
-
-          </div>
         </div>
       </div>
 
