@@ -643,7 +643,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+      <div className="max-h-[calc(100vh-280px)] overflow-auto rounded-xl border border-brand-cream/20">
         <table
           className="border-separate border-spacing-0 text-sm"
           style={{
@@ -654,7 +654,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               selectedGws.length * CELL_WIDTHS.statMobile,
           }}
         >
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr>
               <th
                 rowSpan={2}
@@ -667,7 +667,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -680,7 +680,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -695,7 +695,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               {selectedGws.map((gw, gwIndex) => (
                 <th
                   key={`gw-header-${gw}`}
-                  className={`relative sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px] ${
+                  className={`relative w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px] ${
                     gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
                   }`}
                 >
