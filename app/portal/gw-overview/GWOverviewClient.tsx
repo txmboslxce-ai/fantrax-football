@@ -206,6 +206,9 @@ const goalkeeperOnlyStats = new Set<StatKey>(["saves", "goals_against", "penalty
 const outfieldOnlyStats = new Set<StatKey>(["goals_against_outfield"]);
 
 const CELL_WIDTHS = {
+  playerMobile: 120,
+  formMobile: 72,
+  statMobile: 72,
   player: 220,
   formPts: 106,
   formPPG: 106,
@@ -645,17 +648,17 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
           className="border-separate border-spacing-0 text-sm"
           style={{
             minWidth:
-              CELL_WIDTHS.player +
-              CELL_WIDTHS.formPts +
-              CELL_WIDTHS.formPPG +
-              selectedGws.length * CELL_WIDTHS.stat,
+              CELL_WIDTHS.playerMobile +
+              CELL_WIDTHS.formMobile +
+              CELL_WIDTHS.formMobile +
+              selectedGws.length * CELL_WIDTHS.statMobile,
           }}
         >
           <thead>
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 w-[184px] min-w-[184px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark sm:w-[220px] sm:min-w-[220px]"
+                className="sticky left-0 top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#0F1F13] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -664,8 +667,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
-                style={{ minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
+                className="sticky top-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -678,8 +680,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
-                style={{ minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
+                className="sticky top-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -694,10 +695,9 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               {selectedGws.map((gw, gwIndex) => (
                 <th
                   key={`gw-header-${gw}`}
-                  className={`relative sticky top-0 z-20 border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream ${
+                  className={`relative sticky top-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px] ${
                     gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
                   }`}
-                  style={{ minWidth: CELL_WIDTHS.stat, width: CELL_WIDTHS.stat }}
                 >
                   <div className="inline-flex items-center gap-1">
                     <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
@@ -760,27 +760,25 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 w-[184px] min-w-[184px] overflow-hidden border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream sm:w-[220px] sm:min-w-[220px] ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
+                    className={`sticky left-0 z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
-                      className="block max-w-[21ch] overflow-hidden text-ellipsis whitespace-nowrap text-sm leading-tight hover:text-brand-greenLight sm:max-w-none sm:overflow-visible sm:whitespace-normal"
+                      className="block truncate text-sm leading-tight hover:text-brand-greenLight md:overflow-visible md:whitespace-normal"
                     >
                       {player.name}
                     </Link>
-                    <div className="mt-0.5 text-xs text-brand-creamDark/60">
+                    <div className="mt-0.5 truncate text-xs text-brand-creamDark/60 md:overflow-visible md:whitespace-normal">
                       {player.team} / {positionLetter(player.position)} / {player.ownershipPct.toFixed(1)}%
                     </div>
                   </td>
                   <td
-                    className={`border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream ${rowShade} ${selectedRowClass}`}
-                    style={{ minWidth: CELL_WIDTHS.formPts, width: CELL_WIDTHS.formPts }}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className={`border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream ${rowShade} ${selectedRowClass}`}
-                    style={{ minWidth: CELL_WIDTHS.formPPG, width: CELL_WIDTHS.formPPG }}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
                   >
                     {form.formPPG.toFixed(2)}
                   </td>
@@ -814,7 +812,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
                     return (
                       <Fragment key={`${player.id}-${gw}`}>
                         <td
-                          className={`${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs ${
+                          className={`w-[72px] min-w-[72px] md:w-[118px] md:min-w-[118px] ${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs ${
                             gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
                           }`}
                         >
