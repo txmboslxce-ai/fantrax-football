@@ -643,7 +643,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+      <div className="max-h-[calc(100vh-200px)] overflow-auto rounded-xl border border-brand-cream/20">
         <table
           className="border-separate border-spacing-0 text-sm"
           style={{
