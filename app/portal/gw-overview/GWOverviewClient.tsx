@@ -654,7 +654,7 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
               selectedGws.length * CELL_WIDTHS.statMobile,
           }}
         >
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr>
               <th
                 rowSpan={2}
