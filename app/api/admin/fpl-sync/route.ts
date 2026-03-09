@@ -244,9 +244,12 @@ export async function POST(request: Request) {
   }
 
   if (playerFplUpdates.length > 0) {
-    const { error: playersUpsertError } = await db.from("players").upsert(playerFplUpdates, { onConflict: "id" });
-    if (playersUpsertError) {
-      return NextResponse.json({ success: false, message: playersUpsertError.message }, { status: 500 });
+    const playerUpdateResults = await Promise.all(
+      playerFplUpdates.map((item) => db.from("players").update({ fpl_id: item.fpl_id }).eq("id", item.id))
+    );
+    const failedPlayerUpdate = playerUpdateResults.find((result) => result.error);
+    if (failedPlayerUpdate?.error) {
+      return NextResponse.json({ success: false, message: failedPlayerUpdate.error.message }, { status: 500 });
     }
 
     const { error: fplDataUpsertError } = await db.from("fpl_player_data").upsert(fplDataUpserts, { onConflict: "player_id" });
