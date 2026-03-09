@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PredictionRefreshCard from "./PredictionRefreshCard";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -80,6 +81,7 @@ export default async function AdminPage() {
               <p className="mt-2 text-sm text-brand-creamDark">{card.description}</p>
             </Link>
           ))}
+          <PredictionRefreshCard />
         </div>
       </div>
     </div>

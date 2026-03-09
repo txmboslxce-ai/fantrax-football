@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
+import { generatePredictionsForGameweek } from "@/lib/predictions/prediction-engine";
+import { upsertPlayerPredictions } from "@/lib/predictions/upsert";
 import { SEASON } from "@/lib/portal/playerMetrics";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -69,18 +71,15 @@ export async function POST(request: Request) {
   let predictionsGenerated = 0;
 
   for (let gw = currentGw + 1; gw <= currentGw + 5; gw += 1) {
-    const { data, error } = await db.rpc("generate_predictions", {
-      p_season: season,
-      p_current_gw: currentGw,
-      p_predict_gw: gw,
-    });
-
-    if (error) {
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    try {
+      const predictions = await generatePredictionsForGameweek(db, season, gw, {
+        useLineupAdjustments: true,
+      });
+      predictionsGenerated += await upsertPlayerPredictions(db, predictions);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate predictions";
+      return NextResponse.json({ success: false, message }, { status: 500 });
     }
-
-    const generatedCount = typeof data === "number" ? data : Number(data ?? 0);
-    predictionsGenerated += Number.isFinite(generatedCount) ? generatedCount : 0;
   }
 
   return NextResponse.json({ success: true, predictionsGenerated });
