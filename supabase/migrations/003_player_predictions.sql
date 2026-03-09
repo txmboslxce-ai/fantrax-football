@@ -227,7 +227,9 @@ begin
     select
       fp.player_id,
       p.position,
+      f.player_id is not null and coalesce(sm.total_minutes, 0) >= 450 as has_fpl_data,
       case
+        when not (f.player_id is not null and coalesce(sm.total_minutes, 0) >= 450) then null
         when p.position in ('M', 'F') then
           coalesce(f.expected_goals_per_90, 0) * 9 +
           coalesce(f.expected_assists_per_90, 0) * 6
@@ -240,9 +242,8 @@ begin
           coalesce(f.saves_per_90, 0) * 2 +
           coalesce(f.clean_sheets_per_90, 0) * 6 -
           coalesce(f.expected_goals_conceded_per_90, 0) * 2
-        else 0
-      end as raw_quality,
-      f.player_id is not null and coalesce(sm.total_minutes, 0) >= 450 as has_fpl_data
+        else null
+      end as raw_quality
     from fixtures_for_prediction fp
     join players p on p.id = fp.player_id
     left join fpl_player_data f on f.player_id = fp.player_id
@@ -259,10 +260,8 @@ begin
     select
       player_id,
       case
-        when not has_fpl_data then 5.0
-        when max(raw_quality) over (partition by position) = min(raw_quality) over (partition by position) then 5.0
-        else ((raw_quality - min(raw_quality) over (partition by position)) /
-              nullif(max(raw_quality) over (partition by position) - min(raw_quality) over (partition by position), 0)) * 10
+        when has_fpl_data then raw_quality
+        else avg(raw_quality) filter (where has_fpl_data) over (partition by position)
       end as quality_score
     from quality_raw
   ),
