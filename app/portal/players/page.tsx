@@ -1,5 +1,23 @@
+import GWOverviewClient from "@/app/portal/gw-overview/GWOverviewClient";
+import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
+import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import Link from "next/link";
+
+type PageProps = {
+  searchParams?:
+    | {
+        tab?: string | string[];
+        startGw?: string | string[];
+      }
+    | Promise<{
+        tab?: string | string[];
+        startGw?: string | string[];
+      }>;
+};
+
+type PlayersTabKey = "players" | "form" | "waiver";
 
 type PlayerWithStatsRow = {
   player_id: string;
@@ -38,6 +56,12 @@ type AggregatedPlayer = {
 
 const SEASON = "2025-26";
 
+const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
+  { key: "players", label: "Players" },
+  { key: "form", label: "Form Table" },
+  { key: "waiver", label: "Waiver Wire XI" },
+];
+
 function mapPosition(position: string): "GK" | "DEF" | "MID" | "FWD" {
   switch (position) {
     case "G":
@@ -62,7 +86,16 @@ function parseOwnership(value: string | null): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-export default async function PlayersPage() {
+function toTabKey(value: string | string[] | undefined): PlayersTabKey {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const tab = raw?.toLowerCase();
+  if (tab === "players" || tab === "form" || tab === "waiver") {
+    return tab;
+  }
+  return "players";
+}
+
+async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
   const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
@@ -132,13 +165,55 @@ export default async function PlayersPage() {
   }));
 
   players.sort((a, b) => b.seasonPts - a.seasonPts);
+  return players;
+}
+
+export default async function PlayersPage({ searchParams }: PageProps) {
+  const resolvedSearchParams =
+    searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
+  const activeTab = toTabKey(resolvedSearchParams?.tab);
+
+  const players = activeTab === "players" ? await getPlayersTableData() : null;
+  const formData = activeTab === "form" ? await getGWOverviewData(resolvedSearchParams?.startGw) : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Players</h1>
         <p className="mt-2 text-sm text-brand-creamDark">Season {SEASON} player outputs. Click any row for player detail.</p>
       </div>
-      <PlayersTableClient players={players} />
+
+      <nav className="flex flex-wrap gap-2">
+        {PLAYER_TABS.map((tab) => (
+          <Link
+            key={tab.key}
+            href={`/portal/players?tab=${tab.key}`}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+              activeTab === tab.key
+                ? "border-brand-greenLight bg-brand-green text-brand-cream"
+                : "border-brand-cream/35 bg-brand-dark text-brand-cream hover:bg-brand-greenDark"
+            }`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
+
+      {activeTab === "players" && players ? <PlayersTableClient players={players} /> : null}
+
+      {activeTab === "form" && formData ? (
+        <GWOverviewClient
+          players={formData.players}
+          gameweeks={formData.gameweeks}
+          selectedGws={formData.selectedGws}
+          teams={formData.teams}
+          minGw={formData.minGw}
+          maxGw={formData.maxGw}
+          startGwBasePath="/portal/players?tab=form"
+        />
+      ) : null}
+
+      {activeTab === "waiver" ? <WaiverWireClient /> : null}
     </div>
   );
 }

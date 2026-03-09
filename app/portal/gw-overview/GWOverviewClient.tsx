@@ -105,6 +105,7 @@ type GWOverviewClientProps = {
   teams: GWOverviewTeam[];
   minGw: number;
   maxGw: number;
+  startGwBasePath?: string;
 };
 
 type StatKey =
@@ -317,7 +318,15 @@ function compareNullableNumber(a: number | null, b: number | null, direction: So
   return compareNumber(a, b, direction);
 }
 
-export default function GWOverviewClient({ players, gameweeks, selectedGws, teams, minGw, maxGw }: GWOverviewClientProps) {
+export default function GWOverviewClient({
+  players,
+  gameweeks,
+  selectedGws,
+  teams,
+  minGw,
+  maxGw,
+  startGwBasePath = "/portal/gw-overview",
+}: GWOverviewClientProps) {
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
   const [searchPlayer, setSearchPlayer] = useState<string>("");
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
@@ -335,7 +344,8 @@ export default function GWOverviewClient({ players, gameweeks, selectedGws, team
 
   function navigateWindow(nextStartGw: number) {
     const clamped = Math.min(latestStartGw, Math.max(minGw, nextStartGw));
-    window.location.href = `/portal/gw-overview?startGw=${clamped}`;
+    const joiner = startGwBasePath.includes("?") ? "&" : "?";
+    window.location.href = `${startGwBasePath}${joiner}startGw=${clamped}`;
   }
 
   const rowsByPlayerByGw = useMemo(() => {
