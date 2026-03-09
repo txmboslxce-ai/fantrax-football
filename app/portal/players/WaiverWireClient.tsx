@@ -55,7 +55,7 @@ function isPosition(value: string): value is "G" | "D" | "M" | "F" {
   return value === "G" || value === "D" || value === "M" || value === "F";
 }
 
-function buildWaiverXI(rows: WaiverRow[]): WaiverRow[] {
+function buildWaiverXI(rows: WaiverRow[]): { lineup: WaiverRow[]; formation: string | null } {
   const sorted = [...rows].sort((a, b) => b.rawFantraxPts - a.rawFantraxPts);
   const byPosition = {
     G: sorted.filter((row) => row.position === "G").slice(0, 1),
@@ -64,7 +64,52 @@ function buildWaiverXI(rows: WaiverRow[]): WaiverRow[] {
     F: sorted.filter((row) => row.position === "F").slice(0, 3),
   };
 
-  return [...byPosition.G, ...byPosition.D, ...byPosition.M, ...byPosition.F]
+  const validFormations = [
+    { def: 3, mid: 4, fwd: 3 },
+    { def: 3, mid: 5, fwd: 2 },
+    { def: 4, mid: 3, fwd: 3 },
+    { def: 4, mid: 4, fwd: 2 },
+    { def: 4, mid: 5, fwd: 1 },
+    { def: 5, mid: 3, fwd: 2 },
+    { def: 5, mid: 4, fwd: 1 },
+  ] as const;
+
+  let best:
+    | {
+        lineup: WaiverRow[];
+        formation: string;
+        totalPoints: number;
+      }
+    | null = null;
+
+  for (const formation of validFormations) {
+    if (
+      byPosition.G.length < 1 ||
+      byPosition.D.length < formation.def ||
+      byPosition.M.length < formation.mid ||
+      byPosition.F.length < formation.fwd
+    ) {
+      continue;
+    }
+
+    const lineup = [
+      ...byPosition.G.slice(0, 1),
+      ...byPosition.D.slice(0, formation.def),
+      ...byPosition.M.slice(0, formation.mid),
+      ...byPosition.F.slice(0, formation.fwd),
+    ];
+    const totalPoints = lineup.reduce((sum, row) => sum + row.rawFantraxPts, 0);
+
+    if (!best || totalPoints > best.totalPoints) {
+      best = {
+        lineup,
+        formation: `${formation.def}-${formation.mid}-${formation.fwd}`,
+        totalPoints,
+      };
+    }
+  }
+
+  const orderedLineup = (best?.lineup ?? [...byPosition.G, ...byPosition.D, ...byPosition.M, ...byPosition.F])
     .sort((a, b) => {
       const posOrder = { G: 1, D: 2, M: 3, F: 4 };
       if (posOrder[a.position] !== posOrder[b.position]) {
@@ -73,6 +118,11 @@ function buildWaiverXI(rows: WaiverRow[]): WaiverRow[] {
       return b.rawFantraxPts - a.rawFantraxPts;
     })
     .slice(0, 11);
+
+  return {
+    lineup: orderedLineup,
+    formation: best?.formation ?? null,
+  };
 }
 
 const positionBadgeClass: Record<WaiverRow["position"], string> = {
@@ -87,6 +137,7 @@ export default function WaiverWireClient() {
   const [gameweeks, setGameweeks] = useState<number[]>([]);
   const [selectedGw, setSelectedGw] = useState<number | null>(null);
   const [rows, setRows] = useState<WaiverRow[]>([]);
+  const [formationLabel, setFormationLabel] = useState<string | null>(null);
   const [loadingGameweeks, setLoadingGameweeks] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +188,7 @@ export default function WaiverWireClient() {
     async function loadRows() {
       if (!selectedGw) {
         setRows([]);
+        setFormationLabel(null);
         return;
       }
 
@@ -157,6 +209,7 @@ export default function WaiverWireClient() {
       if (rowsError) {
         setError(`Unable to load waiver wire data: ${rowsError.message}`);
         setRows([]);
+        setFormationLabel(null);
         setLoadingRows(false);
         return;
       }
@@ -183,7 +236,9 @@ export default function WaiverWireClient() {
         })
         .filter((row): row is WaiverRow => row !== null);
 
-      setRows(buildWaiverXI(eligible));
+      const bestXi = buildWaiverXI(eligible);
+      setRows(bestXi.lineup);
+      setFormationLabel(bestXi.formation ? `Best XI — ${bestXi.formation}` : null);
       setLoadingRows(false);
     }
 
@@ -214,6 +269,7 @@ export default function WaiverWireClient() {
                 </option>
               ))}
             </select>
+            {formationLabel ? <p className="text-xs text-brand-creamDark">{formationLabel}</p> : null}
           </label>
         </div>
       </div>
