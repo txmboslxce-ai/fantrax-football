@@ -16,6 +16,7 @@ create table if not exists player_predictions (
 
 create index if not exists idx_predictions_gw on player_predictions(season, gameweek);
 create index if not exists idx_predictions_player on player_predictions(player_id);
+alter table player_predictions add column if not exists availability_multiplier numeric(4,2);
 
 alter table player_predictions enable row level security;
 
@@ -196,6 +197,30 @@ begin
     where rn <= 6
     group by player_id
   ),
+  fpl_availability as (
+    select
+      player_id,
+      case
+        when chance_of_playing_next_round is null then 1.0
+        when chance_of_playing_next_round = 100 then 1.0
+        when chance_of_playing_next_round = 75 then 0.75
+        when chance_of_playing_next_round = 50 then 0.50
+        when chance_of_playing_next_round = 25 then 0.25
+        when chance_of_playing_next_round = 0 then 0.0
+        else 1.0
+      end as availability_multiplier
+    from fpl_player_data
+  ),
+  set_piece_bonus as (
+    select
+      fpd.player_id,
+      case
+        when fpd.penalties_order = 1 and p.position in ('M', 'F') then 1.08
+        else 1.0
+      end as set_piece_multiplier
+    from fpl_player_data fpd
+    join players p on p.id = fpd.player_id
+  ),
   calculated as (
     select
       fp.player_id,
@@ -245,6 +270,7 @@ begin
       home_away_adj,
       consistency_pts,
       minutes_modifier,
+      availability_multiplier,
       volatility_label,
       generated_at
     )
@@ -255,7 +281,12 @@ begin
       round(
         case
           when c.form_signal is null or c.fixture_score is null or c.consistency_pts is null or c.minutes_modifier is null then null
-          else (((c.form_signal * 0.50) + (c.fixture_score * 0.30) + (c.home_away_adj * 0.10) + (c.consistency_pts * 0.10)) * c.minutes_modifier)
+          else (
+            ((c.form_signal * 0.50) + (c.fixture_score * 0.30) + (c.home_away_adj * 0.10) + (c.consistency_pts * 0.10))
+            * c.minutes_modifier
+            * coalesce(fa.availability_multiplier, 1.0)
+            * coalesce(sp.set_piece_multiplier, 1.0)
+          )
         end,
         2
       ) as predicted_pts,
@@ -264,9 +295,12 @@ begin
       round(c.home_away_adj, 2) as home_away_adj,
       round(c.consistency_pts, 2) as consistency_pts,
       round(c.minutes_modifier, 2) as minutes_modifier,
+      round(coalesce(fa.availability_multiplier, 1.0), 2) as availability_multiplier,
       c.volatility_label,
       now()
     from calculated c
+    left join fpl_availability fa on fa.player_id = c.player_id
+    left join set_piece_bonus sp on sp.player_id = c.player_id
     on conflict (player_id, season, gameweek)
     do update set
       predicted_pts = excluded.predicted_pts,
@@ -275,6 +309,7 @@ begin
       home_away_adj = excluded.home_away_adj,
       consistency_pts = excluded.consistency_pts,
       minutes_modifier = excluded.minutes_modifier,
+      availability_multiplier = excluded.availability_multiplier,
       volatility_label = excluded.volatility_label,
       generated_at = excluded.generated_at
     returning 1
