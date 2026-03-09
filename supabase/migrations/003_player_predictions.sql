@@ -17,6 +17,8 @@ create table if not exists player_predictions (
 create index if not exists idx_predictions_gw on player_predictions(season, gameweek);
 create index if not exists idx_predictions_player on player_predictions(player_id);
 alter table player_predictions add column if not exists availability_multiplier numeric(4,2);
+alter table player_predictions add column if not exists quality_score numeric(5,2);
+alter table player_predictions add column if not exists season_avg_score numeric(5,2);
 
 alter table player_predictions enable row level security;
 
@@ -221,6 +223,64 @@ begin
     from fpl_player_data fpd
     join players p on p.id = fpd.player_id
   ),
+  quality_raw as (
+    select
+      fp.player_id,
+      p.position,
+      case
+        when p.position in ('M', 'F') then
+          coalesce(f.expected_goals_per_90, 0) * 9 +
+          coalesce(f.expected_assists_per_90, 0) * 6
+        when p.position = 'D' then
+          coalesce(f.expected_goals_per_90, 0) * 10 +
+          coalesce(f.expected_assists_per_90, 0) * 7 +
+          coalesce(f.clean_sheets_per_90, 0) * 6 -
+          coalesce(f.expected_goals_conceded_per_90, 0) * 2
+        when p.position = 'G' then
+          coalesce(f.saves_per_90, 0) * 2 +
+          coalesce(f.clean_sheets_per_90, 0) * 6 -
+          coalesce(f.expected_goals_conceded_per_90, 0) * 2
+        else 0
+      end as raw_quality,
+      f.player_id is not null as has_fpl_data
+    from fixtures_for_prediction fp
+    join players p on p.id = fp.player_id
+    left join fpl_player_data f on f.player_id = fp.player_id
+  ),
+  quality_normalised as (
+    select
+      player_id,
+      case
+        when not has_fpl_data then 5.0
+        when max(raw_quality) over (partition by position) = min(raw_quality) over (partition by position) then 5.0
+        else ((raw_quality - min(raw_quality) over (partition by position)) /
+              nullif(max(raw_quality) over (partition by position) - min(raw_quality) over (partition by position), 0)) * 10
+      end as quality_score
+    from quality_raw
+  ),
+  season_avg_raw as (
+    select
+      player_id,
+      count(*) as start_count,
+      avg(raw_fantrax_pts::numeric) as avg_pts_per_start
+    from player_gameweeks
+    where season = p_season
+      and games_started = 1
+      and games_played = 1
+    group by player_id
+  ),
+  season_avg_score as (
+    select
+      fp.player_id,
+      case
+        when sa.start_count is null or sa.start_count < 8 then 5.0
+        when max(sa.avg_pts_per_start) over () = min(sa.avg_pts_per_start) over () then 5.0
+        else ((sa.avg_pts_per_start - min(sa.avg_pts_per_start) over ()) /
+              nullif(max(sa.avg_pts_per_start) over () - min(sa.avg_pts_per_start) over (), 0)) * 10
+      end as season_avg_score
+    from fixtures_for_prediction fp
+    left join season_avg_raw sa on sa.player_id = fp.player_id
+  ),
   calculated as (
     select
       fp.player_id,
@@ -243,6 +303,8 @@ begin
         when ms.starts_rate < 0.50 then 0.65::numeric
         else least(coalesce(ms.avg_mins_when_started, 0) / 90::numeric, 1::numeric)
       end as minutes_modifier,
+      coalesce(qn.quality_score, 5.0) as quality_score,
+      coalesce(sas.season_avg_score, 5.0) as season_avg_score,
       case
         when vc.sample_size is null or vc.sample_size < 4 then 'insufficient_data'
         when vc.raw_stddev < 4
@@ -257,6 +319,8 @@ begin
     left join home_away_stats has on has.player_id = fp.player_id
     left join consistency_components cc on cc.player_id = fp.player_id
     left join minutes_stats ms on ms.player_id = fp.player_id
+    left join quality_normalised qn on qn.player_id = fp.player_id
+    left join season_avg_score sas on sas.player_id = fp.player_id
     left join volatility_components vc on vc.player_id = fp.player_id
   ),
   upserted as (
@@ -271,6 +335,8 @@ begin
       consistency_pts,
       minutes_modifier,
       availability_multiplier,
+      quality_score,
+      season_avg_score,
       volatility_label,
       generated_at
     )
@@ -282,7 +348,7 @@ begin
         case
           when c.form_signal is null or c.fixture_score is null or c.consistency_pts is null or c.minutes_modifier is null then null
           else (
-            ((c.form_signal * 0.50) + (c.fixture_score * 0.30) + (c.home_away_adj * 0.10) + (c.consistency_pts * 0.10))
+            ((c.form_signal * 0.35) + (c.fixture_score * 0.30) + (c.quality_score * 0.15) + (c.season_avg_score * 0.10) + (c.home_away_adj * 0.05) + (c.consistency_pts * 0.05))
             * c.minutes_modifier
             * coalesce(fa.availability_multiplier, 1.0)
             * coalesce(sp.set_piece_multiplier, 1.0)
@@ -296,6 +362,8 @@ begin
       round(c.consistency_pts, 2) as consistency_pts,
       round(c.minutes_modifier, 2) as minutes_modifier,
       round(coalesce(fa.availability_multiplier, 1.0), 2) as availability_multiplier,
+      round(c.quality_score, 2) as quality_score,
+      round(c.season_avg_score, 2) as season_avg_score,
       c.volatility_label,
       now()
     from calculated c
@@ -310,6 +378,8 @@ begin
       consistency_pts = excluded.consistency_pts,
       minutes_modifier = excluded.minutes_modifier,
       availability_multiplier = excluded.availability_multiplier,
+      quality_score = excluded.quality_score,
+      season_avg_score = excluded.season_avg_score,
       volatility_label = excluded.volatility_label,
       generated_at = excluded.generated_at
     returning 1
