@@ -174,19 +174,12 @@ begin
   fixture_components as (
     select
       fp.player_id,
-      case
-        when c.avg_conceded is null then null
-        when r.max_conceded = r.min_conceded then 5::numeric
-        else ((c.avg_conceded - r.min_conceded) / nullif(r.max_conceded - r.min_conceded, 0)) * 10::numeric
-      end as fixture_score
+      c.avg_conceded as fixture_score
     from fixtures_for_prediction fp
     left join conceded_by_opponent_position c
       on c.opponent = fp.opponent
       and c.position = fp.position
       and c.opponent_is_home = (not fp.is_home)
-    left join conceded_ranges r
-      on r.position = fp.position
-      and r.opponent_is_home = (not fp.is_home)
   ),
   volatility_components as (
     select
@@ -280,10 +273,8 @@ begin
     select
       fp.player_id,
       case
-        when sa.start_count is null or sa.start_count < 8 then 5.0
-        when max(sa.avg_pts_per_start) over () = min(sa.avg_pts_per_start) over () then 5.0
-        else ((sa.avg_pts_per_start - min(sa.avg_pts_per_start) over ()) /
-              nullif(max(sa.avg_pts_per_start) over () - min(sa.avg_pts_per_start) over (), 0)) * 10
+        when sa.start_count is null or sa.start_count < 8 then null
+        else sa.avg_pts_per_start
       end as season_avg_score
     from fixtures_for_prediction fp
     left join season_avg_raw sa on sa.player_id = fp.player_id
@@ -311,7 +302,8 @@ begin
         else least(coalesce(ms.avg_mins_when_started, 0) / 90::numeric, 1::numeric)
       end as minutes_modifier,
       coalesce(qn.quality_score, 5.0) as quality_score,
-      coalesce(sas.season_avg_score, 5.0) as season_avg_score,
+      coalesce(sas.season_avg_score,
+        avg(sas.season_avg_score) over ()) as season_avg_score,
       case
         when vc.sample_size is null or vc.sample_size < 4 then 'insufficient_data'
         when vc.raw_stddev < 4
@@ -353,9 +345,15 @@ begin
       c.gameweek,
       round(
         case
-          when c.form_signal is null or c.fixture_score is null or c.consistency_pts is null or c.minutes_modifier is null then null
+          when c.form_signal is null or c.fixture_score is null or c.minutes_modifier is null then null
           else (
-            ((c.form_signal * 0.35) + (c.fixture_score * 0.30) + (c.quality_score * 0.15) + (c.season_avg_score * 0.10) + (c.home_away_adj * 0.05) + (c.consistency_pts * 0.05))
+            (
+              (c.form_signal * 0.40) +
+              (c.fixture_score * 0.30) +
+              (c.quality_score * 0.15) +
+              (c.season_avg_score * 0.10) +
+              (c.home_away_adj * 0.05)
+            )
             * c.minutes_modifier
             * coalesce(fa.availability_multiplier, 1.0)
             * coalesce(sp.set_piece_multiplier, 1.0)
