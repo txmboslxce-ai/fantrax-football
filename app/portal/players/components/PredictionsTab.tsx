@@ -27,6 +27,11 @@ type PredictionRow = {
   fixtureDifficulty: "easy" | "medium" | "hard" | "unknown";
 };
 
+type RankedPredictionRow = PredictionRow & {
+  overallRank: number;
+  positionRank: number;
+};
+
 type PredictionsResponse = {
   success: boolean;
   rows: PredictionRow[];
@@ -107,13 +112,56 @@ function volatilityMeta(label: string | null): { emoji: string; text: string; cl
   };
 }
 
+function compareForRanking(a: PredictionRow, b: PredictionRow): number {
+  const aScore = a.predictedPts;
+  const bScore = b.predictedPts;
+
+  if (aScore == null && bScore == null) {
+    return a.playerName.localeCompare(b.playerName);
+  }
+
+  if (aScore == null) {
+    return 1;
+  }
+
+  if (bScore == null) {
+    return -1;
+  }
+
+  if (bScore !== aScore) {
+    return bScore - aScore;
+  }
+
+  return a.playerName.localeCompare(b.playerName);
+}
+
+function withRanks(rows: PredictionRow[]): RankedPredictionRow[] {
+  const sorted = [...rows].sort(compareForRanking);
+  const positionCounters: Record<"G" | "D" | "M" | "F", number> = { G: 0, D: 0, M: 0, F: 0 };
+
+  return sorted.map((row, index) => {
+    positionCounters[row.position] += 1;
+
+    return {
+      ...row,
+      overallRank: index + 1,
+      positionRank: positionCounters[row.position],
+    };
+  });
+}
+
 export default function PredictionsTab({ season, currentGw }: PredictionsTabProps) {
   const [selectedGw, setSelectedGw] = useState(currentGw + 1);
   const [position, setPosition] = useState<PositionFilter>("All");
-  const [rows, setRows] = useState<PredictionRow[]>([]);
+  const [rankedRows, setRankedRows] = useState<RankedPredictionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("predictedPts");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [searchPlayer, setSearchPlayer] = useState("");
+  const [teamFilter, setTeamFilter] = useState("All");
+  const [ownershipMin, setOwnershipMin] = useState("0");
+  const [ownershipMax, setOwnershipMax] = useState("100");
 
   const gwOptions = useMemo(() => Array.from({ length: 5 }, (_, idx) => currentGw + idx + 1), [currentGw]);
 
@@ -145,18 +193,22 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
         }
 
         if (!response.ok || !payload.success) {
-          setRows([]);
+          setRankedRows([]);
           setLoading(false);
           return;
         }
 
-        setRows(payload.rows ?? []);
+        setRankedRows(withRanks(payload.rows ?? []));
+        setTeamFilter("All");
+        setSearchPlayer("");
+        setOwnershipMin("0");
+        setOwnershipMax("100");
         setLoading(false);
       } catch {
         if (!alive) {
           return;
         }
-        setRows([]);
+        setRankedRows([]);
         setLoading(false);
       }
     }
@@ -168,8 +220,29 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
     };
   }, [position, season, selectedGw]);
 
+  const teams = useMemo(() => {
+    return [...new Set(rankedRows.map((row) => row.team))].sort((a, b) => a.localeCompare(b));
+  }, [rankedRows]);
+
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = searchPlayer.trim().toLowerCase();
+    const parsedOwnershipMin = Number(ownershipMin);
+    const parsedOwnershipMax = Number(ownershipMax);
+    const safeOwnershipMin = Number.isFinite(parsedOwnershipMin) ? parsedOwnershipMin : 0;
+    const safeOwnershipMax = Number.isFinite(parsedOwnershipMax) ? parsedOwnershipMax : 100;
+    const lowerOwnershipBound = Math.max(0, Math.min(safeOwnershipMin, safeOwnershipMax));
+    const upperOwnershipBound = Math.min(100, Math.max(safeOwnershipMin, safeOwnershipMax));
+
+    return rankedRows.filter((row) => {
+      const matchesSearch = !normalizedSearch || row.playerName.toLowerCase().includes(normalizedSearch);
+      const matchesTeam = teamFilter === "All" || row.team === teamFilter;
+      const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
+      return matchesSearch && matchesTeam && matchesOwnership;
+    });
+  }, [ownershipMax, ownershipMin, rankedRows, searchPlayer, teamFilter]);
+
   const sortedRows = useMemo(() => {
-    const sorted = [...rows];
+    const sorted = [...filteredRows];
 
     sorted.sort((a, b) => {
       if (sortKey === "playerName") {
@@ -193,9 +266,9 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
     });
 
     return sorted;
-  }, [rows, sortDir, sortKey]);
+  }, [filteredRows, sortDir, sortKey]);
 
-  const lastUpdated = sortedRows[0]?.generatedAt ?? null;
+  const lastUpdated = rankedRows[0]?.generatedAt ?? null;
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -272,11 +345,70 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
         </div>
       </div>
 
+      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+        <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+          <label className="space-y-1 md:shrink-0">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
+            <input
+              value={searchPlayer}
+              onChange={(event) => setSearchPlayer(event.target.value)}
+              placeholder="Player"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none md:w-40"
+            />
+          </label>
+
+          <label className="space-y-1 md:shrink-0">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+            <select
+              value={teamFilter}
+              onChange={(event) => setTeamFilter(event.target.value)}
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-24"
+            >
+              <option value="All">All</option>
+              {teams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
+            <div className="grid grid-cols-2 gap-1 md:flex">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={ownershipMin}
+                onChange={(event) => setOwnershipMin(event.target.value)}
+                placeholder="Min"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
+              />
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={ownershipMax}
+                onChange={(event) => setOwnershipMax(event.target.value)}
+                placeholder="Max"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="text-brand-creamDark">
             <tr>
-              <th className="sticky left-0 top-0 z-20 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-0 top-0 z-20 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">
+                Rank
+              </th>
+              <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
                 <button type="button" onClick={() => handleSort("playerName")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("playerName")}</span>
@@ -303,7 +435,11 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
             {loading
               ? Array.from({ length: 8 }).map((_, index) => (
                   <tr key={`skeleton-${index}`} className={index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90"}>
-                    <td className="sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3">
+                    <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center">
+                      <div className="mx-auto h-5 w-8 animate-pulse rounded bg-brand-cream/10" />
+                      <div className="mx-auto mt-1 h-3 w-10 animate-pulse rounded bg-brand-cream/10" />
+                    </td>
+                    <td className="border-b border-r border-brand-cream/10 px-4 py-3">
                       <div className="h-4 w-36 animate-pulse rounded bg-brand-cream/10" />
                       <div className="mt-2 h-3 w-24 animate-pulse rounded bg-brand-cream/10" />
                     </td>
@@ -325,7 +461,7 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
 
             {!loading && sortedRows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-8 text-center text-sm text-brand-creamDark">
+                <td colSpan={6} className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-8 text-center text-sm text-brand-creamDark">
                   Predictions for this gameweek haven&apos;t been generated yet.
                 </td>
               </tr>
@@ -339,7 +475,14 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
 
                   return (
                     <tr key={row.playerId} className={`text-brand-cream ${shade}`}>
-                      <td className="sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3">
+                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center">
+                        <div className="text-sm font-bold text-brand-cream">{row.overallRank}</div>
+                        <div className="text-xs text-brand-creamDark/80">
+                          {row.position} #{row.positionRank}
+                        </div>
+                      </td>
+
+                      <td className="border-b border-r border-brand-cream/10 px-4 py-3">
                         <div className="font-semibold leading-tight">{row.playerName}</div>
                         <div className="mt-1 flex items-center gap-2 text-xs text-brand-creamDark/80">
                           <span className={`inline-flex rounded-full px-2 py-0.5 font-bold text-brand-cream ${positionBadgeClass[row.position]}`}>
