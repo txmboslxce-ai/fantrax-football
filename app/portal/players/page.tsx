@@ -1,4 +1,5 @@
 import GWOverviewClient from "@/app/portal/gw-overview/GWOverviewClient";
+import FixturePlannerClient from "@/app/portal/players/FixturePlannerClient";
 import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
 import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
@@ -17,7 +18,7 @@ type PageProps = {
       }>;
 };
 
-type PlayersTabKey = "players" | "form" | "waiver";
+type PlayersTabKey = "players" | "form" | "waiver" | "fixtures";
 
 type PlayerWithStatsRow = {
   player_id: string;
@@ -60,6 +61,7 @@ const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
   { key: "players", label: "Players" },
   { key: "form", label: "Form Table" },
   { key: "waiver", label: "Waiver Wire XI" },
+  { key: "fixtures", label: "Fixture Planner" },
 ];
 
 function mapPosition(position: string): "GK" | "DEF" | "MID" | "FWD" {
@@ -89,7 +91,7 @@ function parseOwnership(value: string | null): number {
 function toTabKey(value: string | string[] | undefined): PlayersTabKey {
   const raw = Array.isArray(value) ? value[0] : value;
   const tab = raw?.toLowerCase();
-  if (tab === "players" || tab === "form" || tab === "waiver") {
+  if (tab === "players" || tab === "form" || tab === "waiver" || tab === "fixtures") {
     return tab;
   }
   return "players";
@@ -214,6 +216,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
       ) : null}
 
       {activeTab === "waiver" ? <WaiverWireClient /> : null}
+      {activeTab === "fixtures" ? <FixturePlannerClient /> : null}
     </div>
   );
 }
