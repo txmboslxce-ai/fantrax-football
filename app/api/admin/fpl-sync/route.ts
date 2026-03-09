@@ -27,6 +27,9 @@ type FplElement = {
   news_added: string;
   expected_goals_per_90: string | null;
   expected_assists_per_90: string | null;
+  clean_sheets_per_90: string | null;
+  expected_goals_conceded_per_90: string | null;
+  saves_per_90: string | null;
   penalties_order: number | null;
   corners_and_indirect_freekicks_order: number | null;
   direct_freekicks_order: number | null;
@@ -52,6 +55,9 @@ type FplDataUpsert = {
   news_added: string | null;
   expected_goals_per_90: number | null;
   expected_assists_per_90: number | null;
+  clean_sheets_per_90: number | null;
+  expected_goals_conceded_per_90: number | null;
+  saves_per_90: number | null;
   penalties_order: number | null;
   corners_order: number | null;
   direct_freekicks_order: number | null;
@@ -233,6 +239,9 @@ export async function POST(request: Request) {
         news_added: toNullableText(element.news_added),
         expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
         expected_assists_per_90: parseNullableNumber(element.expected_assists_per_90),
+        clean_sheets_per_90: parseNullableNumber(element.clean_sheets_per_90),
+        expected_goals_conceded_per_90: parseNullableNumber(element.expected_goals_conceded_per_90),
+        saves_per_90: parseNullableNumber(element.saves_per_90),
         penalties_order: element.penalties_order,
         corners_order: element.corners_and_indirect_freekicks_order,
         direct_freekicks_order: element.direct_freekicks_order,
