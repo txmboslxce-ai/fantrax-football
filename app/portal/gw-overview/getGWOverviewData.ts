@@ -8,6 +8,18 @@ type PlayerRow = {
   team: string;
   position: string;
   ownership_pct: string | null;
+  fpl_player_data:
+    | {
+        chance_of_playing_next_round: number | null;
+        status: string | null;
+        news: string | null;
+      }
+    | Array<{
+        chance_of_playing_next_round: number | null;
+        status: string | null;
+        news: string | null;
+      }>
+    | null;
 };
 
 type GameweekRow = {
@@ -105,7 +117,10 @@ export async function getGWOverviewData(startGwParam?: string | string[]): Promi
     { data: minGwRows, error: minGwError },
     { data: maxGwRows, error: maxGwError },
   ] = await Promise.all([
-    supabase.from("players").select("id, name, team, position, ownership_pct").order("name"),
+    supabase
+      .from("players")
+      .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
+      .order("name"),
     supabase.from("teams").select("abbrev").order("abbrev"),
     supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: true }).limit(1),
     supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
@@ -157,13 +172,20 @@ export async function getGWOverviewData(startGwParam?: string | string[]): Promi
   const playerRows = (players ?? []) as PlayerRow[];
   const gameweekRows = (gameweeks ?? []) as GameweekRow[];
 
-  const normalizedPlayers: GWOverviewPlayer[] = playerRows.map((player) => ({
-    id: player.id,
-    name: player.name,
-    team: player.team,
-    position: mapPosition(player.position),
-    ownershipPct: parseOwnership(player.ownership_pct),
-  }));
+  const normalizedPlayers: GWOverviewPlayer[] = playerRows.map((player) => {
+    const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
+
+    return {
+      id: player.id,
+      name: player.name,
+      team: player.team,
+      position: mapPosition(player.position),
+      ownershipPct: parseOwnership(player.ownership_pct),
+      chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
+      availabilityStatus: availabilityRaw?.status ?? null,
+      availabilityNews: availabilityRaw?.news ?? null,
+    };
+  });
 
   const normalizedGameweeks: GWOverviewGameweekRow[] = gameweekRows.map((row) => ({
     id: row.id,

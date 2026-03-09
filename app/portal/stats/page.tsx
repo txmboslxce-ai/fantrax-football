@@ -19,6 +19,9 @@ type StatsRow = {
   player: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
   seasonPts: number;
   avgGw: number;
   ghostGw: number;
@@ -47,7 +50,10 @@ export default async function StatsPage() {
     { data: teams, error: teamsError },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("players").select("id, name, team, position").order("name"),
+    supabase
+      .from("players")
+      .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
+      .order("name"),
     supabase
       .from("player_gameweeks")
       .select(
@@ -93,16 +99,35 @@ export default async function StatsPage() {
     rowsByPlayer.get(row.player_id)?.push(row);
   }
 
-  const statsRows: StatsRow[] = ((players ?? []) as PlayerRow[]).map((player) => {
+  const statsRows: StatsRow[] = ((players ?? []) as Array<
+    PlayerRow & {
+      fpl_player_data:
+        | {
+            chance_of_playing_next_round: number | null;
+            status: string | null;
+            news: string | null;
+          }
+        | Array<{
+            chance_of_playing_next_round: number | null;
+            status: string | null;
+            news: string | null;
+          }>
+        | null;
+    }
+  >).map((player) => {
     const playerRows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
     const playerFixtures = fixturesByTeam.get(player.team) ?? [];
     const summary = summarizePlayerSeason(decorateGameweeks(playerRows, player.team, playerFixtures));
+    const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
 
     return {
       id: player.id,
       player: player.name,
       team: teamNames.get(player.team) ?? player.team,
       position: mapPosition(player.position),
+      chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
+      availabilityStatus: availabilityRaw?.status ?? null,
+      availabilityNews: availabilityRaw?.news ?? null,
       seasonPts: summary.season_total_pts,
       avgGw: summary.avg_pts_per_gameweek,
       ghostGw: summary.avg_ghost_per_gameweek,

@@ -21,6 +21,9 @@ type ComparePlayerSnapshot = {
   team: string;
   teamName: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
   avgPtsPerGame: number;
   avgPtsPerStart: number;
   ghostPtsPerStart: number;
@@ -55,7 +58,10 @@ export default async function ComparePage() {
     { data: teams, error: teamsError },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("players").select("id, name, team, position").order("name"),
+    supabase
+      .from("players")
+      .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
+      .order("name"),
     supabase
       .from("player_gameweeks")
       .select(
@@ -101,7 +107,22 @@ export default async function ComparePage() {
     rowsByPlayer.get(row.player_id)?.push(row);
   }
 
-  const snapshots: ComparePlayerSnapshot[] = ((players ?? []) as PlayerRow[]).map((player) => {
+  const snapshots: ComparePlayerSnapshot[] = ((players ?? []) as Array<
+    PlayerRow & {
+      fpl_player_data:
+        | {
+            chance_of_playing_next_round: number | null;
+            status: string | null;
+            news: string | null;
+          }
+        | Array<{
+            chance_of_playing_next_round: number | null;
+            status: string | null;
+            news: string | null;
+          }>
+        | null;
+    }
+  >).map((player) => {
     const playerRows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
     const playerFixtures = fixturesByTeam.get(player.team) ?? [];
     const decorated = decorateGameweeks(playerRows, player.team, playerFixtures);
@@ -112,6 +133,7 @@ export default async function ComparePage() {
       .map((row) => ({ gameweek: row.gameweek, points: row.raw_fantrax_pts }));
 
     const next = nextFixtures(player.team, playerFixtures, summary.current_gameweek, teamNames, 1)[0];
+    const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
 
     return {
       id: player.id,
@@ -119,6 +141,9 @@ export default async function ComparePage() {
       team: player.team,
       teamName: teamNames.get(player.team) ?? player.team,
       position: mapPosition(player.position),
+      chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
+      availabilityStatus: availabilityRaw?.status ?? null,
+      availabilityNews: availabilityRaw?.news ?? null,
       avgPtsPerGame: summary.avg_pts_per_game,
       avgPtsPerStart: summary.avg_pts_per_start,
       ghostPtsPerStart: summary.avg_ghost_per_start,

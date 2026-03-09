@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 type PlayerRow = {
   id: string;
@@ -12,6 +13,9 @@ type PlayerRow = {
   avgPtsPerGw: number;
   ghostPtsPerGw: number;
   ownershipPct: number;
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
 };
 
 type SortKey = "name" | "seasonPts" | "avgPtsPerGw" | "ghostPtsPerGw";
@@ -272,7 +276,14 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                 <tr key={player.id} className="text-brand-cream">
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
                     <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      <div className="font-semibold leading-tight">{player.name}</div>
+                      <div className="flex items-center gap-1 font-semibold leading-tight">
+                        <span>{player.name}</span>
+                        <AvailabilityIcon
+                          chanceOfPlaying={player.chanceOfPlaying}
+                          status={player.availabilityStatus}
+                          news={player.availabilityNews}
+                        />
+                      </div>
                       <div className="mt-0.5 text-xs text-brand-creamDark/70">
                         {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
                       </div>

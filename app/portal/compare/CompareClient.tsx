@@ -2,6 +2,7 @@
 
 import MiniSparkline from "@/components/portal/charts/MiniSparkline";
 import { useMemo, useState } from "react";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 type ComparePlayerSnapshot = {
   id: string;
@@ -9,6 +10,9 @@ type ComparePlayerSnapshot = {
   team: string;
   teamName: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
   avgPtsPerGame: number;
   avgPtsPerStart: number;
   ghostPtsPerStart: number;
@@ -146,7 +150,14 @@ export default function CompareClient({ players }: CompareClientProps) {
           <div className="grid gap-4 lg:grid-cols-2">
             {[selected.left, selected.right].map((player) => (
               <article key={player.id} className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-5 text-brand-cream">
-                <h2 className="text-xl font-black">{player.name}</h2>
+                <h2 className="inline-flex items-center gap-1 text-xl font-black">
+                  <span>{player.name}</span>
+                  <AvailabilityIcon
+                    chanceOfPlaying={player.chanceOfPlaying}
+                    status={player.availabilityStatus}
+                    news={player.availabilityNews}
+                  />
+                </h2>
                 <p className="mt-1 text-sm text-brand-creamDark">
                   {player.teamName} • {player.position}
                 </p>
@@ -171,8 +182,26 @@ export default function CompareClient({ players }: CompareClientProps) {
               <thead className="bg-brand-dark text-brand-creamDark">
                 <tr>
                   <th className="px-4 py-3">Stat</th>
-                  <th className="px-4 py-3">{selected.left.name}</th>
-                  <th className="px-4 py-3">{selected.right.name}</th>
+                  <th className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1">
+                      <span>{selected.left.name}</span>
+                      <AvailabilityIcon
+                        chanceOfPlaying={selected.left.chanceOfPlaying}
+                        status={selected.left.availabilityStatus}
+                        news={selected.left.availabilityNews}
+                      />
+                    </span>
+                  </th>
+                  <th className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1">
+                      <span>{selected.right.name}</span>
+                      <AvailabilityIcon
+                        chanceOfPlaying={selected.right.chanceOfPlaying}
+                        status={selected.right.availabilityStatus}
+                        news={selected.right.availabilityNews}
+                      />
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

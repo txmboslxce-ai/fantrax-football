@@ -34,6 +34,18 @@ type PlayerWithStatsRow = {
         team: string;
         position: string;
         ownership_pct: string | null;
+        fpl_player_data:
+          | {
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }
+          | Array<{
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }>
+          | null;
       }
     | Array<{
         id: string;
@@ -41,6 +53,18 @@ type PlayerWithStatsRow = {
         team: string;
         position: string;
         ownership_pct: string | null;
+        fpl_player_data:
+          | {
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }
+          | Array<{
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }>
+          | null;
       }>
     | null;
 };
@@ -54,6 +78,9 @@ type AggregatedPlayer = {
   avgPtsPerGw: number;
   ghostPtsPerGw: number;
   ownershipPct: number;
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
 };
 
 const SEASON = "2025-26";
@@ -120,7 +147,9 @@ async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
 
   const { data, error } = await supabase
     .from("player_gameweeks")
-    .select("player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct)")
+    .select(
+      "player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
+    )
     .eq("season", SEASON)
     .gt("games_played", 0);
 
@@ -140,6 +169,9 @@ async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
       ghostPts: number;
       gameweeksPlayed: number;
       totalGamesPlayed: number;
+      chanceOfPlaying: number | null;
+      availabilityStatus: string | null;
+      availabilityNews: string | null;
     }
   >();
 
@@ -148,6 +180,8 @@ async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
     if (!player) {
       continue;
     }
+
+    const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
 
     const existing = byPlayer.get(row.player_id);
     if (!existing) {
@@ -161,6 +195,9 @@ async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
         ghostPts: row.games_played > 0 ? Number(row.ghost_pts ?? 0) : 0,
         gameweeksPlayed: row.games_played > 0 ? 1 : 0,
         totalGamesPlayed: row.games_played > 0 ? Number(row.games_played ?? 0) : 0,
+        chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
+        availabilityStatus: availabilityRaw?.status ?? null,
+        availabilityNews: availabilityRaw?.news ?? null,
       });
       continue;
     }
@@ -182,6 +219,9 @@ async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
     avgPtsPerGw: player.gameweeksPlayed > 0 ? player.seasonPts / player.gameweeksPlayed : 0,
     ghostPtsPerGw: player.gameweeksPlayed > 0 ? player.ghostPts / player.gameweeksPlayed : 0,
     ownershipPct: player.ownershipPct,
+    chanceOfPlaying: player.chanceOfPlaying,
+    availabilityStatus: player.availabilityStatus,
+    availabilityNews: player.availabilityNews,
   }));
 
   players.sort((a, b) => b.seasonPts - a.seasonPts);

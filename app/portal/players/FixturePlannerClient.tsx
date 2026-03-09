@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 type PlayerGameweekJoinedRow = {
   player_id: string;
@@ -16,6 +17,18 @@ type PlayerGameweekJoinedRow = {
         team: string;
         position: string;
         ownership_pct: string | null;
+        fpl_player_data:
+          | {
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }
+          | Array<{
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }>
+          | null;
       }
     | Array<{
         id: string;
@@ -23,6 +36,18 @@ type PlayerGameweekJoinedRow = {
         team: string;
         position: string;
         ownership_pct: string | null;
+        fpl_player_data:
+          | {
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }
+          | Array<{
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }>
+          | null;
       }>
     | null;
 };
@@ -53,6 +78,9 @@ type PlayerPlannerRow = {
   position: Position;
   ownershipPct: number;
   seasonPts: number;
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
 };
 
 type FixtureCell = {
@@ -165,7 +193,9 @@ export default function FixturePlannerClient() {
       const [playerGwResult, latestGwResult, fixturesResult, teamsResult] = await Promise.all([
         supabase
           .from("player_gameweeks")
-          .select("player_id, gameweek, games_played, raw_fantrax_pts, players!inner(id, name, team, position, ownership_pct)")
+          .select(
+            "player_id, gameweek, games_played, raw_fantrax_pts, players!inner(id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
+          )
           .eq("season", SEASON)
           .gt("games_played", 0),
         supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
@@ -211,6 +241,7 @@ export default function FixturePlannerClient() {
         }
 
         const existing = seasonRowsByPlayer.get(row.player_id);
+        const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
         if (!existing) {
           seasonRowsByPlayer.set(row.player_id, {
             id: player.id,
@@ -219,6 +250,9 @@ export default function FixturePlannerClient() {
             position: mapPosition(player.position),
             ownershipPct: parseOwnership(player.ownership_pct),
             seasonPts: toPoints(row.raw_fantrax_pts),
+            chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
+            availabilityStatus: availabilityRaw?.status ?? null,
+            availabilityNews: availabilityRaw?.news ?? null,
           });
           continue;
         }
@@ -488,7 +522,14 @@ export default function FixturePlannerClient() {
                 <tr key={row.id} className="text-brand-cream">
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
                     <Link href={`/portal/players/${row.id}`} className="block hover:text-brand-greenLight">
-                      <div className="font-semibold leading-tight">{row.name}</div>
+                      <div className="flex items-center gap-1 font-semibold leading-tight">
+                        <span>{row.name}</span>
+                        <AvailabilityIcon
+                          chanceOfPlaying={row.chanceOfPlaying}
+                          status={row.availabilityStatus}
+                          news={row.availabilityNews}
+                        />
+                      </div>
                       <div className="mt-0.5 text-xs text-brand-creamDark/70">
                         {row.team} / {positionLetter(row.position)} / {row.ownershipPct.toFixed(1)}%
                       </div>

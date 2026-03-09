@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, type CSSProperties, useMemo, useState } from "react";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 export type GWOverviewTeam = string;
 
@@ -11,6 +12,9 @@ export type GWOverviewPlayer = {
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
   ownershipPct: number;
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
 };
 
 export type GWOverviewGameweekRow = {
@@ -776,7 +780,14 @@ export default function GWOverviewClient({
                       href={`/portal/players/${player.id}`}
                       className="block truncate text-sm leading-tight hover:text-brand-greenLight md:overflow-visible md:whitespace-normal"
                     >
-                      {player.name}
+                      <span className="inline-flex items-center gap-1">
+                        <span>{player.name}</span>
+                        <AvailabilityIcon
+                          chanceOfPlaying={player.chanceOfPlaying}
+                          status={player.availabilityStatus}
+                          news={player.availabilityNews}
+                        />
+                      </span>
                     </Link>
                     <div className="mt-0.5 truncate text-xs text-brand-creamDark/60 md:overflow-visible md:whitespace-normal">
                       {player.team} / {positionLetter(player.position)} / {player.ownershipPct.toFixed(1)}%

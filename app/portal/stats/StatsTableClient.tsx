@@ -1,12 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 type StatsRow = {
   id: string;
   player: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
   seasonPts: number;
   avgGw: number;
   ghostGw: number;
@@ -131,7 +135,16 @@ export default function StatsTableClient({ rows }: { rows: StatsRow[] }) {
           <tbody>
             {filteredSorted.map((row, index) => (
               <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/75 text-brand-cream" : "bg-brand-dark text-brand-cream"}>
-                <td className="px-4 py-3">{row.player}</td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center gap-1">
+                    <span>{row.player}</span>
+                    <AvailabilityIcon
+                      chanceOfPlaying={row.chanceOfPlaying}
+                      status={row.availabilityStatus}
+                      news={row.availabilityNews}
+                    />
+                  </span>
+                </td>
                 <td className="px-4 py-3">{row.team}</td>
                 <td className="px-4 py-3">{row.position}</td>
                 <td className="px-4 py-3">{row.seasonPts.toFixed(2)}</td>

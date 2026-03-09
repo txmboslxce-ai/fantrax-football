@@ -20,12 +20,36 @@ type PredictionJoinedRow = {
         team: string;
         position: PositionFilter;
         ownership_pct: string | null;
+        fpl_player_data:
+          | {
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }
+          | Array<{
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }>
+          | null;
       }
     | Array<{
         name: string;
         team: string;
         position: PositionFilter;
         ownership_pct: string | null;
+        fpl_player_data:
+          | {
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }
+          | Array<{
+              chance_of_playing_next_round: number | null;
+              status: string | null;
+              news: string | null;
+            }>
+          | null;
       }>
     | null;
 };
@@ -143,7 +167,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("player_predictions")
     .select(
-      "player_id, predicted_pts, form_signal, fixture_score, home_away_adj, consistency_pts, minutes_modifier, volatility_label, generated_at, players!inner(name, team, position, ownership_pct)"
+      "player_id, predicted_pts, form_signal, fixture_score, home_away_adj, consistency_pts, minutes_modifier, volatility_label, generated_at, players!inner(name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
     )
     .eq("season", season)
     .eq("gameweek", gameweek)
@@ -215,6 +239,7 @@ export async function GET(request: Request) {
     }
 
     const fixture = fixtureRows.find((candidate) => candidate.home_team === player.team || candidate.away_team === player.team);
+    const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
     const isHome = fixture ? fixture.home_team === player.team : null;
     const opponentAbbrev = fixture ? (isHome ? fixture.away_team : fixture.home_team) : null;
     const predictedPts = parseNumeric(row.predicted_pts);
@@ -226,6 +251,9 @@ export async function GET(request: Request) {
       team: player.team,
       position: player.position,
       ownershipPct: parseOwnership(player.ownership_pct),
+      chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
+      availabilityStatus: availabilityRaw?.status ?? null,
+      availabilityNews: availabilityRaw?.news ?? null,
       opponentAbbrev,
       opponentName: opponentAbbrev ? teamNameByAbbrev.get(opponentAbbrev) ?? opponentAbbrev : null,
       isHome,

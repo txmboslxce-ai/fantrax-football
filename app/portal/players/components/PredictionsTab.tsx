@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 type PositionFilter = "All" | "G" | "D" | "M" | "F";
 type SortKey = "predictedPts" | "playerName";
@@ -25,6 +26,9 @@ type PredictionRow = {
   trend: "up" | "down" | "flat";
   generatedAt: string | null;
   fixtureDifficulty: "easy" | "medium" | "hard" | "unknown";
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
 };
 
 type RankedPredictionRow = PredictionRow & {
@@ -483,7 +487,14 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
                       </td>
 
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3">
-                        <div className="font-semibold leading-tight">{row.playerName}</div>
+                        <div className="flex items-center gap-1 font-semibold leading-tight">
+                          <span>{row.playerName}</span>
+                          <AvailabilityIcon
+                            chanceOfPlaying={row.chanceOfPlaying}
+                            status={row.availabilityStatus}
+                            news={row.availabilityNews}
+                          />
+                        </div>
                         <div className="mt-1 flex items-center gap-2 text-xs text-brand-creamDark/80">
                           <span className={`inline-flex rounded-full px-2 py-0.5 font-bold text-brand-cream ${positionBadgeClass[row.position]}`}>
                             {row.position}
