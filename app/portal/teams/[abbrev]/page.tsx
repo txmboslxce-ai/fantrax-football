@@ -6,14 +6,14 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-const TEAM_TABS = [
+const BASE_TEAM_TABS = [
   { key: "overview", label: "Overview" },
   { key: "squad", label: "Squad" },
   { key: "fixtures", label: "Fixtures" },
   { key: "stats", label: "Stats" },
 ] as const;
 
-type TeamTabKey = (typeof TEAM_TABS)[number]["key"];
+type TeamTabKey = (typeof BASE_TEAM_TABS)[number]["key"] | "injuries";
 type TeamPlayerRow = { id: string; name: string };
 type TeamSquadPlayerRow = {
   id: string;
@@ -53,6 +53,45 @@ type FixtureTabRow = {
   byPosition: Record<"GK" | "DEF" | "MID" | "FWD", number | null>;
 };
 type MaxGameweekRow = { gameweek: number };
+type TeamPlayerWithFplRow = {
+  id: string;
+  name: string;
+  position: string;
+  ownership_pct: string | null;
+  fpl_player_data:
+    | {
+        status: string | null;
+        chance_of_playing_next_round: number | null;
+        news: string | null;
+        news_added: string | null;
+        penalties_order: number | null;
+        corners_order: number | null;
+        direct_freekicks_order: number | null;
+      }
+    | Array<{
+        status: string | null;
+        chance_of_playing_next_round: number | null;
+        news: string | null;
+        news_added: string | null;
+        penalties_order: number | null;
+        corners_order: number | null;
+        direct_freekicks_order: number | null;
+      }>
+    | null;
+};
+
+type TeamFplPlayer = {
+  id: string;
+  name: string;
+  position: "GK" | "DEF" | "MID" | "FWD";
+  status: string | null;
+  chanceOfPlaying: number | null;
+  news: string | null;
+  newsAdded: string | null;
+  penaltiesOrder: number | null;
+  cornersOrder: number | null;
+  directFksOrder: number | null;
+};
 
 type TeamDetailPageProps = {
   params: Promise<{
@@ -65,7 +104,7 @@ type TeamDetailPageProps = {
 
 function toTabKey(value: string | undefined): TeamTabKey {
   const tab = value?.toLowerCase();
-  return TEAM_TABS.some((item) => item.key === tab) ? (tab as TeamTabKey) : "overview";
+  return tab === "injuries" || BASE_TEAM_TABS.some((item) => item.key === tab) ? (tab as TeamTabKey) : "overview";
 }
 
 function parseOwnership(value: string | null): number {
@@ -96,10 +135,53 @@ function gradientCellColor(value: number, min: number, max: number): string {
   return mixColor(yellow, green, (ratio - 0.5) * 2);
 }
 
+function mapInjuryStatus(status: string | null, chance: number | null): "Injured" | "Suspended" | "Unavailable" | "Doubtful" {
+  if (status === "s") {
+    return "Suspended";
+  }
+  if (status === "u") {
+    return "Unavailable";
+  }
+  if (status === "i") {
+    return "Injured";
+  }
+  if (status === "d" || (status === "a" && chance != null && chance < 100)) {
+    return "Doubtful";
+  }
+  return "Doubtful";
+}
+
+function severityRank(chance: number | null): number {
+  if (chance === 0) {
+    return 0;
+  }
+  if (chance === 25) {
+    return 1;
+  }
+  if (chance === 50) {
+    return 2;
+  }
+  if (chance === 75) {
+    return 3;
+  }
+  return 4;
+}
+
+function truncateNews(news: string | null, maxLength = 60): string {
+  const text = (news ?? "").trim();
+  if (!text) {
+    return "—";
+  }
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength - 1)}…`;
+}
+
 export default async function TeamDetailPage({ params, searchParams }: TeamDetailPageProps) {
   const [{ abbrev }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   const teamAbbrev = abbrev.toUpperCase().trim();
-  const activeTab = toTabKey(resolvedSearchParams?.tab);
+  const requestedTab = toTabKey(resolvedSearchParams?.tab);
 
   const supabase = await createServerSupabaseClient();
   const [
@@ -120,6 +202,67 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     notFound();
   }
   const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
+
+  const { data: teamPlayersWithFplData, error: teamPlayersWithFplError } = await supabase
+    .from("players")
+    .select(
+      "id, name, position, ownership_pct, fpl_player_data(status, chance_of_playing_next_round, news, news_added, penalties_order, corners_order, direct_freekicks_order)"
+    )
+    .eq("team", teamAbbrev)
+    .order("position", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (teamPlayersWithFplError) {
+    throw new Error(`Unable to load team players with FPL data: ${teamPlayersWithFplError.message}`);
+  }
+
+  const teamFplPlayers: TeamFplPlayer[] = ((teamPlayersWithFplData ?? []) as TeamPlayerWithFplRow[]).map((row) => {
+    const fplRaw = Array.isArray(row.fpl_player_data) ? row.fpl_player_data[0] : row.fpl_player_data;
+    return {
+      id: row.id,
+      name: row.name,
+      position: mapPosition(row.position),
+      status: fplRaw?.status ?? null,
+      chanceOfPlaying: fplRaw?.chance_of_playing_next_round ?? null,
+      news: fplRaw?.news ?? null,
+      newsAdded: fplRaw?.news_added ?? null,
+      penaltiesOrder: fplRaw?.penalties_order ?? null,
+      cornersOrder: fplRaw?.corners_order ?? null,
+      directFksOrder: fplRaw?.direct_freekicks_order ?? null,
+    };
+  });
+
+  const hasAnyFplData = teamFplPlayers.some(
+    (player) =>
+      player.status != null ||
+      player.chanceOfPlaying != null ||
+      player.news != null ||
+      player.penaltiesOrder != null ||
+      player.cornersOrder != null ||
+      player.directFksOrder != null
+  );
+
+  const hasAnySetPieces = hasAnyFplData
+    ? teamFplPlayers.some(
+        (player) => player.penaltiesOrder != null || player.cornersOrder != null || player.directFksOrder != null
+      )
+    : false;
+
+  const injuriesRows = hasAnyFplData
+    ? teamFplPlayers
+        .filter((player) => player.status !== "a" || (player.chanceOfPlaying != null && player.chanceOfPlaying < 100))
+        .sort((a, b) => {
+          const severity = severityRank(a.chanceOfPlaying) - severityRank(b.chanceOfPlaying);
+          if (severity !== 0) {
+            return severity;
+          }
+          return a.name.localeCompare(b.name);
+        })
+    : [];
+
+  const showInjuriesTab = injuriesRows.length > 0;
+  const TEAM_TABS = showInjuriesTab ? [...BASE_TEAM_TABS, { key: "injuries", label: "Injuries" as const }] : [...BASE_TEAM_TABS];
+  const activeTab: TeamTabKey = requestedTab === "injuries" && !showInjuriesTab ? "overview" : requestedTab;
 
   let overviewData:
     | {
@@ -516,7 +659,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     });
   }
 
-  const panelContent: Record<Exclude<TeamTabKey, "overview">, { title: string; description: string }> = {
+  const panelContent: Record<Exclude<TeamTabKey, "overview" | "injuries">, { title: string; description: string }> = {
     squad: {
       title: "Squad",
       description: "Squad depth, player roles, and position breakdowns will appear here.",
@@ -574,6 +717,63 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                   </article>
                 ))}
               </div>
+
+              {hasAnySetPieces ? (
+                <div className="space-y-3">
+                  <h2 className="text-2xl font-black">Set Piece Takers</h2>
+                  <article className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
+                    {(() => {
+                      const sections = [
+                        {
+                          label: "Penalties",
+                          rows: teamFplPlayers
+                            .filter((player) => player.penaltiesOrder != null)
+                            .sort((a, b) => Number(a.penaltiesOrder ?? 999) - Number(b.penaltiesOrder ?? 999))
+                            .map((player) => ({ order: player.penaltiesOrder as number, player })),
+                        },
+                        {
+                          label: "Corners & Indirect Free Kicks",
+                          rows: teamFplPlayers
+                            .filter((player) => player.cornersOrder != null)
+                            .sort((a, b) => Number(a.cornersOrder ?? 999) - Number(b.cornersOrder ?? 999))
+                            .map((player) => ({ order: player.cornersOrder as number, player })),
+                        },
+                        {
+                          label: "Direct Free Kicks",
+                          rows: teamFplPlayers
+                            .filter((player) => player.directFksOrder != null)
+                            .sort((a, b) => Number(a.directFksOrder ?? 999) - Number(b.directFksOrder ?? 999))
+                            .map((player) => ({ order: player.directFksOrder as number, player })),
+                        },
+                      ].filter((section) => section.rows.length > 0);
+
+                      return (
+                        <div className="space-y-3">
+                          {sections.map((section) => (
+                            <div key={section.label} className="space-y-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">{section.label}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {section.rows.map((entry) => (
+                                  <span
+                                    key={`${section.label}-${entry.player.id}-${entry.order}`}
+                                    className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-100"
+                                  >
+                                    <span>#{entry.order}</span>
+                                    <span>{entry.player.name}</span>
+                                    <span className="inline-flex rounded-full border border-brand-cream/30 bg-brand-dark px-2 py-0.5 text-[11px] text-brand-cream">
+                                      {entry.player.position}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </article>
+                </div>
+              ) : null}
 
               <div className="space-y-3">
                 <h2 className="text-2xl font-black">Points Conceded by Position</h2>
@@ -710,6 +910,52 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                   </div>
                 );
               })()}
+            </div>
+          ) : activeTab === "injuries" ? (
+            <div className="space-y-3">
+              <h2 className="text-2xl font-black">Injuries</h2>
+              {injuriesRows.length === 0 ? (
+                <p className="text-sm text-brand-creamDark">No injury concerns for this team.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+                  <table className="min-w-full text-left text-sm text-brand-cream">
+                    <thead className="bg-brand-dark text-brand-creamDark">
+                      <tr>
+                        <th className="px-4 py-3">Player</th>
+                        <th className="px-4 py-3">Position</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Chance of Playing</th>
+                        <th className="px-4 py-3">News</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {injuriesRows.map((row, index) => {
+                        const statusLabel = mapInjuryStatus(row.status, row.chanceOfPlaying);
+                        const statusPillClass =
+                          statusLabel === "Doubtful"
+                            ? "border-amber-300/35 bg-amber-500/20 text-amber-100"
+                            : "border-red-300/35 bg-red-500/20 text-red-100";
+
+                        return (
+                          <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/75" : "bg-brand-dark/90"}>
+                            <td className="px-4 py-3 font-semibold">{row.name}</td>
+                            <td className="px-4 py-3">{row.position}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPillClass}`}>
+                                {statusLabel}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">{row.chanceOfPlaying == null ? "—" : `${row.chanceOfPlaying}%`}</td>
+                            <td className="px-4 py-3" title={(row.news ?? "").trim() || undefined}>
+                              {truncateNews(row.news)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : (
             <>
