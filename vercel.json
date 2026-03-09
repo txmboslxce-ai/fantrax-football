@@ -3,6 +3,10 @@
     {
       "path": "/api/predictions/generate",
       "schedule": "0 14 * * 2"
+    },
+    {
+      "path": "/api/admin/fpl-sync",
+      "schedule": "0 8 * * *"
     }
   ]
 }
