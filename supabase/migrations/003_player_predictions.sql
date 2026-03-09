@@ -242,10 +242,18 @@ begin
           coalesce(f.expected_goals_conceded_per_90, 0) * 2
         else 0
       end as raw_quality,
-      f.player_id is not null as has_fpl_data
+      f.player_id is not null and coalesce(sm.total_minutes, 0) >= 450 as has_fpl_data
     from fixtures_for_prediction fp
     join players p on p.id = fp.player_id
     left join fpl_player_data f on f.player_id = fp.player_id
+    left join (
+      select
+        player_id,
+        sum(minutes_played) as total_minutes
+      from player_gameweeks
+      where season = p_season
+      group by player_id
+    ) sm on sm.player_id = fp.player_id
   ),
   quality_normalised as (
     select
