@@ -1,6 +1,7 @@
 import GWOverviewClient from "@/app/portal/gw-overview/GWOverviewClient";
 import FixturePlannerClient from "@/app/portal/players/FixturePlannerClient";
 import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
+import PredictionsTab from "@/app/portal/players/components/PredictionsTab";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
 import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -18,7 +19,7 @@ type PageProps = {
       }>;
 };
 
-type PlayersTabKey = "players" | "form" | "waiver" | "fixtures";
+type PlayersTabKey = "players" | "form" | "waiver" | "fixtures" | "predictions";
 
 type PlayerWithStatsRow = {
   player_id: string;
@@ -62,6 +63,7 @@ const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
   { key: "form", label: "Form Table" },
   { key: "waiver", label: "Waiver Wire XI" },
   { key: "fixtures", label: "Fixture Planner" },
+  { key: "predictions", label: "Predictions" },
 ];
 
 function mapPosition(position: string): "GK" | "DEF" | "MID" | "FWD" {
@@ -91,10 +93,26 @@ function parseOwnership(value: string | null): number {
 function toTabKey(value: string | string[] | undefined): PlayersTabKey {
   const raw = Array.isArray(value) ? value[0] : value;
   const tab = raw?.toLowerCase();
-  if (tab === "players" || tab === "form" || tab === "waiver" || tab === "fixtures") {
+  if (tab === "players" || tab === "form" || tab === "waiver" || tab === "fixtures" || tab === "predictions") {
     return tab;
   }
   return "players";
+}
+
+async function getCurrentGameweek(): Promise<number> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("player_gameweeks")
+    .select("gameweek")
+    .eq("season", SEASON)
+    .order("gameweek", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Unable to load current gameweek: ${error.message}`);
+  }
+
+  return Number((data ?? [])[0]?.gameweek ?? 1);
 }
 
 async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
@@ -177,6 +195,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
 
   const players = activeTab === "players" ? await getPlayersTableData() : null;
   const formData = activeTab === "form" ? await getGWOverviewData(resolvedSearchParams?.startGw) : null;
+  const currentGw = activeTab === "predictions" ? await getCurrentGameweek() : null;
 
   return (
     <div className="space-y-6">
@@ -217,6 +236,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
 
       {activeTab === "waiver" ? <WaiverWireClient /> : null}
       {activeTab === "fixtures" ? <FixturePlannerClient /> : null}
+      {activeTab === "predictions" && currentGw ? <PredictionsTab season={SEASON} currentGw={currentGw} /> : null}
     </div>
   );
 }

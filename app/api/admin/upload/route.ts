@@ -388,6 +388,22 @@ export async function POST(request: Request) {
       }
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (appUrl) {
+      try {
+        const generateUrl = `${appUrl}/api/predictions/generate`;
+        void fetch(generateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ season, currentGw: gameweek }),
+        }).catch((triggerError: unknown) => {
+          console.error("Prediction generation trigger failed:", triggerError);
+        });
+      } catch (triggerError) {
+        console.error("Prediction generation trigger setup failed:", triggerError);
+      }
+    }
+
     return NextResponse.json({ success: true, rowsProcessed: gameweekUpserts.length, errors });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected upload error";
