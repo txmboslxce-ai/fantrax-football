@@ -129,11 +129,23 @@ begin
   minutes_stats as (
     select
       player_id,
-      sum(games_started)::numeric / nullif(sum(games_played), 0)::numeric as starts_rate,
+      -- starts_rate uses last 8 GWs INCLUDING zeros (absences count against the player)
+      sum(games_started)::numeric / 8.0 as starts_rate,
+      -- avg_mins_when_started still uses full history of started games for accuracy
       avg(minutes_played::numeric) filter (where games_started = 1) as avg_mins_when_started,
       sum(games_played) as played_rows
-    from history
-    where games_played > 0
+    from (
+      select
+        pg.player_id,
+        pg.games_started,
+        pg.games_played,
+        pg.minutes_played,
+        row_number() over (partition by pg.player_id order by pg.gameweek desc) as rn
+      from player_gameweeks pg
+      where pg.season = p_season
+        and pg.gameweek <= p_current_gw
+    ) recent
+    where rn <= 8
     group by player_id
   ),
   conceded_by_opponent_position as (
