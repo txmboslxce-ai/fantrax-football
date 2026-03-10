@@ -7,6 +7,8 @@ type PositionFilter = "G" | "D" | "M" | "F";
 type PredictionJoinedRow = {
   player_id: string;
   predicted_pts: number | string | null;
+  start_probability: number | string | null;
+  expected_minutes: number | string | null;
   form_signal: number | string | null;
   fixture_score: number | string | null;
   home_away_adj: number | string | null;
@@ -167,7 +169,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("player_predictions")
     .select(
-      "player_id, predicted_pts, form_signal, fixture_score, home_away_adj, consistency_pts, minutes_modifier, volatility_label, generated_at, players!inner(name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
+      "player_id, predicted_pts, start_probability, expected_minutes, form_signal, fixture_score, home_away_adj, consistency_pts, minutes_modifier, volatility_label, generated_at, players!inner(name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
     )
     .eq("season", season)
     .eq("gameweek", gameweek)
@@ -243,6 +245,8 @@ export async function GET(request: Request) {
     const isHome = fixture ? fixture.home_team === player.team : null;
     const opponentAbbrev = fixture ? (isHome ? fixture.away_team : fixture.home_team) : null;
     const predictedPts = parseNumeric(row.predicted_pts);
+    const startProbability = parseNumeric(row.start_probability);
+    const expectedMinutes = parseNumeric(row.expected_minutes);
     const fixtureScore = parseNumeric(row.fixture_score);
 
     return {
@@ -258,6 +262,8 @@ export async function GET(request: Request) {
       opponentName: opponentAbbrev ? teamNameByAbbrev.get(opponentAbbrev) ?? opponentAbbrev : null,
       isHome,
       predictedPts,
+      startProbability,
+      expectedMinutes,
       formSignal: parseNumeric(row.form_signal),
       fixtureScore,
       homeAwayAdj: parseNumeric(row.home_away_adj),

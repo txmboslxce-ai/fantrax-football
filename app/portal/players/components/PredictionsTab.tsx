@@ -17,6 +17,8 @@ type PredictionRow = {
   opponentName: string | null;
   isHome: boolean | null;
   predictedPts: number | null;
+  startProbability: number | null;
+  expectedMinutes: number | null;
   formSignal: number | null;
   fixtureScore: number | null;
   homeAwayAdj: number | null;
@@ -96,6 +98,22 @@ function trendGlyph(trend: PredictionRow["trend"]): string {
     return "▼";
   }
   return "→";
+}
+
+function formatStartProbability(value: number | null): string {
+  if (value == null) {
+    return "-";
+  }
+
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatExpectedMinutes(value: number | null): string {
+  if (value == null) {
+    return "-";
+  }
+
+  return String(Math.round(value));
 }
 
 function volatilityMeta(label: string | null): { emoji: string; text: string; className: string } {
@@ -428,6 +446,12 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
                 </button>
               </th>
               <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+                Start %
+              </th>
+              <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+                Exp Mins
+              </th>
+              <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
                 Volatility
               </th>
               <th className="sticky top-0 z-10 hidden border-b border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream sm:table-cell">
@@ -454,6 +478,12 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
                       <div className="mx-auto h-5 w-12 animate-pulse rounded bg-brand-cream/10" />
                     </td>
                     <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center">
+                      <div className="mx-auto h-5 w-12 animate-pulse rounded bg-brand-cream/10" />
+                    </td>
+                    <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center">
+                      <div className="mx-auto h-5 w-12 animate-pulse rounded bg-brand-cream/10" />
+                    </td>
+                    <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center">
                       <div className="mx-auto h-6 w-20 animate-pulse rounded-full bg-brand-cream/10" />
                     </td>
                     <td className="hidden border-b border-brand-cream/10 px-4 py-3 text-center sm:table-cell">
@@ -465,7 +495,7 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
 
             {!loading && sortedRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-8 text-center text-sm text-brand-creamDark">
+                <td colSpan={8} className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-8 text-center text-sm text-brand-creamDark">
                   Predictions for this gameweek haven&apos;t been generated yet.
                 </td>
               </tr>
@@ -512,6 +542,14 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
 
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-sm font-bold">
                         {row.predictedPts == null ? "-" : row.predictedPts.toFixed(1)}
+                      </td>
+
+                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-sm font-semibold">
+                        {formatStartProbability(row.startProbability)}
+                      </td>
+
+                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-sm font-semibold">
+                        {formatExpectedMinutes(row.expectedMinutes)}
                       </td>
 
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center">
