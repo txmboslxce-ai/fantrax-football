@@ -161,9 +161,6 @@ export async function GET(request: Request) {
     ? (positionParam as PositionFilter)
     : null;
 
-  const limitRaw = Number(searchParams.get("limit"));
-  const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 200) : 50;
-
   const supabase = await createServerSupabaseClient();
 
   let query = supabase
@@ -173,8 +170,7 @@ export async function GET(request: Request) {
     )
     .eq("season", season)
     .eq("gameweek", gameweek)
-    .order("predicted_pts", { ascending: false, nullsFirst: false })
-    .limit(limit);
+    .order("predicted_pts", { ascending: false, nullsFirst: false });
 
   if (position) {
     query = query.eq("players.position", position);

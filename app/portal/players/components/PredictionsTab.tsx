@@ -196,7 +196,6 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
       const params = new URLSearchParams({
         season,
         gameweek: String(selectedGw),
-        limit: "200",
       });
 
       if (position !== "All") {
