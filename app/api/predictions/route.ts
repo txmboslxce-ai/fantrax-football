@@ -77,6 +77,18 @@ type TrendGameweekRow = {
   raw_fantrax_pts: number | string | null;
 };
 
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  if (chunkSize <= 0) {
+    return [items];
+  }
+
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
 function parseNumeric(value: number | string | null): number | null {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : null;
@@ -205,20 +217,26 @@ export async function GET(request: Request) {
 
   let trendByPlayer = new Map<string, TrendDirection>();
   if (playerIds.length > 0) {
-    const { data: trendRowsData, error: trendRowsError } = await supabase
-      .from("player_gameweeks")
-      .select("player_id, gameweek, games_played, games_started, raw_fantrax_pts")
-      .eq("season", season)
-      .lte("gameweek", gameweek - 1)
-      .in("player_id", playerIds)
-      .order("gameweek", { ascending: false });
+    const trendRowChunks = await Promise.all(
+      chunkArray(playerIds, 200).map(async (playerIdChunk) => {
+        const { data: trendRowsData, error: trendRowsError } = await supabase
+          .from("player_gameweeks")
+          .select("player_id, gameweek, games_played, games_started, raw_fantrax_pts")
+          .eq("season", season)
+          .lte("gameweek", gameweek - 1)
+          .in("player_id", playerIdChunk)
+          .order("gameweek", { ascending: false });
 
-    if (trendRowsError) {
-      return NextResponse.json({ success: false, message: trendRowsError.message }, { status: 500 });
-    }
+        if (trendRowsError) {
+          throw new Error(trendRowsError.message);
+        }
+
+        return (trendRowsData ?? []) as TrendGameweekRow[];
+      })
+    );
 
     const grouped = new Map<string, TrendGameweekRow[]>();
-    for (const row of (trendRowsData ?? []) as TrendGameweekRow[]) {
+    for (const row of trendRowChunks.flat()) {
       const existing = grouped.get(row.player_id) ?? [];
       existing.push(row);
       grouped.set(row.player_id, existing);
