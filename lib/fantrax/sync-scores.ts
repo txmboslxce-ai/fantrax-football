@@ -391,6 +391,7 @@ async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: st
 
   for (const candidatePageNumber of [1, 0]) {
     const payload = await fetchFantraxPage(gameweek, positionOrGroup, candidatePageNumber);
+    console.log(JSON.stringify(payload).slice(0, 2000));
     const table = findFantraxTable(payload);
 
     if (table) {
