@@ -354,6 +354,18 @@ export function getFantraxPositionLabel(positionOrGroup: FantraxPositionGroup): 
 
 async function fetchFantraxPage(gameweek: number, positionOrGroup: FantraxPositionGroup, pageNumber: number) {
   const sessionCookie = getRequiredEnv("FANTRAX_SESSION_COOKIE");
+  const refUrl =
+    "https://www.fantrax.com/fantasy/league/rll4dvajmeahdzar/players" +
+    `;searchName=` +
+    `;miscDisplayType=1` +
+    `;statusOrTeamFilter=ALL` +
+    `;positionOrGroup=${positionOrGroup}` +
+    `;pageNumber=${pageNumber}` +
+    `;seasonOrProjection=SEASON_925_BY_PERIOD` +
+    `;timeframeTypeCode=BY_PERIOD` +
+    `;startDate=2025-08-15` +
+    `;endDate=2026-04-07` +
+    `;transactionPeriod=${gameweek}`;
 
   const response = await fetch(FANTRAX_API_URL, {
     method: "POST",
@@ -372,10 +384,10 @@ async function fetchFantraxPage(gameweek: number, positionOrGroup: FantraxPositi
             timeframeTypeCode: "BY_PERIOD",
             transactionPeriod: gameweek,
             positionOrGroup,
-            pageNumber,
           },
         },
       ],
+      refUrl,
       uiv: 3,
       at: 0,
       dt: 2,
