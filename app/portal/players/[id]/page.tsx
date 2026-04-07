@@ -32,6 +32,7 @@ type FplPlayerData = {
   chance_of_playing_next_round: number | null;
   news: string | null;
   news_added: string | null;
+  last_synced_at: string | null;
   synced_at: string | null;
 };
 
@@ -104,7 +105,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
     supabase
       .from("players")
       .select(
-        "id, name, team, position, fpl_player_data(expected_goals_per_90, expected_assists_per_90, penalties_order, corners_order, direct_freekicks_order, status, chance_of_playing_next_round, news, news_added, synced_at)"
+        "id, name, team, position, fpl_player_data(expected_goals_per_90, expected_assists_per_90, penalties_order, corners_order, direct_freekicks_order, status, chance_of_playing_next_round, news, news_added, last_synced_at, synced_at)"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -150,7 +151,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const availabilityStatus = mapAvailabilityStatus(fplData?.status ?? null, fplData?.chance_of_playing_next_round ?? null);
   const showAvailabilityCard =
     (fplData?.chance_of_playing_next_round != null && fplData.chance_of_playing_next_round < 100) || fplData?.status !== "a";
-  const availabilityDate = formatShortDate(fplData?.news_added ?? null);
+  const availabilityDate = formatShortDate(fplData?.last_synced_at ?? null);
   const syncedDate = formatShortDate(fplData?.synced_at ?? null);
   const availabilityIsRed = availabilityStatus === "Injured" || availabilityStatus === "Unavailable" || availabilityStatus === "Suspended";
 
