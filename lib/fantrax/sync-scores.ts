@@ -76,7 +76,9 @@ type FantraxResponseEnvelope = {
       tableHeader?: {
         cells?: unknown[];
       };
-      paginatedResultSet?: Record<string, unknown>;
+      paginatedResultSet?: Record<string, unknown> & {
+        totalNumPages?: unknown;
+      };
     };
   }>;
 };
@@ -271,6 +273,12 @@ function findFantraxTable(response: unknown): FantraxTableBundle | null {
   };
 }
 
+function getTotalPages(response: unknown): number {
+  const envelope = response as FantraxResponseEnvelope;
+  const totalNumPages = envelope.responses?.[0]?.data?.paginatedResultSet?.totalNumPages;
+  return Math.max(1, Math.trunc(parseNumber(totalNumPages)));
+}
+
 function extractScorerId(row: unknown): string | null {
   if (!isRecord(row)) {
     return null;
@@ -376,7 +384,7 @@ async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: st
     throw new Error(`Unable to parse Fantrax response for ${positionOrGroup} in GW ${gameweek}.`);
   }
 
-  const totalPages = Math.max(1, Number(firstTable.paginatedResultSet?.totalNumPages ?? 1));
+  const totalPages = getTotalPages(firstPayload);
   const rows = [...firstTable.rows];
   const headers = buildHeaderIndex(firstTable.headerCells);
 
