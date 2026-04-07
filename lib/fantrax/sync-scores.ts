@@ -384,7 +384,12 @@ async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: st
     throw new Error(`Unable to parse Fantrax response for ${positionOrGroup} in GW ${gameweek}.`);
   }
 
+  const rawTotalNumPages =
+    (firstPayload as FantraxResponseEnvelope).responses?.[0]?.data?.paginatedResultSet?.totalNumPages;
   const totalPages = getTotalPages(firstPayload);
+  console.log(
+    `Fantrax pagination debug: position=${positionOrGroup} rawTotalNumPages=${String(rawTotalNumPages ?? "undefined")}`
+  );
   const rows = [...firstTable.rows];
   const headers = buildHeaderIndex(firstTable.headerCells);
 
@@ -398,6 +403,8 @@ async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: st
 
     rows.push(...table.rows);
   }
+
+  console.log(`Fantrax pagination debug: position=${positionOrGroup} collectedRows=${rows.length}`);
 
   return { headers, rows };
 }
