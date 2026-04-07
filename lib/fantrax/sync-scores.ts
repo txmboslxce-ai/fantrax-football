@@ -57,6 +57,12 @@ type SyncFantraxScoresResult = {
   season: string;
 };
 
+type CollectedFantraxRow = {
+  scorerId: string;
+  stats: Partial<PlayerGameweekUpsert>;
+  positionOrGroup: string;
+};
+
 type FantraxTableBundle = {
   headerCells: unknown[];
   rows: unknown[];
@@ -535,7 +541,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
 
   getRequiredEnv("FANTRAX_SESSION_COOKIE");
 
-  const allRows: Array<{ scorerId: string; stats: Partial<PlayerGameweekUpsert> }> = [];
+  const allRows: CollectedFantraxRow[] = [];
 
   for (const positionOrGroup of FANTRAX_POSITIONS) {
     const { headers, rows } = await fetchFantraxRowsForPosition(gameweek, positionOrGroup);
@@ -549,11 +555,28 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
       allRows.push({
         scorerId,
         stats: buildRowStats(row, headers),
+        positionOrGroup,
       });
     }
   }
 
-  const scorerIds = Array.from(new Set(allRows.map((row) => row.scorerId)));
+  const dedupedRowsByScorerId = new Map<string, CollectedFantraxRow>();
+  const duplicateScorerIds = new Set<string>();
+
+  for (const row of allRows) {
+    if (dedupedRowsByScorerId.has(row.scorerId)) {
+      duplicateScorerIds.add(row.scorerId);
+    }
+
+    dedupedRowsByScorerId.set(row.scorerId, row);
+  }
+
+  duplicateScorerIds.forEach((scorerId) => {
+    console.warn(`Fantrax sync duplicate scorerId across fetched rows: ${scorerId}`);
+  });
+
+  const dedupedRows = Array.from(dedupedRowsByScorerId.values());
+  const scorerIds = dedupedRows.map((row) => row.scorerId);
   if (scorerIds.length === 0) {
     return {
       gameweek,
@@ -581,7 +604,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
   });
 
   const uploadedAt = new Date().toISOString();
-  const upserts = allRows.flatMap((row) => {
+  const upserts = dedupedRows.flatMap((row) => {
     const player = playerByFantraxId.get(row.scorerId);
     if (!player) {
       return [];
