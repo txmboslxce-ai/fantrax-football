@@ -361,6 +361,7 @@ async function fetchFantraxPage(gameweek: number, positionOrGroup: string, pageN
         {
           method: "getPlayerStats",
           data: {
+            leagueId: "rll4dvajmeahdzar",
             seasonOrProjection: "SEASON_925_BY_PERIOD",
             timeframeTypeCode: "BY_PERIOD",
             transactionPeriod: gameweek,
