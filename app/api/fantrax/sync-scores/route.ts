@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
-import { getCurrentGameweek, syncFantraxScores } from "@/lib/fantrax/sync-scores";
+import { FANTRAX_POSITIONS, getCurrentGameweek, syncFantraxScores } from "@/lib/fantrax/sync-scores";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 async function isAuthorizedAdmin() {
@@ -37,8 +37,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json().catch(() => ({}))) as { gameweek?: number };
+    const body = (await request.json().catch(() => ({}))) as { gameweek?: number; positionOrGroup?: string };
     const gameweek = Number(body.gameweek ?? 0);
+    const positionOrGroup = String(body.positionOrGroup ?? "").trim();
 
     if (!Number.isInteger(gameweek) || gameweek < 1 || gameweek > 38) {
       return NextResponse.json(
@@ -47,7 +48,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await syncFantraxScores(gameweek);
+    if (!FANTRAX_POSITIONS.includes(positionOrGroup as (typeof FANTRAX_POSITIONS)[number])) {
+      return NextResponse.json({ success: false, message: "Invalid Fantrax position group." }, { status: 400 });
+    }
+
+    const result = await syncFantraxScores(gameweek, positionOrGroup as (typeof FANTRAX_POSITIONS)[number]);
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to sync Fantrax scores.";

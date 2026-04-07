@@ -3,7 +3,15 @@ import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 const FANTRAX_API_URL = "https://www.fantrax.com/fxpa/req?leagueId=rll4dvajmeahdzar";
 const FPL_BOOTSTRAP_URL = "https://fantasy.premierleague.com/api/bootstrap-static/";
 const FANTRAX_SEASON = "2025-26";
-const FANTRAX_POSITIONS = ["POS_701", "POS_702", "POS_703", "POS_704"] as const;
+export const FANTRAX_POSITIONS = ["POS_701", "POS_702", "POS_703", "POS_704"] as const;
+export type FantraxPositionGroup = (typeof FANTRAX_POSITIONS)[number];
+
+const POSITION_LABELS: Record<FantraxPositionGroup, string> = {
+  POS_701: "Forwards",
+  POS_702: "Midfielders",
+  POS_703: "Defenders",
+  POS_704: "Goalkeepers",
+};
 
 type PlayerLookupRow = {
   id: string;
@@ -52,15 +60,11 @@ type StatField = Exclude<keyof PlayerGameweekUpsert, "player_id" | "season" | "g
 
 type SyncFantraxScoresResult = {
   gameweek: number;
+  positionOrGroup: FantraxPositionGroup;
+  positionLabel: string;
   playersSynced: number;
   unmatchedFantraxIds: string[];
   season: string;
-};
-
-type CollectedFantraxRow = {
-  scorerId: string;
-  stats: Partial<PlayerGameweekUpsert>;
-  positionOrGroup: string;
 };
 
 type FantraxTableBundle = {
@@ -340,7 +344,15 @@ function buildRowStats(row: unknown, headers: string[]): Partial<PlayerGameweekU
   return stats;
 }
 
-async function fetchFantraxPage(gameweek: number, positionOrGroup: string, pageNumber: number) {
+function isFantraxPositionGroup(value: string): value is FantraxPositionGroup {
+  return FANTRAX_POSITIONS.includes(value as FantraxPositionGroup);
+}
+
+export function getFantraxPositionLabel(positionOrGroup: FantraxPositionGroup): string {
+  return POSITION_LABELS[positionOrGroup];
+}
+
+async function fetchFantraxPage(gameweek: number, positionOrGroup: FantraxPositionGroup, pageNumber: number) {
   const sessionCookie = getRequiredEnv("FANTRAX_SESSION_COOKIE");
 
   const response = await fetch(FANTRAX_API_URL, {
@@ -379,7 +391,7 @@ async function fetchFantraxPage(gameweek: number, positionOrGroup: string, pageN
   return (await response.json()) as unknown;
 }
 
-async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: string) {
+async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: FantraxPositionGroup) {
   const firstPayload = await fetchFantraxPage(gameweek, positionOrGroup, 1);
   console.log(JSON.stringify(firstPayload).slice(0, 2000));
   const firstTable = findFantraxTable(firstPayload);
@@ -547,7 +559,10 @@ export async function getCurrentGameweek() {
   return 1;
 }
 
-export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxScoresResult> {
+export async function syncFantraxScores(
+  gameweek: number,
+  positionOrGroup: FantraxPositionGroup
+): Promise<SyncFantraxScoresResult> {
   const supabase = createAdminSupabaseClient();
 
   if (!supabase) {
@@ -558,50 +573,34 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
     throw new Error("Gameweek must be an integer between 1 and 38.");
   }
 
+  if (!isFantraxPositionGroup(positionOrGroup)) {
+    throw new Error("Invalid Fantrax position group.");
+  }
+
   getRequiredEnv("FANTRAX_SESSION_COOKIE");
 
-  const allRows: CollectedFantraxRow[] = [];
+  const { headers, rows } = await fetchFantraxRowsForPosition(gameweek, positionOrGroup);
+  const collectedRows: Array<{ scorerId: string; stats: Partial<PlayerGameweekUpsert> }> = [];
 
-  for (const positionOrGroup of FANTRAX_POSITIONS) {
-    const { headers, rows } = await fetchFantraxRowsForPosition(gameweek, positionOrGroup);
-
-    for (const row of rows) {
-      const scorerId = extractScorerId(row);
-      if (!scorerId) {
-        continue;
-      }
-
-      allRows.push({
-        scorerId,
-        stats: buildRowStats(row, headers),
-        positionOrGroup,
-      });
-    }
-  }
-
-  console.log(`Fantrax sync debug: rawCollectedRows=${allRows.length}`);
-
-  const dedupedRowsByScorerId = new Map<string, CollectedFantraxRow>();
-  const duplicateScorerIds = new Set<string>();
-
-  for (const row of allRows) {
-    if (dedupedRowsByScorerId.has(row.scorerId)) {
-      duplicateScorerIds.add(row.scorerId);
+  for (const row of rows) {
+    const scorerId = extractScorerId(row);
+    if (!scorerId) {
+      continue;
     }
 
-    dedupedRowsByScorerId.set(row.scorerId, row);
+    collectedRows.push({
+      scorerId,
+      stats: buildRowStats(row, headers),
+    });
   }
 
-  duplicateScorerIds.forEach((scorerId) => {
-    console.warn(`Fantrax sync duplicate scorerId across fetched rows: ${scorerId}`);
-  });
-
-  const dedupedRows = Array.from(dedupedRowsByScorerId.values());
-  console.log(`Fantrax sync debug: dedupedRows=${dedupedRows.length}`);
-  const scorerIds = dedupedRows.map((row) => row.scorerId);
+  console.log(`Fantrax sync debug: position=${positionOrGroup} rawCollectedRows=${collectedRows.length}`);
+  const scorerIds = Array.from(new Set(collectedRows.map((row) => row.scorerId)));
   if (scorerIds.length === 0) {
     return {
       gameweek,
+      positionOrGroup,
+      positionLabel: getFantraxPositionLabel(positionOrGroup),
       playersSynced: 0,
       unmatchedFantraxIds: [],
       season: FANTRAX_SEASON,
@@ -629,7 +628,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
   });
 
   const uploadedAt = new Date().toISOString();
-  const upserts = dedupedRows.flatMap((row) => {
+  const upserts = collectedRows.flatMap((row) => {
     const player = playerByFantraxId.get(toStoredFantraxId(row.scorerId));
     if (!player) {
       return [];
@@ -652,6 +651,8 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
 
   return {
     gameweek,
+    positionOrGroup,
+    positionLabel: getFantraxPositionLabel(positionOrGroup),
     playersSynced: upserts.length,
     unmatchedFantraxIds,
     season: FANTRAX_SEASON,
