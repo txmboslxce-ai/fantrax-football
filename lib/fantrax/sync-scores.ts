@@ -575,6 +575,8 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
     }
   }
 
+  console.log(`Fantrax sync debug: rawCollectedRows=${allRows.length}`);
+
   const dedupedRowsByScorerId = new Map<string, CollectedFantraxRow>();
   const duplicateScorerIds = new Set<string>();
 
@@ -591,6 +593,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
   });
 
   const dedupedRows = Array.from(dedupedRowsByScorerId.values());
+  console.log(`Fantrax sync debug: dedupedRows=${dedupedRows.length}`);
   const scorerIds = dedupedRows.map((row) => row.scorerId);
   if (scorerIds.length === 0) {
     return {
@@ -612,6 +615,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
 
   const players = (playersData ?? []) as PlayerLookupRow[];
   const playerByFantraxId = new Map(players.map((player) => [player.fantrax_id, player]));
+  console.log(`Fantrax sync debug: matchedPlayers=${playerByFantraxId.size}`);
   const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(scorerId));
 
   unmatchedFantraxIds.forEach((scorerId) => {
@@ -627,6 +631,8 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
 
     return [buildUpsert(player.id, player.position, gameweek, row.stats, uploadedAt)];
   });
+
+  console.log(`Fantrax sync debug: finalUpserts=${upserts.length}`);
 
   if (upserts.length > 0) {
     const { error: upsertError } = await supabase.from("player_gameweeks").upsert(upserts, {
