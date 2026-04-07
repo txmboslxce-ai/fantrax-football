@@ -286,15 +286,19 @@ function extractScorerId(row: unknown): string | null {
 
   const direct = extractString(row.scorerId);
   if (direct) {
-    return `*${direct.trim()}*`;
+    return direct.trim();
   }
 
   if (isRecord(row.scorer)) {
     const nested = extractString(row.scorer.scorerId ?? row.scorer.id);
-    return nested ? `*${nested.trim()}*` : null;
+    return nested ? nested.trim() : null;
   }
 
   return null;
+}
+
+function toStoredFantraxId(scorerId: string): string {
+  return `*${scorerId.trim()}*`;
 }
 
 function buildHeaderIndex(headerCells: unknown[]): string[] {
@@ -604,10 +608,12 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
     };
   }
 
+  const storedScorerIds = scorerIds.map((scorerId) => toStoredFantraxId(scorerId));
+
   const { data: playersData, error: playersError } = await supabase
     .from("players")
     .select("id, fantrax_id, position")
-    .in("fantrax_id", scorerIds);
+    .in("fantrax_id", storedScorerIds);
 
   if (playersError) {
     throw new Error(playersError.message);
@@ -616,7 +622,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
   const players = (playersData ?? []) as PlayerLookupRow[];
   const playerByFantraxId = new Map(players.map((player) => [player.fantrax_id, player]));
   console.log(`Fantrax sync debug: matchedPlayers=${playerByFantraxId.size}`);
-  const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(scorerId));
+  const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(toStoredFantraxId(scorerId)));
 
   unmatchedFantraxIds.forEach((scorerId) => {
     console.warn(`Fantrax sync unmatched scorerId: ${scorerId}`);
@@ -624,7 +630,7 @@ export async function syncFantraxScores(gameweek: number): Promise<SyncFantraxSc
 
   const uploadedAt = new Date().toISOString();
   const upserts = dedupedRows.flatMap((row) => {
-    const player = playerByFantraxId.get(row.scorerId);
+    const player = playerByFantraxId.get(toStoredFantraxId(row.scorerId));
     if (!player) {
       return [];
     }
