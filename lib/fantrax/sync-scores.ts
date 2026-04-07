@@ -362,22 +362,11 @@ async function fetchFantraxPage(gameweek: number, positionOrGroup: string, pageN
 }
 
 async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: string) {
-  let firstPageNumber: number | null = null;
-  let firstTable: FantraxTableBundle | null = null;
+  const firstPayload = await fetchFantraxPage(gameweek, positionOrGroup, 1);
+  console.log(JSON.stringify(firstPayload).slice(0, 2000));
+  const firstTable = findFantraxTable(firstPayload);
 
-  for (const candidatePageNumber of [1, 0]) {
-    const payload = await fetchFantraxPage(gameweek, positionOrGroup, candidatePageNumber);
-    console.log(JSON.stringify(payload).slice(0, 2000));
-    const table = findFantraxTable(payload);
-
-    if (table) {
-      firstPageNumber = candidatePageNumber;
-      firstTable = table;
-      break;
-    }
-  }
-
-  if (firstPageNumber == null || !firstTable) {
+  if (!firstTable) {
     throw new Error(`Unable to parse Fantrax response for ${positionOrGroup} in GW ${gameweek}.`);
   }
 
@@ -385,7 +374,7 @@ async function fetchFantraxRowsForPosition(gameweek: number, positionOrGroup: st
   const rows = [...firstTable.rows];
   const headers = buildHeaderIndex(firstTable.headerCells);
 
-  for (let pageNumber = firstPageNumber + 1; pageNumber < firstPageNumber + totalPages; pageNumber += 1) {
+  for (let pageNumber = 2; pageNumber <= totalPages; pageNumber += 1) {
     const payload = await fetchFantraxPage(gameweek, positionOrGroup, pageNumber);
     const table = findFantraxTable(payload);
 
