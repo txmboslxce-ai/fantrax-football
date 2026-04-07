@@ -5,7 +5,7 @@
       "schedule": "0 14 * * 2"
     },
     {
-      "path": "/api/admin/fpl-sync",
+      "path": "/api/fpl/sync",
       "schedule": "0 8 * * *"
     }
   ]
