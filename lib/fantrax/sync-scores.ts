@@ -63,6 +63,18 @@ type FantraxTableBundle = {
   paginatedResultSet?: Record<string, unknown>;
 };
 
+type FantraxResponseEnvelope = {
+  responses?: Array<{
+    data?: {
+      statsTable?: unknown;
+      tableHeader?: {
+        cells?: unknown[];
+      };
+      paginatedResultSet?: Record<string, unknown>;
+    };
+  }>;
+};
+
 type FplEvent = {
   id: number;
   is_current?: boolean;
@@ -220,73 +232,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function getHeaderCells(node: unknown): unknown[] | null {
-  if (!isRecord(node)) {
+function getStatsTableRows(statsTable: unknown): unknown[] | null {
+  if (Array.isArray(statsTable)) {
+    return statsTable;
+  }
+
+  if (!isRecord(statsTable)) {
     return null;
   }
 
-  if (Array.isArray(node.cells)) {
-    return node.cells;
+  if (Array.isArray(statsTable.rows)) {
+    return statsTable.rows;
   }
 
   return null;
 }
 
-function getRows(node: unknown): unknown[] | null {
-  if (!isRecord(node)) {
+function findFantraxTable(response: unknown): FantraxTableBundle | null {
+  const envelope = response as FantraxResponseEnvelope;
+  const data = envelope.responses?.[0]?.data;
+  const headerCells = data?.tableHeader?.cells;
+  const rows = getStatsTableRows(data?.statsTable);
+
+  if (!headerCells || !rows) {
     return null;
   }
 
-  if (Array.isArray(node.rows)) {
-    return node.rows;
-  }
-
-  if (isRecord(node.table) && Array.isArray(node.table.rows)) {
-    return node.table.rows;
-  }
-
-  if (isRecord(node.tableData) && Array.isArray(node.tableData.rows)) {
-    return node.tableData.rows;
-  }
-
-  return null;
-}
-
-function findFantraxTable(node: unknown): FantraxTableBundle | null {
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      const match = findFantraxTable(item);
-      if (match) {
-        return match;
-      }
-    }
-
-    return null;
-  }
-
-  if (!isRecord(node)) {
-    return null;
-  }
-
-  const headerCells = getHeaderCells(node.tableHeader) ?? getHeaderCells(node.header);
-  const rows = getRows(node);
-
-  if (headerCells && rows) {
-    return {
-      headerCells,
-      rows,
-      paginatedResultSet: isRecord(node.paginatedResultSet) ? node.paginatedResultSet : undefined,
-    };
-  }
-
-  for (const value of Object.values(node)) {
-    const match = findFantraxTable(value);
-    if (match) {
-      return match;
-    }
-  }
-
-  return null;
+  return {
+    headerCells,
+    rows,
+    paginatedResultSet: data?.paginatedResultSet,
+  };
 }
 
 function extractScorerId(row: unknown): string | null {
