@@ -272,12 +272,12 @@ function extractScorerId(row: unknown): string | null {
 
   const direct = extractString(row.scorerId);
   if (direct) {
-    return direct.trim();
+    return `*${direct.trim()}*`;
   }
 
   if (isRecord(row.scorer)) {
     const nested = extractString(row.scorer.scorerId ?? row.scorer.id);
-    return nested ? nested.trim() : null;
+    return nested ? `*${nested.trim()}*` : null;
   }
 
   return null;
