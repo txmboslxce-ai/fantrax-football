@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "getTeamRosterInfo", params: { leagueId } }),
+        body: JSON.stringify({ msgs: [{ method: "getTeamRosterInfo", data: { leagueId } }] }),
       }
     );
 
