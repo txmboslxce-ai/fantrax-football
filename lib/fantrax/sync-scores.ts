@@ -180,10 +180,6 @@ function getUploadType(positionOrGroup: FantraxPositionGroup): UploadType {
   return positionOrGroup === "POS_704" ? "keeper" : "player";
 }
 
-function toStoredFantraxId(fantraxId: string): string {
-  return `*${fantraxId.trim()}*`;
-}
-
 function parseCsv(text: string): CsvRow[] {
   const parsed = Papa.parse<CsvRow>(text, {
     header: true,
@@ -446,11 +442,10 @@ export async function syncFantraxScores(
     };
   }
 
-  const storedScorerIds = scorerIds.map((scorerId) => toStoredFantraxId(scorerId));
   const { data: playersData, error: playersError } = await supabase
     .from("players")
     .select("id, fantrax_id, position")
-    .in("fantrax_id", storedScorerIds);
+    .in("fantrax_id", scorerIds);
 
   if (playersError) {
     throw new Error(playersError.message);
@@ -458,7 +453,7 @@ export async function syncFantraxScores(
 
   const players = (playersData ?? []) as PlayerLookupRow[];
   const playerByFantraxId = new Map(players.map((player) => [player.fantrax_id, player]));
-  const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(toStoredFantraxId(scorerId)));
+  const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(scorerId));
 
   unmatchedFantraxIds.forEach((scorerId) => {
     console.warn(`Fantrax sync unmatched scorerId: ${scorerId}`);
@@ -466,7 +461,7 @@ export async function syncFantraxScores(
 
   const uploadedAt = new Date().toISOString();
   const upserts = mappedRows.flatMap((row) => {
-    const player = playerByFantraxId.get(toStoredFantraxId(row.fantrax_id));
+    const player = playerByFantraxId.get(row.fantrax_id);
     if (!player) {
       return [];
     }
