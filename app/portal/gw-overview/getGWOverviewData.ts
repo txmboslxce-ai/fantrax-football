@@ -66,10 +66,6 @@ type FixtureRow = {
   away_team: string;
 };
 
-type GwOnlyRow = {
-  gameweek: number;
-};
-
 export type GWOverviewTabData = {
   players: GWOverviewPlayer[];
   gameweeks: GWOverviewGameweekRow[];
@@ -121,8 +117,6 @@ export async function getGWOverviewData(): Promise<GWOverviewTabData> {
   const [
     { data: players, error: playersError },
     { data: teams, error: teamsError },
-    { data: minGwRows, error: minGwError },
-    { data: maxGwRows, error: maxGwError },
     { data: gameweeks, error: gameweeksError },
     { data: fixtures, error: fixturesError },
   ] = await Promise.all([
@@ -131,8 +125,6 @@ export async function getGWOverviewData(): Promise<GWOverviewTabData> {
       .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
       .order("name"),
     supabase.from("teams").select("abbrev").order("abbrev"),
-    supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: true }).limit(1),
-    supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
     supabase
       .from("player_gameweeks")
       .select(
@@ -149,12 +141,6 @@ export async function getGWOverviewData(): Promise<GWOverviewTabData> {
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
-  if (minGwError) {
-    throw new Error(`Unable to load min gameweek: ${minGwError.message}`);
-  }
-  if (maxGwError) {
-    throw new Error(`Unable to load max gameweek: ${maxGwError.message}`);
-  }
   if (gameweeksError) {
     throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
   }
@@ -162,15 +148,22 @@ export async function getGWOverviewData(): Promise<GWOverviewTabData> {
     throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
   }
 
-  const minGw = ((minGwRows ?? []) as GwOnlyRow[])[0]?.gameweek ?? 1;
-  const maxGw = ((maxGwRows ?? []) as GwOnlyRow[])[0]?.gameweek ?? 5;
-  const latestStartGw = Math.max(minGw, maxGw - 4);
-  const selectedGws = Array.from({ length: 5 }, (_, index) => latestStartGw + index).sort((a, b) => b - a);
-  const allGws = Array.from({ length: maxGw - minGw + 1 }, (_, index) => minGw + index).sort((a, b) => b - a);
-
   const playerRows = (players ?? []) as PlayerRow[];
   const gameweekRows = (gameweeks ?? []) as GameweekRow[];
   const fixtureRows = (fixtures ?? []) as FixtureRow[];
+
+  const allGws = Array.from(
+    new Set(
+      gameweekRows
+        .filter((row) => Number(row.games_played ?? 0) > 0)
+        .map((row) => Number(row.gameweek ?? 0))
+        .filter((gameweek) => gameweek > 0)
+    )
+  ).sort((a, b) => b - a);
+
+  const maxGw = allGws[0] ?? 5;
+  const minGw = allGws[allGws.length - 1] ?? 1;
+  const selectedGws = allGws.slice(0, 5);
 
   const playerTeamById = new Map<string, string>();
   const normalizedPlayers: GWOverviewPlayer[] = playerRows.map((player) => {
