@@ -1,23 +1,38 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-type FantraxPlayer = {
+// Step 1 response — team list
+type FantraxTeamEntry = {
   id?: string;
   name?: string;
 };
 
-type FantraxTeam = {
-  id?: string;
-  name?: string;
-  roster?: {
-    roster?: FantraxPlayer[];
-  };
-};
-
-type FantraxApiResponse = {
+type TeamsListResponse = {
   responses?: Array<{
     data?: {
-      fantasyTeams?: FantraxTeam[];
+      fantasyTeams?: FantraxTeamEntry[];
+    };
+  }>;
+};
+
+// Step 2 response — per-team roster
+type FantraxScorer = {
+  name?: string;
+  scorerId?: string;
+};
+
+type FantraxRosterRow = {
+  scorer?: FantraxScorer;
+};
+
+type FantraxTable = {
+  rows?: FantraxRosterRow[];
+};
+
+type TeamRosterResponse = {
+  responses?: Array<{
+    data?: {
+      tables?: FantraxTable[];
     };
   }>;
 };
@@ -30,6 +45,23 @@ type RosterInsert = {
   player_id: string;
   fantrax_player_id: string;
 };
+
+async function fantraxPost<T>(leagueId: string, msgs: unknown[]): Promise<T> {
+  const response = await fetch(
+    `https://www.fantrax.com/fxpa/req?leagueId=${encodeURIComponent(leagueId)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ msgs }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Fantrax API returned ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -53,36 +85,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
   }
 
-  // Fetch all teams and their rosters from the Fantrax public API
-  let fantraxData: FantraxApiResponse;
+  // Step 1 — get all fantasy teams in the league
+  let teamsData: TeamsListResponse;
   try {
-    const fantraxResponse = await fetch(
-      `https://www.fantrax.com/fxpa/req?leagueId=${encodeURIComponent(leagueId)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ msgs: [{ method: "getTeamRosterInfo", data: { leagueId } }] }),
-      }
-    );
-
-    if (!fantraxResponse.ok) {
-      return NextResponse.json(
-        { message: `Fantrax API returned ${fantraxResponse.status}. Check your league ID.` },
-        { status: 502 }
-      );
-    }
-
-    const rawJson = await fantraxResponse.text();
-    console.log("[my-league/sync] Fantrax raw response:", rawJson);
-    fantraxData = JSON.parse(rawJson) as FantraxApiResponse;
-  } catch {
-    return NextResponse.json({ message: "Unable to reach Fantrax API." }, { status: 502 });
+    teamsData = await fantraxPost<TeamsListResponse>(leagueId, [
+      { method: "getTeamRosterInfo", data: { leagueId } },
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to reach Fantrax API.";
+    return NextResponse.json({ message }, { status: 502 });
   }
 
-  const fantasyTeams = fantraxData?.responses?.[0]?.data?.fantasyTeams;
-  console.log("[my-league/sync] responses length:", fantraxData?.responses?.length);
-  console.log("[my-league/sync] responses[0].data keys:", Object.keys(fantraxData?.responses?.[0]?.data ?? {}));
-  console.log("[my-league/sync] fantasyTeams type:", typeof fantasyTeams, Array.isArray(fantasyTeams) ? `array(${fantasyTeams.length})` : fantasyTeams);
+  const fantasyTeams = teamsData?.responses?.[0]?.data?.fantasyTeams;
 
   if (!Array.isArray(fantasyTeams) || fantasyTeams.length === 0) {
     return NextResponse.json(
@@ -91,7 +105,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Build a case-insensitive player name → DB id lookup
+  // Build player name → DB id lookup
   const { data: dbPlayers, error: playersError } = await supabase.from("players").select("id, name");
 
   if (playersError || !dbPlayers) {
@@ -103,43 +117,56 @@ export async function POST(request: Request) {
     playerIdByName.set((player.name as string).toLowerCase().trim(), player.id as string);
   }
 
-  // Process all teams
+  // Step 2 — fetch each team's roster individually
   const inserts: RosterInsert[] = [];
   const unmatchedNames: string[] = [];
-  let teamsCount = 0;
 
   for (const team of fantasyTeams) {
     const teamId = team.id ?? "";
     const teamName = team.name ?? "Unknown";
-    const rosterPlayers = team.roster?.roster ?? [];
-    teamsCount++;
 
-    for (const player of rosterPlayers) {
-      const fantraxPlayerId = player.id ?? "";
-      const rawName = player.name ?? "";
-      const normalizedName = rawName.toLowerCase().trim();
+    let rosterData: TeamRosterResponse;
+    try {
+      rosterData = await fantraxPost<TeamRosterResponse>(leagueId, [
+        { method: "getTeamRosterInfo", data: { leagueId, fantasyTeamId: teamId } },
+      ]);
+    } catch {
+      console.warn(`[my-league/sync] Failed to fetch roster for team ${teamId} (${teamName}), skipping.`);
+      continue;
+    }
 
-      if (!normalizedName) continue;
+    const tables = rosterData?.responses?.[0]?.data?.tables ?? [];
 
-      const dbPlayerId = playerIdByName.get(normalizedName);
+    for (const table of tables) {
+      for (const row of table.rows ?? []) {
+        if (!row.scorer) continue;
 
-      if (!dbPlayerId) {
-        unmatchedNames.push(rawName);
-        continue;
+        const rawName = row.scorer.name ?? "";
+        const fantraxPlayerId = row.scorer.scorerId ?? "";
+        const normalizedName = rawName.toLowerCase().trim();
+
+        if (!normalizedName) continue;
+
+        const dbPlayerId = playerIdByName.get(normalizedName);
+
+        if (!dbPlayerId) {
+          unmatchedNames.push(rawName);
+          continue;
+        }
+
+        inserts.push({
+          profile_id: user.id,
+          league_id: leagueId,
+          team_id: teamId,
+          team_name: teamName,
+          player_id: dbPlayerId,
+          fantrax_player_id: fantraxPlayerId,
+        });
       }
-
-      inserts.push({
-        profile_id: user.id,
-        league_id: leagueId,
-        team_id: teamId,
-        team_name: teamName,
-        player_id: dbPlayerId,
-        fantrax_player_id: fantraxPlayerId,
-      });
     }
   }
 
-  // Replace all existing roster data for this user with fresh data
+  // Replace existing roster data with fresh data
   const { error: deleteError } = await supabase.from("league_rosters").delete().eq("profile_id", user.id);
 
   if (deleteError) {
@@ -167,7 +194,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    teams: teamsCount,
+    teams: fantasyTeams.length,
     playersRostered: inserts.length,
     unmatchedPlayers: unmatchedNames,
   });
