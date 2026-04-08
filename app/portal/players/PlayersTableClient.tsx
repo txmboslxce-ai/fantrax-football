@@ -72,6 +72,7 @@ const COLUMN_CATEGORIES = ["Scoring", "Involvement", "Home/Away", "Point Breakdo
 type ColumnCategory = (typeof COLUMN_CATEGORIES)[number];
 
 const OPTIONAL_COLUMN_KEYS = COLUMN_DEFINITIONS.filter((column) => !column.alwaysVisible).map((column) => column.key);
+const MAX_OPTIONAL_COLUMNS = 6;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -126,8 +127,8 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<ColumnCategory, boolean>>({
-    Scoring: true,
-    Involvement: true,
+    Scoring: false,
+    Involvement: false,
     "Home/Away": false,
     "Point Breakdown": false,
   });
@@ -139,6 +140,12 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   const visibleColumns = useMemo(() => {
     return COLUMN_DEFINITIONS.filter((column) => column.alwaysVisible || visibleOptionalColumns.includes(column.key));
   }, [visibleOptionalColumns]);
+
+  const selectedOptionalColumns = useMemo(() => {
+    return COLUMN_DEFINITIONS.filter((column) => visibleOptionalColumns.includes(column.key));
+  }, [visibleOptionalColumns]);
+
+  const hasReachedColumnLimit = visibleOptionalColumns.length >= MAX_OPTIONAL_COLUMNS;
 
   useEffect(() => {
     if (sortKey !== "name" && !visibleColumns.some((column) => column.key === sortKey)) {
@@ -223,9 +230,17 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
         return current.filter((key) => key !== columnKey);
       }
 
+      if (current.length >= MAX_OPTIONAL_COLUMNS) {
+        return current;
+      }
+
       const next = [...current, columnKey];
       return OPTIONAL_COLUMN_KEYS.filter((key) => next.includes(key));
     });
+  }
+
+  function clearAllColumns() {
+    setVisibleOptionalColumns([]);
   }
 
   function toggleCategory(category: ColumnCategory) {
@@ -240,14 +255,14 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-3">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <label className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Player"
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
             />
           </label>
 
@@ -261,7 +276,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                     key={filter}
                     type="button"
                     onClick={() => setPositionFilter(filter)}
-                    className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                    className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -279,7 +294,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
             <select
               value={teamFilter}
               onChange={(event) => setTeamFilter(event.target.value)}
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
             >
               <option value="All">All</option>
               {teams.map((team) => (
@@ -301,7 +316,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                 value={ownershipMin}
                 onChange={(event) => setOwnershipMin(event.target.value)}
                 placeholder="Min"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream"
               />
               <input
                 type="number"
@@ -311,7 +326,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                 value={ownershipMax}
                 onChange={(event) => setOwnershipMax(event.target.value)}
                 placeholder="Max"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream"
               />
             </div>
           </div>
@@ -325,10 +340,10 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                 const active = selectedWindow === option.key;
                 return (
                   <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setSelectedWindow(option.key)}
-                    className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                  key={option.key}
+                  type="button"
+                  onClick={() => setSelectedWindow(option.key)}
+                  className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -344,7 +359,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
           <button
             type="button"
             onClick={() => setIsColumnPanelOpen((current) => !current)}
-            className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
               isColumnPanelOpen
                 ? "border-brand-green bg-brand-green text-brand-cream"
                 : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -362,6 +377,9 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
             <p className="mt-1 text-sm text-brand-creamDark">
               Base columns stay visible. Expand a category to add or remove optional columns.
             </p>
+            {hasReachedColumnLimit ? (
+              <p className="mt-2 text-xs font-semibold text-amber-300">Maximum columns selected</p>
+            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -387,14 +405,20 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                     <div className="grid gap-3 border-t border-brand-cream/10 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
                       {categoryColumns.map((column) => {
                         const checked = visibleOptionalColumns.includes(column.key);
+                        const disabled = !checked && hasReachedColumnLimit;
                         return (
                           <label
                             key={column.key}
-                            className="flex items-start gap-3 rounded-lg border border-brand-cream/10 bg-brand-dark/70 px-3 py-3 text-sm text-brand-cream"
+                            className={`flex items-start gap-3 rounded-lg border px-3 py-3 text-sm ${
+                              disabled
+                                ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/50"
+                                : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
+                            }`}
                           >
                             <input
                               type="checkbox"
                               checked={checked}
+                              disabled={disabled}
                               onChange={() => toggleColumn(column.key)}
                               className="mt-0.5 h-5 w-5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
                             />
@@ -411,7 +435,51 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {selectedOptionalColumns.length > 0 ? (
+              selectedOptionalColumns.map((column) => (
+                <span
+                  key={column.key}
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+                >
+                  <span>{column.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleColumn(column.key)}
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream"
+                    aria-label={`Remove ${column.label}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-brand-creamDark">No optional columns selected.</span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={clearAllColumns}
+            disabled={selectedOptionalColumns.length === 0}
+            className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${
+              selectedOptionalColumns.length === 0
+                ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
+                : "border-brand-cream/35 text-brand-cream"
+            }`}
+          >
+            Clear all
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-scroll rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
+        <div className="flex items-center justify-between border-b border-brand-cream/10 bg-brand-dark/70 px-3 py-2 text-xs text-brand-creamDark">
+          <span>Player column stays pinned while you scroll.</span>
+          <span>Scroll horizontally for more stats.</span>
+        </div>
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="text-brand-creamDark">
             <tr>
