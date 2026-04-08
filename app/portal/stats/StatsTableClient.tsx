@@ -51,7 +51,7 @@ type StatsRow = {
 type StatColumnKey = keyof StatsWindowRow;
 type SortKey = "player" | StatColumnKey;
 
-type ColumnCategory = "Fantasy" | "Attacking" | "Defensive" | "Goalkeeping" | "Discipline" | "Involvement";
+type ColumnCategory = "Attacking" | "Defensive" | "Goalkeeping" | "Discipline" | "Involvement";
 
 type ColumnDefinition = {
   key: StatColumnKey;
@@ -68,9 +68,6 @@ const WINDOW_OPTIONS: Array<{ key: PlayerTableWindowKey; label: string }> = [
 ];
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
-  { key: "season_pts", label: "Season Pts", category: "Fantasy" },
-  { key: "avg_pts_per_gw", label: "Avg Pts/GW", category: "Fantasy" },
-  { key: "ghost_pts_per_gw", label: "Ghost Pts/GW", category: "Fantasy" },
   { key: "games_started", label: "Games Started", category: "Involvement", digits: 0 },
   { key: "goals", label: "Goals", category: "Attacking", digits: 0 },
   { key: "assists", label: "Assists", category: "Attacking", digits: 0 },
@@ -89,7 +86,6 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "saves", label: "Saves", category: "Goalkeeping", digits: 0 },
   { key: "penalty_saves", label: "Penalty Saves", category: "Goalkeeping", digits: 0 },
   { key: "goals_against", label: "Goals Against", category: "Goalkeeping", digits: 0 },
-  { key: "clean_sheets", label: "Clean Sheets", category: "Goalkeeping", digits: 0 },
   { key: "yellow_cards", label: "Yellow Cards", category: "Discipline", digits: 0 },
   { key: "red_cards", label: "Red Cards", category: "Discipline", digits: 0 },
   { key: "own_goals", label: "Own Goals", category: "Discipline", digits: 0 },
@@ -99,7 +95,7 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "penalties_drawn", label: "Penalties Drawn", category: "Involvement", digits: 0 },
 ];
 
-const COLUMN_CATEGORIES: ColumnCategory[] = ["Fantasy", "Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement"];
+const COLUMN_CATEGORIES: ColumnCategory[] = ["Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement"];
 const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "clean_sheets"];
 const MAX_SELECTED_COLUMNS = 6;
 
@@ -152,7 +148,6 @@ export default function StatsTableClient({ rows }: { rows: StatsRow[] }) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<ColumnCategory, boolean>>({
-    Fantasy: false,
     Attacking: false,
     Defensive: false,
     Goalkeeping: false,
