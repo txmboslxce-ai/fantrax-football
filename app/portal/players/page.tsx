@@ -203,7 +203,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const activeTab = toTabKey(resolvedSearchParams?.tab);
 
   const players = activeTab === "players" ? await getPlayersTableData() : null;
-  const formData = activeTab === "form" ? await getGWOverviewData(resolvedSearchParams?.startGw) : null;
+  const formData = activeTab === "form" ? await getGWOverviewData() : null;
   const currentGw = activeTab === "predictions" ? await getCurrentGameweek() : null;
 
   return (
@@ -237,9 +237,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
           gameweeks={formData.gameweeks}
           selectedGws={formData.selectedGws}
           teams={formData.teams}
-          minGw={formData.minGw}
-          maxGw={formData.maxGw}
-          startGwBasePath="/portal/players?tab=form"
+          allGws={formData.allGws}
         />
       ) : null}
 

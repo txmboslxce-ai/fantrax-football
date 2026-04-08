@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, type CSSProperties, useMemo, useState } from "react";
+import { Fragment, type CSSProperties, useEffect, useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 export type GWOverviewTeam = string;
@@ -49,10 +49,13 @@ export type GWOverviewGameweekRow = {
   yellow_cards: number;
   red_cards: number;
   own_goals: number;
+  is_home: boolean | null;
 };
 
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
 type GPStatus = "Started" | "Sub" | "DNP";
+type VenueFilter = "All" | "Home" | "Away";
+type RangeOption = "latest3" | "latest5" | "latest10" | "season";
 type ColumnFilterKind = "stat";
 type SortDirection = "asc" | "desc";
 
@@ -107,9 +110,7 @@ type GWOverviewClientProps = {
   gameweeks: GWOverviewGameweekRow[];
   selectedGws: number[];
   teams: GWOverviewTeam[];
-  minGw: number;
-  maxGw: number;
-  startGwBasePath?: string;
+  allGws: number[];
 };
 
 type StatKey =
@@ -140,6 +141,13 @@ type StatKey =
 
 const positionFilters: PositionFilter[] = ["All", "GK", "DEF", "MID", "FWD"];
 const gpStatusFilters: GPStatus[] = ["Started", "Sub", "DNP"];
+const rangeOptions: Array<{ key: RangeOption; label: string }> = [
+  { key: "latest3", label: "Latest 3" },
+  { key: "latest5", label: "Latest 5" },
+  { key: "latest10", label: "Latest 10" },
+  { key: "season", label: "Season" },
+];
+const venueFilters: VenueFilter[] = ["All", "Home", "Away"];
 
 const statSections: StatSection[] = [
   {
@@ -327,14 +335,14 @@ export default function GWOverviewClient({
   gameweeks,
   selectedGws,
   teams,
-  minGw,
-  maxGw,
-  startGwBasePath = "/portal/gw-overview",
+  allGws,
 }: GWOverviewClientProps) {
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
   const [searchPlayer, setSearchPlayer] = useState<string>("");
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
   const [teamFilter, setTeamFilter] = useState<string>("All");
+  const [venueFilter, setVenueFilter] = useState<VenueFilter>("All");
+  const [rangeFilter, setRangeFilter] = useState<RangeOption>("latest5");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [gpStatusDraft, setGpStatusDraft] = useState<GPStatus[]>(["Started", "Sub", "DNP"]);
@@ -342,15 +350,6 @@ export default function GWOverviewClient({
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-
-  const currentStartGw = selectedGws.length > 0 ? Math.min(...selectedGws) : minGw;
-  const latestStartGw = Math.max(minGw, maxGw - 4);
-
-  function navigateWindow(nextStartGw: number) {
-    const clamped = Math.min(latestStartGw, Math.max(minGw, nextStartGw));
-    const joiner = startGwBasePath.includes("?") ? "&" : "?";
-    window.location.href = `${startGwBasePath}${joiner}startGw=${clamped}`;
-  }
 
   const rowsByPlayerByGw = useMemo(() => {
     const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
@@ -365,6 +364,21 @@ export default function GWOverviewClient({
     return map;
   }, [gameweeks]);
 
+  const displayedGws = useMemo(() => {
+    if (rangeFilter === "season") {
+      return [...allGws];
+    }
+
+    const size = rangeFilter === "latest3" ? 3 : rangeFilter === "latest10" ? 10 : 5;
+    return allGws.slice(0, size);
+  }, [allGws, rangeFilter]);
+
+  useEffect(() => {
+    if (sortState.kind === "gwStat" && !displayedGws.includes(sortState.gw)) {
+      setSortState({ kind: "gwStat", direction: "desc", gw: Math.max(...displayedGws) });
+    }
+  }, [displayedGws, sortState]);
+
   const formByPlayer = useMemo(() => {
     const map = new Map<string, { formPts: number; gamesPlayed: number; formPPG: number }>();
 
@@ -373,12 +387,24 @@ export default function GWOverviewClient({
       let formPts = 0;
       let gamesPlayed = 0;
 
-      for (const gw of selectedGws) {
+      for (const gw of displayedGws) {
         const row = perGw?.get(gw);
         if (!row || row.games_played <= 0) {
           continue;
         }
-        formPts += Number(row.raw_fantrax_pts ?? 0);
+
+        if (venueFilter === "Home" && row.is_home !== true) {
+          continue;
+        }
+        if (venueFilter === "Away" && row.is_home !== false) {
+          continue;
+        }
+
+        if (!isStatApplicable(player.position, selectedStat)) {
+          continue;
+        }
+
+        formPts += Number(row[selectedStat] ?? 0);
         gamesPlayed += Number(row.games_played ?? 0);
       }
 
@@ -390,7 +416,7 @@ export default function GWOverviewClient({
     }
 
     return map;
-  }, [players, rowsByPlayerByGw, selectedGws]);
+  }, [displayedGws, players, rowsByPlayerByGw, selectedStat, venueFilter]);
 
   function openFilterMenu(gw: number, kind: ColumnFilterKind) {
     if (openColumnFilter?.gw === gw && openColumnFilter.kind === kind) {
@@ -463,7 +489,7 @@ export default function GWOverviewClient({
         return false;
       }
 
-      for (const gw of selectedGws) {
+      for (const gw of displayedGws) {
         const allowedStatuses = gwStatusFilters[gw] ?? gpStatusFilters;
         if (allowedStatuses.length === gpStatusFilters.length) {
           continue;
@@ -520,40 +546,55 @@ export default function GWOverviewClient({
     rowsByPlayerByGw,
     searchPlayer,
     selectedStat,
-    selectedGws,
+    displayedGws,
     sortState,
     teamFilter,
+    venueFilter,
   ]);
 
   return (
     <div className="space-y-3 overflow-x-hidden">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-        <div className="flex items-center gap-2 text-sm text-brand-cream">
-          <button
-            type="button"
-            onClick={() => navigateWindow(currentStartGw - 1)}
-            disabled={currentStartGw <= minGw}
-            className="rounded border border-brand-cream/35 px-2 py-1 disabled:opacity-40"
-          >
-            ←
-          </button>
-          <p className="font-semibold">{`Showing GW${Math.min(...selectedGws)} — GW${Math.max(...selectedGws)}`}</p>
-          <button
-            type="button"
-            onClick={() => navigateWindow(currentStartGw + 1)}
-            disabled={currentStartGw >= latestStartGw}
-            className="rounded border border-brand-cream/35 px-2 py-1 disabled:opacity-40"
-          >
-            →
-          </button>
-          <button
-            type="button"
-            onClick={() => navigateWindow(latestStartGw)}
-            disabled={currentStartGw === latestStartGw}
-            className="ml-1 rounded border border-brand-green bg-brand-green/20 px-2 py-1 text-xs font-semibold disabled:opacity-40"
-          >
-            Latest 5
-          </button>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-brand-cream">
+          <p className="font-semibold">{`Showing GW${Math.min(...displayedGws)} — GW${Math.max(...displayedGws)}`}</p>
+          <div className="flex flex-wrap gap-1">
+            {rangeOptions.map((option) => {
+              const active = rangeFilter === option.key;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setRangeFilter(option.key)}
+                  className={`rounded border px-2 py-1 text-xs font-semibold ${
+                    active
+                      ? "border-brand-green bg-brand-green text-brand-cream"
+                      : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {venueFilters.map((filter) => {
+              const active = venueFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setVenueFilter(filter)}
+                  className={`rounded border px-2 py-1 text-xs font-semibold ${
+                    active
+                      ? "border-brand-green bg-brand-green text-brand-cream"
+                      : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -665,7 +706,7 @@ export default function GWOverviewClient({
               CELL_WIDTHS.playerMobile +
               CELL_WIDTHS.formMobile +
               CELL_WIDTHS.formMobile +
-              selectedGws.length * CELL_WIDTHS.statMobile,
+              displayedGws.length * CELL_WIDTHS.statMobile,
           }}
         >
           <thead>
@@ -706,7 +747,7 @@ export default function GWOverviewClient({
                 </button>
               </th>
 
-              {selectedGws.map((gw, gwIndex) => (
+              {displayedGws.map((gw, gwIndex) => (
                 <th
                   key={`gw-header-${gw}`}
                   className={`relative sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px] ${
@@ -804,9 +845,11 @@ export default function GWOverviewClient({
                     {form.formPPG.toFixed(2)}
                   </td>
 
-                  {selectedGws.map((gw, gwIndex) => {
+                  {displayedGws.map((gw, gwIndex) => {
                     const row = playerRowsByGw?.get(gw);
                     const noRow = !row;
+                    const venueMismatch =
+                      !noRow && ((venueFilter === "Home" && row.is_home !== true) || (venueFilter === "Away" && row.is_home !== false));
                     const applicable = isStatApplicable(player.position, selectedStat);
 
                     let statCellContent = "-";
@@ -814,7 +857,7 @@ export default function GWOverviewClient({
                     let statBadgeStyle: CSSProperties | undefined;
                     let showStatBadge = false;
 
-                    if (!noRow && applicable) {
+                    if (!noRow && !venueMismatch && applicable) {
                       const value = Number(row[selectedStat] ?? 0);
                       statCellContent = toDisplayValue(value);
 
@@ -827,8 +870,8 @@ export default function GWOverviewClient({
                       }
                     }
 
-                    const gpValue = noRow ? null : gpStatus(row);
-                    const minsCellContent = noRow ? null : String(row.minutes_played ?? 0);
+                    const gpValue = noRow || venueMismatch ? null : gpStatus(row);
+                    const minsCellContent = noRow || venueMismatch ? null : String(row.minutes_played ?? 0);
 
                     return (
                       <Fragment key={`${player.id}-${gw}`}>
