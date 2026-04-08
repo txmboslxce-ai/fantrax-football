@@ -379,17 +379,19 @@ export default function GWOverviewClient({
     }
   }, [displayedGws, sortState]);
 
-  const formByPlayer = useMemo(() => {
-    const map = new Map<string, { formPts: number; gamesPlayed: number; formPPG: number }>();
+  const visibleRowsByPlayerByGw = useMemo(() => {
+    const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
 
     for (const player of players) {
-      const perGw = rowsByPlayerByGw.get(player.id);
-      let formPts = 0;
-      let gamesPlayed = 0;
+      const playerRows = rowsByPlayerByGw.get(player.id);
+      if (!playerRows) {
+        continue;
+      }
 
+      const visibleRows = new Map<number, GWOverviewGameweekRow>();
       for (const gw of displayedGws) {
-        const row = perGw?.get(gw);
-        if (!row || row.games_played <= 0) {
+        const row = playerRows.get(gw);
+        if (!row) {
           continue;
         }
 
@@ -397,6 +399,29 @@ export default function GWOverviewClient({
           continue;
         }
         if (venueFilter === "Away" && row.is_home !== false) {
+          continue;
+        }
+
+        visibleRows.set(gw, row);
+      }
+
+      map.set(player.id, visibleRows);
+    }
+
+    return map;
+  }, [displayedGws, players, rowsByPlayerByGw, venueFilter]);
+
+  const formByPlayer = useMemo(() => {
+    const map = new Map<string, { formPts: number; gamesPlayed: number; formPPG: number }>();
+
+    for (const player of players) {
+      const perGw = visibleRowsByPlayerByGw.get(player.id);
+      let formPts = 0;
+      let gamesPlayed = 0;
+
+      for (const gw of displayedGws) {
+        const row = perGw?.get(gw);
+        if (!row || row.games_played <= 0) {
           continue;
         }
 
@@ -416,7 +441,7 @@ export default function GWOverviewClient({
     }
 
     return map;
-  }, [displayedGws, players, rowsByPlayerByGw, selectedStat, venueFilter]);
+  }, [displayedGws, players, selectedStat, visibleRowsByPlayerByGw]);
 
   function openFilterMenu(gw: number, kind: ColumnFilterKind) {
     if (openColumnFilter?.gw === gw && openColumnFilter.kind === kind) {
@@ -495,7 +520,7 @@ export default function GWOverviewClient({
           continue;
         }
 
-        const gwRow = rowsByPlayerByGw.get(player.id)?.get(gw);
+        const gwRow = visibleRowsByPlayerByGw.get(player.id)?.get(gw);
         const status = gwRow ? gpStatus(gwRow) : "DNP";
         if (!allowedStatuses.includes(status)) {
           return false;
@@ -543,13 +568,12 @@ export default function GWOverviewClient({
     ownershipMin,
     players,
     positionFilter,
-    rowsByPlayerByGw,
     searchPlayer,
     selectedStat,
     displayedGws,
     sortState,
     teamFilter,
-    venueFilter,
+    visibleRowsByPlayerByGw,
   ]);
 
   return (
@@ -800,7 +824,7 @@ export default function GWOverviewClient({
           <tbody>
             {filteredPlayers.map((player, index) => {
               const rowShade = index % 2 === 0 ? "bg-[#15221a]" : "bg-[#0f1a14]";
-              const playerRowsByGw = rowsByPlayerByGw.get(player.id);
+              const playerRowsByGw = visibleRowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
               const isSelectedRow = selectedPlayerId === player.id;
               const selectedRowClass = isSelectedRow
@@ -848,8 +872,6 @@ export default function GWOverviewClient({
                   {displayedGws.map((gw, gwIndex) => {
                     const row = playerRowsByGw?.get(gw);
                     const noRow = !row;
-                    const venueMismatch =
-                      !noRow && ((venueFilter === "Home" && row.is_home !== true) || (venueFilter === "Away" && row.is_home !== false));
                     const applicable = isStatApplicable(player.position, selectedStat);
 
                     let statCellContent = "-";
@@ -857,7 +879,7 @@ export default function GWOverviewClient({
                     let statBadgeStyle: CSSProperties | undefined;
                     let showStatBadge = false;
 
-                    if (!noRow && !venueMismatch && applicable) {
+                    if (!noRow && applicable) {
                       const value = Number(row[selectedStat] ?? 0);
                       statCellContent = toDisplayValue(value);
 
@@ -870,8 +892,8 @@ export default function GWOverviewClient({
                       }
                     }
 
-                    const gpValue = noRow || venueMismatch ? null : gpStatus(row);
-                    const minsCellContent = noRow || venueMismatch ? null : String(row.minutes_played ?? 0);
+                    const gpValue = noRow ? null : gpStatus(row);
+                    const minsCellContent = noRow ? null : String(row.minutes_played ?? 0);
 
                     return (
                       <Fragment key={`${player.id}-${gw}`}>
