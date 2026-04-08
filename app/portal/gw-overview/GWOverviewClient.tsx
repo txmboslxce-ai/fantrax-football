@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, type CSSProperties, useEffect, useMemo, useState } from "react";
+import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 export type GWOverviewTeam = string;
@@ -417,6 +417,11 @@ export default function GWOverviewClient({
   const [loadingGameweeks, setLoadingGameweeks] = useState<number[]>([]);
   const [failedGameweeks, setFailedGameweeks] = useState<number[]>([]);
   const [gameweekLoadError, setGameweekLoadError] = useState<string | null>(null);
+  // Refs for synchronous tracking inside the effect — state updates are async/batched
+  // and would cause the effect to re-run (aborting the in-flight fetch) if used as deps.
+  const loadedGwsRef = useRef<Set<number>>(new Set());
+  const loadingGwsRef = useRef<Set<number>>(new Set());
+  const failedGwsRef = useRef<Set<number>>(new Set());
 
   const playerTeamById = useMemo(() => {
     const map = new Map<string, string>();
@@ -441,7 +446,7 @@ export default function GWOverviewClient({
 
   useEffect(() => {
     const missingGameweeks = selectedGameweeks.filter(
-      (gw) => !loadedGameweeks.includes(gw) && !loadingGameweeks.includes(gw) && !failedGameweeks.includes(gw)
+      (gw) => !loadedGwsRef.current.has(gw) && !loadingGwsRef.current.has(gw) && !failedGwsRef.current.has(gw)
     );
     if (missingGameweeks.length === 0) {
       return;
@@ -450,6 +455,7 @@ export default function GWOverviewClient({
     const controller = new AbortController();
 
     async function loadGameweeks() {
+      for (const gw of missingGameweeks) loadingGwsRef.current.add(gw);
       setLoadingGameweeks((current) => Array.from(new Set([...current, ...missingGameweeks])));
       setGameweekLoadError(null);
 
@@ -481,19 +487,27 @@ export default function GWOverviewClient({
           }
           return Array.from(byId.values());
         });
-        setFailedGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
+
+        for (const gw of missingGameweeks) {
+          loadingGwsRef.current.delete(gw);
+          loadedGwsRef.current.add(gw);
+          failedGwsRef.current.delete(gw);
+        }
+        setLoadingGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
         setLoadedGameweeks((current) => Array.from(new Set([...current, ...missingGameweeks])).sort((a, b) => a - b));
+        setFailedGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
       } catch (error) {
         if (controller.signal.aborted) {
           return;
         }
+        for (const gw of missingGameweeks) {
+          loadingGwsRef.current.delete(gw);
+          failedGwsRef.current.add(gw);
+        }
         const message = error instanceof Error ? error.message : "Unable to load form table gameweeks.";
+        setLoadingGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
         setFailedGameweeks((current) => Array.from(new Set([...current, ...missingGameweeks])).sort((a, b) => a - b));
         setGameweekLoadError(message);
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoadingGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
-        }
       }
     }
 
@@ -501,8 +515,9 @@ export default function GWOverviewClient({
 
     return () => {
       controller.abort();
+      for (const gw of missingGameweeks) loadingGwsRef.current.delete(gw);
     };
-  }, [failedGameweeks, fixturesByGameweek, loadedGameweeks, loadingGameweeks, playerTeamById, season, selectedGameweeks]);
+  }, [fixturesByGameweek, playerTeamById, season, selectedGameweeks]);
 
   const rowsByPlayerByGw = useMemo(() => {
     const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
