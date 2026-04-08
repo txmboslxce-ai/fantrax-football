@@ -114,6 +114,9 @@ export type PlayerWindowStats = {
   goals_pts_pct: number;
   assist_pts_pct: number;
   clean_sheet_pts_pct: number;
+  attacking_pts_pct: number;
+  defensive_pts_pct: number;
+  total_attacking_defensive_pct: number;
   games_played: number;
   total_minutes: number;
   std_deviation: number;
@@ -328,6 +331,8 @@ export function summarizePlayerWindow(rows: DecoratedGameweek[], position: "GK" 
   const totalGoalPts = playedRows.reduce((sum, row) => sum + goalPoints(position, row.goals), 0);
   const totalAssistPts = playedRows.reduce((sum, row) => sum + assistPoints(position, row.assists), 0);
   const totalCleanSheetPts = playedRows.reduce((sum, row) => sum + cleanSheetPoints(position, row.clean_sheet), 0);
+  const totalAttackingPts = totalGoalPts + totalAssistPts;
+  const totalDefensivePts = totalCleanSheetPts + totalGhostPts;
   const startedPoints = startedRows.map((row) => row.raw_fantrax_pts);
   const startedTotalPts = startedPoints.reduce((sum, value) => sum + value, 0);
   const homeStartedTotalPts = homeStartedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
@@ -349,6 +354,9 @@ export function summarizePlayerWindow(rows: DecoratedGameweek[], position: "GK" 
     goals_pts_pct: roundTo2(seasonPts !== 0 ? (totalGoalPts / seasonPts) * 100 : 0),
     assist_pts_pct: roundTo2(seasonPts !== 0 ? (totalAssistPts / seasonPts) * 100 : 0),
     clean_sheet_pts_pct: roundTo2(seasonPts !== 0 ? (totalCleanSheetPts / seasonPts) * 100 : 0),
+    attacking_pts_pct: roundTo2(seasonPts !== 0 ? (totalAttackingPts / seasonPts) * 100 : 0),
+    defensive_pts_pct: roundTo2(seasonPts !== 0 ? (totalDefensivePts / seasonPts) * 100 : 0),
+    total_attacking_defensive_pct: roundTo2(seasonPts !== 0 ? ((totalAttackingPts + totalDefensivePts) / seasonPts) * 100 : 0),
     games_played: playedRows.reduce((sum, row) => sum + row.games_played, 0),
     total_minutes: playedRows.reduce((sum, row) => sum + row.minutes_played, 0),
     std_deviation: roundTo2(pointsStdDeviation),

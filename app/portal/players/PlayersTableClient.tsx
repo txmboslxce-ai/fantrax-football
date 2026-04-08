@@ -2,7 +2,7 @@
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type PlayerRow = {
@@ -18,7 +18,6 @@ type PlayerRow = {
 };
 
 type NumericColumnKey = keyof PlayerWindowStats;
-
 type SortKey = "name" | NumericColumnKey;
 
 type PlayersTableClientProps = {
@@ -28,6 +27,7 @@ type PlayersTableClientProps = {
 type ColumnDefinition = {
   key: NumericColumnKey;
   label: string;
+  category: "Scoring" | "Involvement" | "Home/Away" | "Point Breakdown";
   alwaysVisible?: boolean;
   isPercent?: boolean;
   digits?: number;
@@ -42,29 +42,34 @@ const WINDOW_OPTIONS: Array<{ key: PlayerTableWindowKey; label: string }> = [
 ];
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
-  { key: "fantasy_pts_per_start", label: "Fantasy Pts/Start", alwaysVisible: true },
-  { key: "ghost_pts_per_start", label: "Ghost Pts/Start", alwaysVisible: true },
-  { key: "games_started", label: "Games Started", alwaysVisible: true, digits: 0 },
-  { key: "minutes_per_start", label: "Minutes/Start", alwaysVisible: true },
-  { key: "floor_per_start", label: "Floor/Start", alwaysVisible: true },
-  { key: "ceiling_per_start", label: "Ceiling/Start", alwaysVisible: true },
-  { key: "season_pts", label: "Season Pts" },
-  { key: "avg_pts_per_gw", label: "Avg Pts/GW" },
-  { key: "ghost_pts_per_gw", label: "Ghost Pts/GW" },
-  { key: "ghost_pts_pct", label: "Ghost Pts %", isPercent: true },
-  { key: "goals_pts_pct", label: "Goals Pts %", isPercent: true },
-  { key: "assist_pts_pct", label: "Assist Pts %", isPercent: true },
-  { key: "clean_sheet_pts_pct", label: "Clean Sheet Pts %", isPercent: true },
-  { key: "games_played", label: "Games Played", digits: 0 },
-  { key: "total_minutes", label: "Total Minutes", digits: 0 },
-  { key: "std_deviation", label: "Std Deviation" },
-  { key: "median_pts_per_start", label: "Median Pts/Start" },
-  { key: "coefficient_of_variation", label: "Coefficient of Variation" },
-  { key: "home_pts_per_start", label: "Home Pts/Start" },
-  { key: "home_pts_pct", label: "Home Pts %", isPercent: true },
-  { key: "away_pts_per_start", label: "Away Pts/Start" },
-  { key: "away_pts_pct", label: "Away Pts %", isPercent: true },
+  { key: "fantasy_pts_per_start", label: "Fantasy Pts/Start", category: "Scoring", alwaysVisible: true },
+  { key: "ghost_pts_per_start", label: "Ghost Pts/Start", category: "Scoring", alwaysVisible: true },
+  { key: "games_started", label: "Games Started", category: "Involvement", alwaysVisible: true, digits: 0 },
+  { key: "minutes_per_start", label: "Minutes/Start", category: "Involvement", alwaysVisible: true },
+  { key: "floor_per_start", label: "Floor/Start", category: "Scoring", alwaysVisible: true },
+  { key: "ceiling_per_start", label: "Ceiling/Start", category: "Scoring", alwaysVisible: true },
+  { key: "season_pts", label: "Season Pts", category: "Scoring" },
+  { key: "avg_pts_per_gw", label: "Avg Pts/GW", category: "Scoring" },
+  { key: "std_deviation", label: "Std Deviation", category: "Scoring" },
+  { key: "median_pts_per_start", label: "Median Pts/Start", category: "Scoring" },
+  { key: "coefficient_of_variation", label: "Coefficient of Variation", category: "Scoring" },
+  { key: "games_played", label: "Games Played", category: "Involvement", digits: 0 },
+  { key: "total_minutes", label: "Total Minutes", category: "Involvement", digits: 0 },
+  { key: "home_pts_per_start", label: "Home Pts/Start", category: "Home/Away" },
+  { key: "home_pts_pct", label: "Home Pts %", category: "Home/Away", isPercent: true },
+  { key: "away_pts_per_start", label: "Away Pts/Start", category: "Home/Away" },
+  { key: "away_pts_pct", label: "Away Pts %", category: "Home/Away", isPercent: true },
+  { key: "goals_pts_pct", label: "Goals Pts %", category: "Point Breakdown", isPercent: true },
+  { key: "assist_pts_pct", label: "Assist Pts %", category: "Point Breakdown", isPercent: true },
+  { key: "clean_sheet_pts_pct", label: "Clean Sheet Pts %", category: "Point Breakdown", isPercent: true },
+  { key: "ghost_pts_pct", label: "Ghost Pts %", category: "Point Breakdown", isPercent: true },
+  { key: "attacking_pts_pct", label: "Attacking Pts %", category: "Point Breakdown", isPercent: true },
+  { key: "defensive_pts_pct", label: "Defensive Pts %", category: "Point Breakdown", isPercent: true },
+  { key: "total_attacking_defensive_pct", label: "Total Attacking + Defensive %", category: "Point Breakdown", isPercent: true },
 ];
+
+const COLUMN_CATEGORIES = ["Scoring", "Involvement", "Home/Away", "Point Breakdown"] as const;
+type ColumnCategory = (typeof COLUMN_CATEGORIES)[number];
 
 const OPTIONAL_COLUMN_KEYS = COLUMN_DEFINITIONS.filter((column) => !column.alwaysVisible).map((column) => column.key);
 
@@ -115,32 +120,24 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
-  const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("last5");
+  const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
   const [visibleOptionalColumns, setVisibleOptionalColumns] = useState<NumericColumnKey[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("fantasy_pts_per_start");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
-  const columnPanelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (columnPanelRef.current && !columnPanelRef.current.contains(event.target as Node)) {
-        setIsColumnPanelOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, []);
+  const [expandedCategories, setExpandedCategories] = useState<Record<ColumnCategory, boolean>>({
+    Scoring: true,
+    Involvement: true,
+    "Home/Away": false,
+    "Point Breakdown": false,
+  });
 
   const teams = useMemo(() => {
     return [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b));
   }, [players]);
 
   const visibleColumns = useMemo(() => {
-    return COLUMN_DEFINITIONS.filter(
-      (column) => column.alwaysVisible || visibleOptionalColumns.includes(column.key)
-    );
+    return COLUMN_DEFINITIONS.filter((column) => column.alwaysVisible || visibleOptionalColumns.includes(column.key));
   }, [visibleOptionalColumns]);
 
   useEffect(() => {
@@ -203,6 +200,13 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
     return ranges;
   }, [filteredAndSorted, selectedWindow, visibleColumns]);
 
+  const columnsByCategory = useMemo(() => {
+    return COLUMN_CATEGORIES.reduce<Record<ColumnCategory, ColumnDefinition[]>>((accumulator, category) => {
+      accumulator[category] = COLUMN_DEFINITIONS.filter((column) => column.category === category && !column.alwaysVisible);
+      return accumulator;
+    }, {} as Record<ColumnCategory, ColumnDefinition[]>);
+  }, []);
+
   function handleSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -224,147 +228,188 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
     });
   }
 
+  function toggleCategory(category: ColumnCategory) {
+    setExpandedCategories((current) => ({
+      ...current,
+      [category]: !current[category],
+    }));
+  }
+
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max flex-wrap items-end gap-2 text-xs">
-            <label className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
+      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Player"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+            />
+          </label>
+
+          <div className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
+            <div className="flex flex-wrap gap-1">
+              {positionFilters.map((filter) => {
+                const active = positionFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setPositionFilter(filter)}
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                      active
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <label className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+            <select
+              value={teamFilter}
+              onChange={(event) => setTeamFilter(event.target.value)}
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+            >
+              <option value="All">All</option>
+              {teams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
+            <div className="grid grid-cols-2 gap-2">
               <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Player"
-                className="w-44 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={ownershipMin}
+                onChange={(event) => setOwnershipMin(event.target.value)}
+                placeholder="Min"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream"
               />
-            </label>
-
-            <div className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
-              <div className="flex gap-1">
-                {positionFilters.map((filter) => {
-                  const active = positionFilter === filter;
-                  return (
-                    <button
-                      key={filter}
-                      type="button"
-                      onClick={() => setPositionFilter(filter)}
-                      className={`rounded-md border px-3 py-1 text-xs font-semibold ${
-                        active
-                          ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-                      }`}
-                    >
-                      {filter}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <label className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
-              <select
-                value={teamFilter}
-                onChange={(event) => setTeamFilter(event.target.value)}
-                className="w-24 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
-              >
-                <option value="All">All</option>
-                {teams.map((team) => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
-              <div className="flex gap-1">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.1"
-                  value={ownershipMin}
-                  onChange={(event) => setOwnershipMin(event.target.value)}
-                  placeholder="Min"
-                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.1"
-                  value={ownershipMax}
-                  onChange={(event) => setOwnershipMax(event.target.value)}
-                  placeholder="Max"
-                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
-                />
-              </div>
-            </div>
-
-            <div className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Window</span>
-              <div className="flex gap-1">
-                {WINDOW_OPTIONS.map((option) => {
-                  const active = selectedWindow === option.key;
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => setSelectedWindow(option.key)}
-                      className={`rounded-md border px-3 py-1 text-xs font-semibold ${
-                        active
-                          ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div ref={columnPanelRef} className="relative shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Columns</span>
-              <button
-                type="button"
-                onClick={() => setIsColumnPanelOpen((current) => !current)}
-                className="rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-1 text-xs font-semibold text-brand-cream"
-              >
-                Add / Remove
-              </button>
-              {isColumnPanelOpen ? (
-                <div className="absolute right-0 top-full z-40 mt-2 w-60 rounded-xl border border-brand-cream/20 bg-[#102116] p-3 shadow-2xl">
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-creamDark">
-                    Extra columns
-                  </div>
-                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                    {COLUMN_DEFINITIONS.filter((column) => !column.alwaysVisible).map((column) => {
-                      const checked = visibleOptionalColumns.includes(column.key);
-                      return (
-                        <label key={column.key} className="flex items-center gap-2 text-xs text-brand-cream">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleColumn(column.key)}
-                            className="h-3.5 w-3.5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
-                          />
-                          <span>{column.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={ownershipMax}
+                onChange={(event) => setOwnershipMax(event.target.value)}
+                placeholder="Max"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream"
+              />
             </div>
           </div>
         </div>
+
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-brand-cream/10 pt-3">
+          <div className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Window</span>
+            <div className="flex flex-wrap gap-1">
+              {WINDOW_OPTIONS.map((option) => {
+                const active = selectedWindow === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setSelectedWindow(option.key)}
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                      active
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsColumnPanelOpen((current) => !current)}
+            className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+              isColumnPanelOpen
+                ? "border-brand-green bg-brand-green text-brand-cream"
+                : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+            }`}
+          >
+            {isColumnPanelOpen ? "Hide columns" : "Add / Remove columns"}
+          </button>
+        </div>
       </div>
+
+      {isColumnPanelOpen ? (
+        <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
+          <div className="mb-4">
+            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
+            <p className="mt-1 text-sm text-brand-creamDark">
+              Base columns stay visible. Expand a category to add or remove optional columns.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {COLUMN_CATEGORIES.map((category) => {
+              const expanded = expandedCategories[category];
+              const categoryColumns = columnsByCategory[category];
+
+              return (
+                <section key={category} className="rounded-xl border border-brand-cream/15 bg-brand-dark/40">
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category)}
+                    className="flex w-full items-center justify-between px-4 py-3 text-left"
+                  >
+                    <div>
+                      <div className="text-sm font-bold text-brand-cream">{category}</div>
+                      <div className="text-xs text-brand-creamDark">{categoryColumns.length} optional columns</div>
+                    </div>
+                    <span className="text-lg text-brand-cream">{expanded ? "−" : "+"}</span>
+                  </button>
+
+                  {expanded ? (
+                    <div className="grid gap-3 border-t border-brand-cream/10 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {categoryColumns.map((column) => {
+                        const checked = visibleOptionalColumns.includes(column.key);
+                        return (
+                          <label
+                            key={column.key}
+                            className="flex items-start gap-3 rounded-lg border border-brand-cream/10 bg-brand-dark/70 px-3 py-3 text-sm text-brand-cream"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleColumn(column.key)}
+                              className="mt-0.5 h-5 w-5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="leading-snug">{column.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
@@ -433,9 +478,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                       <td key={column.key} className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
                         <span
                           className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                          style={{
-                            backgroundColor: pointsBadgeBackground(value, range.min, range.max),
-                          }}
+                          style={{ backgroundColor: pointsBadgeBackground(value, range.min, range.max) }}
                         >
                           {formatValue(value, column)}
                         </span>
