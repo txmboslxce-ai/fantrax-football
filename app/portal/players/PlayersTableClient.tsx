@@ -28,7 +28,6 @@ type ColumnDefinition = {
   key: NumericColumnKey;
   label: string;
   category: "Scoring" | "Involvement" | "Home/Away" | "Point Breakdown";
-  alwaysVisible?: boolean;
   isPercent?: boolean;
   digits?: number;
 };
@@ -42,13 +41,13 @@ const WINDOW_OPTIONS: Array<{ key: PlayerTableWindowKey; label: string }> = [
 ];
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
-  { key: "fantasy_pts_per_start", label: "Fantasy Pts/Start", category: "Scoring", alwaysVisible: true },
-  { key: "ghost_pts_per_start", label: "Ghost Pts/Start", category: "Scoring", alwaysVisible: true },
-  { key: "games_started", label: "Games Started", category: "Involvement", alwaysVisible: true, digits: 0 },
-  { key: "minutes_per_start", label: "Minutes/Start", category: "Involvement", alwaysVisible: true },
-  { key: "floor_per_start", label: "Floor/Start", category: "Scoring", alwaysVisible: true },
-  { key: "ceiling_per_start", label: "Ceiling/Start", category: "Scoring", alwaysVisible: true },
   { key: "season_pts", label: "Season Pts", category: "Scoring" },
+  { key: "fantasy_pts_per_start", label: "Fantasy Pts/Start", category: "Scoring" },
+  { key: "ghost_pts_per_start", label: "Ghost Pts/Start", category: "Scoring" },
+  { key: "minutes_per_start", label: "Minutes/Start", category: "Involvement" },
+  { key: "games_started", label: "Games Started", category: "Scoring", digits: 0 },
+  { key: "floor_per_start", label: "Floor/Start", category: "Scoring" },
+  { key: "ceiling_per_start", label: "Ceiling/Start", category: "Scoring" },
   { key: "avg_pts_per_gw", label: "Avg Pts/GW", category: "Scoring" },
   { key: "std_deviation", label: "Std Deviation", category: "Scoring" },
   { key: "median_pts_per_start", label: "Median Pts/Start", category: "Scoring" },
@@ -71,8 +70,13 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
 const COLUMN_CATEGORIES = ["Scoring", "Involvement", "Home/Away", "Point Breakdown"] as const;
 type ColumnCategory = (typeof COLUMN_CATEGORIES)[number];
 
-const OPTIONAL_COLUMN_KEYS = COLUMN_DEFINITIONS.filter((column) => !column.alwaysVisible).map((column) => column.key);
-const MAX_OPTIONAL_COLUMNS = 6;
+const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
+  "season_pts",
+  "fantasy_pts_per_start",
+  "ghost_pts_per_start",
+  "minutes_per_start",
+];
+const MAX_SELECTED_COLUMNS = 6;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -122,7 +126,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
-  const [visibleOptionalColumns, setVisibleOptionalColumns] = useState<NumericColumnKey[]>([]);
+  const [selectedColumns, setSelectedColumns] = useState<NumericColumnKey[]>(DEFAULT_SELECTED_COLUMN_KEYS);
   const [sortKey, setSortKey] = useState<SortKey>("fantasy_pts_per_start");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
@@ -138,14 +142,14 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   }, [players]);
 
   const visibleColumns = useMemo(() => {
-    return COLUMN_DEFINITIONS.filter((column) => column.alwaysVisible || visibleOptionalColumns.includes(column.key));
-  }, [visibleOptionalColumns]);
+    return selectedColumns
+      .map((key) => COLUMN_DEFINITIONS.find((column) => column.key === key))
+      .filter((column): column is ColumnDefinition => Boolean(column));
+  }, [selectedColumns]);
 
-  const selectedOptionalColumns = useMemo(() => {
-    return COLUMN_DEFINITIONS.filter((column) => visibleOptionalColumns.includes(column.key));
-  }, [visibleOptionalColumns]);
+  const selectedColumnDefinitions = visibleColumns;
 
-  const hasReachedColumnLimit = visibleOptionalColumns.length >= MAX_OPTIONAL_COLUMNS;
+  const hasReachedColumnLimit = selectedColumns.length >= MAX_SELECTED_COLUMNS;
 
   useEffect(() => {
     if (sortKey !== "name" && !visibleColumns.some((column) => column.key === sortKey)) {
@@ -209,7 +213,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
 
   const columnsByCategory = useMemo(() => {
     return COLUMN_CATEGORIES.reduce<Record<ColumnCategory, ColumnDefinition[]>>((accumulator, category) => {
-      accumulator[category] = COLUMN_DEFINITIONS.filter((column) => column.category === category && !column.alwaysVisible);
+      accumulator[category] = COLUMN_DEFINITIONS.filter((column) => column.category === category);
       return accumulator;
     }, {} as Record<ColumnCategory, ColumnDefinition[]>);
   }, []);
@@ -225,22 +229,22 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
   }
 
   function toggleColumn(columnKey: NumericColumnKey) {
-    setVisibleOptionalColumns((current) => {
+    setSelectedColumns((current) => {
       if (current.includes(columnKey)) {
         return current.filter((key) => key !== columnKey);
       }
 
-      if (current.length >= MAX_OPTIONAL_COLUMNS) {
+      if (current.length >= MAX_SELECTED_COLUMNS) {
         return current;
       }
 
       const next = [...current, columnKey];
-      return OPTIONAL_COLUMN_KEYS.filter((key) => next.includes(key));
+      return COLUMN_DEFINITIONS.map((column) => column.key).filter((key) => next.includes(key));
     });
   }
 
   function clearAllColumns() {
-    setVisibleOptionalColumns([]);
+    setSelectedColumns([]);
   }
 
   function toggleCategory(category: ColumnCategory) {
@@ -340,10 +344,10 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                 const active = selectedWindow === option.key;
                 return (
                   <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setSelectedWindow(option.key)}
-                  className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                    key={option.key}
+                    type="button"
+                    onClick={() => setSelectedWindow(option.key)}
+                    className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -375,7 +379,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
           <div className="mb-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
             <p className="mt-1 text-sm text-brand-creamDark">
-              Base columns stay visible. Expand a category to add or remove optional columns.
+              Expand a category to add or remove columns.
             </p>
             {hasReachedColumnLimit ? (
               <p className="mt-2 text-xs font-semibold text-amber-300">Maximum columns selected</p>
@@ -396,7 +400,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                   >
                     <div>
                       <div className="text-sm font-bold text-brand-cream">{category}</div>
-                      <div className="text-xs text-brand-creamDark">{categoryColumns.length} optional columns</div>
+                      <div className="text-xs text-brand-creamDark">{categoryColumns.length} columns</div>
                     </div>
                     <span className="text-lg text-brand-cream">{expanded ? "−" : "+"}</span>
                   </button>
@@ -404,7 +408,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                   {expanded ? (
                     <div className="grid gap-3 border-t border-brand-cream/10 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
                       {categoryColumns.map((column) => {
-                        const checked = visibleOptionalColumns.includes(column.key);
+                        const checked = selectedColumns.includes(column.key);
                         const disabled = !checked && hasReachedColumnLimit;
                         return (
                           <label
@@ -438,8 +442,8 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            {selectedOptionalColumns.length > 0 ? (
-              selectedOptionalColumns.map((column) => (
+            {selectedColumnDefinitions.length > 0 ? (
+              selectedColumnDefinitions.map((column) => (
                 <span
                   key={column.key}
                   className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
@@ -463,9 +467,9 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
           <button
             type="button"
             onClick={clearAllColumns}
-            disabled={selectedOptionalColumns.length === 0}
+            disabled={selectedColumnDefinitions.length === 0}
             className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${
-              selectedOptionalColumns.length === 0
+              selectedColumnDefinitions.length === 0
                 ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
                 : "border-brand-cream/35 text-brand-cream"
             }`}
