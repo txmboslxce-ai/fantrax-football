@@ -317,7 +317,14 @@ async function fetchFantraxCsv(gameweek: number, positionOrGroup: FantraxPositio
     throw new Error(`Fantrax CSV unavailable (${response.status}) for GW ${gameweek}, ${positionOrGroup}.`);
   }
 
-  return response.text();
+  const body = await response.text();
+  const trimmedBody = body.trimStart();
+
+  if (trimmedBody.startsWith("<") || trimmedBody.includes("<!DOCTYPE")) {
+    throw new Error("Fantrax session cookie has expired — update FANTRAX_SESSION_COOKIE in Vercel environment variables.");
+  }
+
+  return body;
 }
 
 function buildUpsert(
@@ -454,10 +461,6 @@ export async function syncFantraxScores(
   const players = (playersData ?? []) as PlayerLookupRow[];
   const playerByFantraxId = new Map(players.map((player) => [player.fantrax_id, player]));
   const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(scorerId));
-
-  unmatchedFantraxIds.forEach((scorerId) => {
-    console.warn(`Fantrax sync unmatched scorerId: ${scorerId}`);
-  });
 
   const uploadedAt = new Date().toISOString();
   const upserts = mappedRows.flatMap((row) => {
