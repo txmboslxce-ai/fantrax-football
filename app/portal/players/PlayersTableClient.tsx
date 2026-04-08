@@ -1,7 +1,9 @@
 "use client";
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import RosterPill from "@/app/components/ui/RosterPill";
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +24,7 @@ type SortKey = "name" | NumericColumnKey;
 
 type PlayersTableClientProps = {
   players: PlayerRow[];
+  leagueRoster: LeagueRosterData | null;
 };
 
 type ColumnDefinition = {
@@ -117,7 +120,7 @@ function formatValue(value: number, column: ColumnDefinition): string {
   return column.isPercent ? `${formatted}%` : formatted;
 }
 
-export default function PlayersTableClient({ players }: PlayersTableClientProps) {
+export default function PlayersTableClient({ players, leagueRoster }: PlayersTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -530,13 +533,14 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                   tabIndex={0}
                 >
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <div className="flex items-center gap-1 font-semibold leading-tight">
+                    <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
                       <span>{player.name}</span>
                       <AvailabilityIcon
                         chanceOfPlaying={player.chanceOfPlaying}
                         status={player.availabilityStatus}
                         news={player.availabilityNews}
                       />
+                      <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
                     </div>
                     <div className="mt-0.5 text-xs text-brand-creamDark/70">
                       {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%

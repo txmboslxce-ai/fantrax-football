@@ -1,7 +1,9 @@
 "use client";
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import RosterPill from "@/app/components/ui/RosterPill";
 import type { PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -133,7 +135,7 @@ function formatValue(value: number, column: ColumnDefinition): string {
   return Number.isFinite(value) ? value.toFixed(digits) : (0).toFixed(digits);
 }
 
-export default function StatsTableClient({ rows }: { rows: StatsRow[] }) {
+export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRow[]; leagueRoster: LeagueRosterData | null }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -549,13 +551,14 @@ export default function StatsTableClient({ rows }: { rows: StatsRow[] }) {
                   tabIndex={0}
                 >
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <div className="flex items-center gap-1 font-semibold leading-tight">
+                    <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
                       <span>{row.player}</span>
                       <AvailabilityIcon
                         chanceOfPlaying={row.chanceOfPlaying}
                         status={row.availabilityStatus}
                         news={row.availabilityNews}
                       />
+                      <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                     </div>
                     <div className="mt-0.5 text-xs text-brand-creamDark/70">
                       {row.team} / {row.position} / {row.ownershipPct.toFixed(1)}%

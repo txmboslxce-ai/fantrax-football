@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import RosterPill from "@/app/components/ui/RosterPill";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 
 export type GWOverviewTeam = string;
 
@@ -119,6 +121,7 @@ type GWOverviewClientProps = {
   allGws: number[];
   season: string;
   fixtures: GWOverviewFixture[];
+  leagueRoster: LeagueRosterData | null;
 };
 
 type StatKey =
@@ -397,6 +400,7 @@ export default function GWOverviewClient({
   allGws,
   season,
   fixtures,
+  leagueRoster,
 }: GWOverviewClientProps) {
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
   const [searchPlayer, setSearchPlayer] = useState<string>("");
@@ -1087,13 +1091,14 @@ export default function GWOverviewClient({
                       href={`/portal/players/${player.id}`}
                       className="block truncate text-sm leading-tight hover:text-brand-greenLight md:overflow-visible md:whitespace-normal"
                     >
-                      <span className="inline-flex items-center gap-1">
+                      <span className="inline-flex flex-wrap items-center gap-1">
                         <span>{player.name}</span>
                         <AvailabilityIcon
                           chanceOfPlaying={player.chanceOfPlaying}
                           status={player.availabilityStatus}
                           news={player.availabilityNews}
                         />
+                        <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
                       </span>
                     </Link>
                     <div className="mt-0.5 truncate text-xs text-brand-creamDark/60 md:overflow-visible md:whitespace-normal">

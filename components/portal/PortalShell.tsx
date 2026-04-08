@@ -22,7 +22,7 @@ const navItems: NavItem[] = [
   { href: "/portal/teams", label: "Teams" },
   { href: "/portal/compare", label: "Compare" },
   { href: "/portal/stats", label: "Stats" },
-  { href: "/portal/my-league", label: "My League", locked: true },
+  { href: "/portal/my-league", label: "My League" },
 ];
 
 function isActive(pathname: string, href: string): boolean {

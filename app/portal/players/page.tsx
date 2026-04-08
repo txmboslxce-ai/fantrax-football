@@ -14,6 +14,7 @@ import {
   type PlayerWindowStats,
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import Link from "next/link";
 
 type PageProps = {
@@ -202,9 +203,17 @@ export default async function PlayersPage({ searchParams }: PageProps) {
     searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
   const activeTab = toTabKey(resolvedSearchParams?.tab);
 
-  const players = activeTab === "players" ? await getPlayersTableData() : null;
-  const formData = activeTab === "form" ? await getGWOverviewData() : null;
-  const currentGw = activeTab === "predictions" ? await getCurrentGameweek() : null;
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [players, formData, currentGw, leagueRoster] = await Promise.all([
+    activeTab === "players" ? getPlayersTableData() : Promise.resolve(null),
+    activeTab === "form" ? getGWOverviewData() : Promise.resolve(null),
+    activeTab === "predictions" ? getCurrentGameweek() : Promise.resolve(null),
+    user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -229,7 +238,9 @@ export default async function PlayersPage({ searchParams }: PageProps) {
         ))}
       </nav>
 
-      {activeTab === "players" && players ? <PlayersTableClient players={players} /> : null}
+      {activeTab === "players" && players ? (
+        <PlayersTableClient players={players} leagueRoster={leagueRoster} />
+      ) : null}
 
       {activeTab === "form" && formData ? (
         <GWOverviewClient
@@ -239,6 +250,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
           allGws={formData.allGws}
           season={formData.season}
           fixtures={formData.fixtures}
+          leagueRoster={leagueRoster}
         />
       ) : null}
 
