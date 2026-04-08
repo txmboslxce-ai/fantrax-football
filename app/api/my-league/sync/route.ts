@@ -72,12 +72,17 @@ export async function POST(request: Request) {
       );
     }
 
-    fantraxData = (await fantraxResponse.json()) as FantraxApiResponse;
+    const rawJson = await fantraxResponse.text();
+    console.log("[my-league/sync] Fantrax raw response:", rawJson);
+    fantraxData = JSON.parse(rawJson) as FantraxApiResponse;
   } catch {
     return NextResponse.json({ message: "Unable to reach Fantrax API." }, { status: 502 });
   }
 
   const fantasyTeams = fantraxData?.responses?.[0]?.data?.fantasyTeams;
+  console.log("[my-league/sync] responses length:", fantraxData?.responses?.length);
+  console.log("[my-league/sync] responses[0].data keys:", Object.keys(fantraxData?.responses?.[0]?.data ?? {}));
+  console.log("[my-league/sync] fantasyTeams type:", typeof fantasyTeams, Array.isArray(fantasyTeams) ? `array(${fantasyTeams.length})` : fantasyTeams);
 
   if (!Array.isArray(fantasyTeams) || fantasyTeams.length === 0) {
     return NextResponse.json(
