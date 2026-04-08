@@ -55,7 +55,6 @@ export type GWOverviewGameweekRow = {
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
 type GPStatus = "Started" | "Sub" | "DNP";
 type VenueFilter = "All" | "Home" | "Away";
-type RangeOption = "latest3" | "latest5" | "latest10" | "season";
 type ColumnFilterKind = "stat";
 type SortDirection = "asc" | "desc";
 
@@ -141,12 +140,6 @@ type StatKey =
 
 const positionFilters: PositionFilter[] = ["All", "GK", "DEF", "MID", "FWD"];
 const gpStatusFilters: GPStatus[] = ["Started", "Sub", "DNP"];
-const rangeOptions: Array<{ key: RangeOption; label: string }> = [
-  { key: "latest3", label: "Latest 3" },
-  { key: "latest5", label: "Latest 5" },
-  { key: "latest10", label: "Latest 10" },
-  { key: "season", label: "Season" },
-];
 const venueFilters: VenueFilter[] = ["All", "Home", "Away"];
 
 const statSections: StatSection[] = [
@@ -342,9 +335,10 @@ export default function GWOverviewClient({
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("All");
-  const [rangeFilter, setRangeFilter] = useState<RangeOption>("latest5");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
+  const [selectedGameweeks, setSelectedGameweeks] = useState<number[]>(() => [...selectedGws].sort((a, b) => a - b));
+  const [isGwPickerOpen, setIsGwPickerOpen] = useState(false);
   const [gpStatusDraft, setGpStatusDraft] = useState<GPStatus[]>(["Started", "Sub", "DNP"]);
   const [gwStatusFilters, setGwStatusFilters] = useState<Record<number, GPStatus[]>>({});
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
@@ -364,20 +358,26 @@ export default function GWOverviewClient({
     return map;
   }, [gameweeks]);
 
-  const displayedGws = useMemo(() => {
-    if (rangeFilter === "season") {
-      return [...allGws];
-    }
+  const displayedGws = useMemo(
+    () => [...selectedGameweeks].sort((a, b) => b - a),
+    [selectedGameweeks]
+  );
 
-    const size = rangeFilter === "latest3" ? 3 : rangeFilter === "latest10" ? 10 : 5;
-    return allGws.slice(0, size);
-  }, [allGws, rangeFilter]);
+  const selectedGameweeksAsc = useMemo(
+    () => [...selectedGameweeks].sort((a, b) => a - b),
+    [selectedGameweeks]
+  );
 
   useEffect(() => {
+    if (displayedGws.length === 0) {
+      setSelectedGameweeks([...selectedGws].sort((a, b) => a - b));
+      return;
+    }
+
     if (sortState.kind === "gwStat" && !displayedGws.includes(sortState.gw)) {
       setSortState({ kind: "gwStat", direction: "desc", gw: Math.max(...displayedGws) });
     }
-  }, [displayedGws, sortState]);
+  }, [displayedGws, selectedGws, sortState]);
 
   const visibleRowsByPlayerByGw = useMemo(() => {
     const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
@@ -410,6 +410,19 @@ export default function GWOverviewClient({
 
     return map;
   }, [displayedGws, players, rowsByPlayerByGw, venueFilter]);
+
+  function toggleGameweekSelection(gameweek: number) {
+    setSelectedGameweeks((current) => {
+      if (current.includes(gameweek)) {
+        if (current.length === 1) {
+          return current;
+        }
+        return current.filter((gw) => gw !== gameweek);
+      }
+
+      return [...current, gameweek].sort((a, b) => a - b);
+    });
+  }
 
   const formByPlayer = useMemo(() => {
     const map = new Map<string, { formPts: number; gamesPlayed: number; formPPG: number }>();
@@ -579,27 +592,7 @@ export default function GWOverviewClient({
   return (
     <div className="space-y-3 overflow-x-hidden">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-brand-cream">
-          <p className="font-semibold">{`Showing GW${Math.min(...displayedGws)} — GW${Math.max(...displayedGws)}`}</p>
-          <div className="flex flex-wrap gap-1">
-            {rangeOptions.map((option) => {
-              const active = rangeFilter === option.key;
-              return (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setRangeFilter(option.key)}
-                  className={`rounded border px-2 py-1 text-xs font-semibold ${
-                    active
-                      ? "border-brand-green bg-brand-green text-brand-cream"
-                      : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-brand-cream">
           <div className="flex flex-wrap gap-1">
             {venueFilters.map((filter) => {
               const active = venueFilter === filter;
@@ -619,6 +612,75 @@ export default function GWOverviewClient({
               );
             })}
           </div>
+          <button
+            type="button"
+            onClick={() => setIsGwPickerOpen((current) => !current)}
+            className={`rounded border px-3 py-1.5 text-xs font-semibold ${
+              isGwPickerOpen
+                ? "border-brand-green bg-brand-green text-brand-cream"
+                : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+            }`}
+          >
+            {isGwPickerOpen ? "Hide gameweeks" : "Select gameweeks"}
+          </button>
+        </div>
+      </div>
+
+      {isGwPickerOpen ? (
+        <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
+          <div className="mb-4">
+            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Gameweeks</h2>
+            <p className="mt-1 text-sm text-brand-creamDark">Select which gameweeks to show in the Form Table.</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+            {allGws.map((gw) => {
+              const checked = selectedGameweeks.includes(gw);
+              const disabled = checked && selectedGameweeks.length === 1;
+
+              return (
+                <label
+                  key={gw}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm ${
+                    disabled
+                      ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/60"
+                      : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => toggleGameweekSelection(gw)}
+                    className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                  />
+                  <span>{`GW${gw}`}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+        <div className="flex flex-wrap gap-2">
+          {selectedGameweeksAsc.map((gw) => (
+            <span
+              key={gw}
+              className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+            >
+              <span>{`GW${gw}`}</span>
+              <button
+                type="button"
+                onClick={() => toggleGameweekSelection(gw)}
+                disabled={selectedGameweeks.length === 1}
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={`Remove GW${gw}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
         </div>
       </div>
 
