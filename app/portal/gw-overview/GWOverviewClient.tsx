@@ -6,6 +6,12 @@ import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 
 export type GWOverviewTeam = string;
 
+export type GWOverviewFixture = {
+  gameweek: number;
+  home_team: string;
+  away_team: string;
+};
+
 export type GWOverviewPlayer = {
   id: string;
   name: string;
@@ -51,6 +57,8 @@ export type GWOverviewGameweekRow = {
   own_goals: number;
   is_home: boolean | null;
 };
+
+type FormTableApiRow = Omit<GWOverviewGameweekRow, "is_home">;
 
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
 type GPStatus = "Started" | "Sub" | "DNP";
@@ -106,10 +114,11 @@ type StatSection = {
 
 type GWOverviewClientProps = {
   players: GWOverviewPlayer[];
-  gameweeks: GWOverviewGameweekRow[];
   selectedGws: number[];
   teams: GWOverviewTeam[];
   allGws: number[];
+  season: string;
+  fixtures: GWOverviewFixture[];
 };
 
 type StatKey =
@@ -258,6 +267,64 @@ function toDisplayValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
+function toNumber(value: number | string | null | undefined): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function normalizeGameweekRow(
+  row: FormTableApiRow,
+  playerTeamById: Map<string, string>,
+  fixturesByGameweek: Map<number, GWOverviewFixture[]>
+): GWOverviewGameweekRow {
+  const gameweek = Number(row.gameweek ?? 0);
+  const playerTeam = playerTeamById.get(row.player_id);
+  const fixture = (fixturesByGameweek.get(gameweek) ?? []).find(
+    (item) => item.home_team === playerTeam || item.away_team === playerTeam
+  );
+  const is_home =
+    fixture && playerTeam ? (fixture.home_team === playerTeam ? true : fixture.away_team === playerTeam ? false : null) : null;
+
+  return {
+    ...row,
+    gameweek,
+    games_played: Number(row.games_played ?? 0),
+    games_started: Number(row.games_started ?? 0),
+    minutes_played: Number(row.minutes_played ?? 0),
+    raw_fantrax_pts: toNumber(row.raw_fantrax_pts),
+    ghost_pts: toNumber(row.ghost_pts),
+    goals: Number(row.goals ?? 0),
+    assists: Number(row.assists ?? 0),
+    key_passes: Number(row.key_passes ?? 0),
+    shots_on_target: Number(row.shots_on_target ?? 0),
+    penalties_drawn: Number(row.penalties_drawn ?? 0),
+    penalties_missed: Number(row.penalties_missed ?? 0),
+    clean_sheet: Number(row.clean_sheet ?? 0),
+    tackles_won: Number(row.tackles_won ?? 0),
+    interceptions: Number(row.interceptions ?? 0),
+    clearances: Number(row.clearances ?? 0),
+    aerials_won: Number(row.aerials_won ?? 0),
+    blocked_shots: Number(row.blocked_shots ?? 0),
+    dribbles_succeeded: Number(row.dribbles_succeeded ?? 0),
+    goals_against_outfield: Number(row.goals_against_outfield ?? 0),
+    saves: Number(row.saves ?? 0),
+    goals_against: Number(row.goals_against ?? 0),
+    penalty_saves: Number(row.penalty_saves ?? 0),
+    high_claims: Number(row.high_claims ?? 0),
+    smothers: Number(row.smothers ?? 0),
+    yellow_cards: Number(row.yellow_cards ?? 0),
+    red_cards: Number(row.red_cards ?? 0),
+    own_goals: Number(row.own_goals ?? 0),
+    is_home,
+  };
+}
+
 function isStatApplicable(position: GWOverviewPlayer["position"], stat: StatKey): boolean {
   if (goalkeeperOnlyStats.has(stat)) {
     return position === "GK";
@@ -325,10 +392,11 @@ function compareNullableNumber(a: number | null, b: number | null, direction: So
 
 export default function GWOverviewClient({
   players,
-  gameweeks,
   selectedGws,
   teams,
   allGws,
+  season,
+  fixtures,
 }: GWOverviewClientProps) {
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
   const [searchPlayer, setSearchPlayer] = useState<string>("");
@@ -344,6 +412,97 @@ export default function GWOverviewClient({
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
   const [openColumnFilter, setOpenColumnFilter] = useState<OpenColumnFilter | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [gameweeks, setGameweeks] = useState<GWOverviewGameweekRow[]>([]);
+  const [loadedGameweeks, setLoadedGameweeks] = useState<number[]>([]);
+  const [loadingGameweeks, setLoadingGameweeks] = useState<number[]>([]);
+  const [failedGameweeks, setFailedGameweeks] = useState<number[]>([]);
+  const [gameweekLoadError, setGameweekLoadError] = useState<string | null>(null);
+
+  const playerTeamById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const player of players) {
+      map.set(player.id, player.team);
+    }
+    return map;
+  }, [players]);
+
+  const fixturesByGameweek = useMemo(() => {
+    const map = new Map<number, GWOverviewFixture[]>();
+    for (const fixture of fixtures) {
+      const existing = map.get(fixture.gameweek);
+      if (existing) {
+        existing.push(fixture);
+        continue;
+      }
+      map.set(fixture.gameweek, [fixture]);
+    }
+    return map;
+  }, [fixtures]);
+
+  useEffect(() => {
+    const missingGameweeks = selectedGameweeks.filter(
+      (gw) => !loadedGameweeks.includes(gw) && !loadingGameweeks.includes(gw) && !failedGameweeks.includes(gw)
+    );
+    if (missingGameweeks.length === 0) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadGameweeks() {
+      setLoadingGameweeks((current) => Array.from(new Set([...current, ...missingGameweeks])));
+      setGameweekLoadError(null);
+
+      try {
+        const params = new URLSearchParams({
+          season,
+          gameweeks: missingGameweeks.join(","),
+        });
+        const response = await fetch(`/api/portal/form-table?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        const payload = (await response.json()) as { message?: string; rows?: FormTableApiRow[] };
+        if (!response.ok) {
+          throw new Error(payload.message ?? "Unable to load form table gameweeks.");
+        }
+
+        const normalizedRows = (payload.rows ?? []).map((row) =>
+          normalizeGameweekRow(row, playerTeamById, fixturesByGameweek)
+        );
+
+        setGameweeks((current) => {
+          const byId = new Map<string, GWOverviewGameweekRow>();
+          for (const row of current) {
+            byId.set(row.id, row);
+          }
+          for (const row of normalizedRows) {
+            byId.set(row.id, row);
+          }
+          return Array.from(byId.values());
+        });
+        setFailedGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
+        setLoadedGameweeks((current) => Array.from(new Set([...current, ...missingGameweeks])).sort((a, b) => a - b));
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "Unable to load form table gameweeks.";
+        setFailedGameweeks((current) => Array.from(new Set([...current, ...missingGameweeks])).sort((a, b) => a - b));
+        setGameweekLoadError(message);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingGameweeks((current) => current.filter((gw) => !missingGameweeks.includes(gw)));
+        }
+      }
+    }
+
+    void loadGameweeks();
+
+    return () => {
+      controller.abort();
+    };
+  }, [failedGameweeks, fixturesByGameweek, loadedGameweeks, loadingGameweeks, playerTeamById, season, selectedGameweeks]);
 
   const rowsByPlayerByGw = useMemo(() => {
     const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
@@ -412,6 +571,7 @@ export default function GWOverviewClient({
   }, [displayedGws, players, rowsByPlayerByGw, venueFilter]);
 
   function toggleGameweekSelection(gameweek: number) {
+    setFailedGameweeks((failed) => failed.filter((gw) => gw !== gameweek));
     setSelectedGameweeks((current) => {
       if (current.includes(gameweek)) {
         if (current.length === 1) {
@@ -584,6 +744,7 @@ export default function GWOverviewClient({
     searchPlayer,
     selectedStat,
     displayedGws,
+    rowsByPlayerByGw,
     sortState,
     teamFilter,
     visibleRowsByPlayerByGw,
@@ -682,6 +843,10 @@ export default function GWOverviewClient({
             </span>
           ))}
         </div>
+        {gameweekLoadError ? <p className="mt-2 text-xs text-red-400">{gameweekLoadError}</p> : null}
+        {loadingGameweeks.length > 0 ? (
+          <p className="mt-2 text-xs text-brand-creamDark">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
+        ) : null}
       </div>
 
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">

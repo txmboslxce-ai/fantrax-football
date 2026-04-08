@@ -234,10 +234,11 @@ export default async function PlayersPage({ searchParams }: PageProps) {
       {activeTab === "form" && formData ? (
         <GWOverviewClient
           players={formData.players}
-          gameweeks={formData.gameweeks}
           selectedGws={formData.selectedGws}
           teams={formData.teams}
           allGws={formData.allGws}
+          season={formData.season}
+          fixtures={formData.fixtures}
         />
       ) : null}
 
