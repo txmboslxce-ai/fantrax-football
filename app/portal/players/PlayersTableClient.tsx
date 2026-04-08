@@ -1,30 +1,72 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type PlayerRow = {
   id: string;
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
-  seasonPts: number;
-  avgPtsPerGw: number;
-  ghostPtsPerGw: number;
   ownershipPct: number;
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
+  windows: Record<PlayerTableWindowKey, PlayerWindowStats>;
 };
 
-type SortKey = "name" | "seasonPts" | "avgPtsPerGw" | "ghostPtsPerGw";
+type NumericColumnKey = keyof PlayerWindowStats;
+
+type SortKey = "name" | NumericColumnKey;
 
 type PlayersTableClientProps = {
   players: PlayerRow[];
 };
 
+type ColumnDefinition = {
+  key: NumericColumnKey;
+  label: string;
+  alwaysVisible?: boolean;
+  isPercent?: boolean;
+  digits?: number;
+};
+
 const positionFilters: Array<"All" | "GK" | "DEF" | "MID" | "FWD"> = ["All", "GK", "DEF", "MID", "FWD"];
+
+const WINDOW_OPTIONS: Array<{ key: PlayerTableWindowKey; label: string }> = [
+  { key: "last5", label: "Last 5" },
+  { key: "last10", label: "Last 10" },
+  { key: "season", label: "Season" },
+];
+
+const COLUMN_DEFINITIONS: ColumnDefinition[] = [
+  { key: "fantasy_pts_per_start", label: "Fantasy Pts/Start", alwaysVisible: true },
+  { key: "ghost_pts_per_start", label: "Ghost Pts/Start", alwaysVisible: true },
+  { key: "games_started", label: "Games Started", alwaysVisible: true, digits: 0 },
+  { key: "minutes_per_start", label: "Minutes/Start", alwaysVisible: true },
+  { key: "floor_per_start", label: "Floor/Start", alwaysVisible: true },
+  { key: "ceiling_per_start", label: "Ceiling/Start", alwaysVisible: true },
+  { key: "season_pts", label: "Season Pts" },
+  { key: "avg_pts_per_gw", label: "Avg Pts/GW" },
+  { key: "ghost_pts_per_gw", label: "Ghost Pts/GW" },
+  { key: "ghost_pts_pct", label: "Ghost Pts %", isPercent: true },
+  { key: "goals_pts_pct", label: "Goals Pts %", isPercent: true },
+  { key: "assist_pts_pct", label: "Assist Pts %", isPercent: true },
+  { key: "clean_sheet_pts_pct", label: "Clean Sheet Pts %", isPercent: true },
+  { key: "games_played", label: "Games Played", digits: 0 },
+  { key: "total_minutes", label: "Total Minutes", digits: 0 },
+  { key: "std_deviation", label: "Std Deviation" },
+  { key: "median_pts_per_start", label: "Median Pts/Start" },
+  { key: "coefficient_of_variation", label: "Coefficient of Variation" },
+  { key: "home_pts_per_start", label: "Home Pts/Start" },
+  { key: "home_pts_pct", label: "Home Pts %", isPercent: true },
+  { key: "away_pts_per_start", label: "Away Pts/Start" },
+  { key: "away_pts_pct", label: "Away Pts %", isPercent: true },
+];
+
+const OPTIONAL_COLUMN_KEYS = COLUMN_DEFINITIONS.filter((column) => !column.alwaysVisible).map((column) => column.key);
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -55,21 +97,61 @@ function pointsBadgeBackground(value: number, min: number, max: number): string 
   return mixColor(yellow, green, (normalized - 0.5) * 2);
 }
 
+function formatValue(value: number, column: ColumnDefinition): string {
+  const digits = column.digits ?? 2;
+  if (!Number.isFinite(value)) {
+    return column.isPercent ? `0.${"0".repeat(digits)}%` : (0).toFixed(digits);
+  }
+
+  const formatted = value.toFixed(digits);
+  return column.isPercent ? `${formatted}%` : formatted;
+}
+
 export default function PlayersTableClient({ players }: PlayersTableClientProps) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
-  const [sortKey, setSortKey] = useState<SortKey>("seasonPts");
+  const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("last5");
+  const [visibleOptionalColumns, setVisibleOptionalColumns] = useState<NumericColumnKey[]>([]);
+  const [sortKey, setSortKey] = useState<SortKey>("fantasy_pts_per_start");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
+  const columnPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (columnPanelRef.current && !columnPanelRef.current.contains(event.target as Node)) {
+        setIsColumnPanelOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
 
   const teams = useMemo(() => {
     return [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b));
   }, [players]);
 
+  const visibleColumns = useMemo(() => {
+    return COLUMN_DEFINITIONS.filter(
+      (column) => column.alwaysVisible || visibleOptionalColumns.includes(column.key)
+    );
+  }, [visibleOptionalColumns]);
+
+  useEffect(() => {
+    if (sortKey !== "name" && !visibleColumns.some((column) => column.key === sortKey)) {
+      setSortKey("fantasy_pts_per_start");
+      setSortDir("desc");
+    }
+  }, [sortKey, visibleColumns]);
+
   const filteredAndSorted = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = deferredSearch.trim().toLowerCase();
     const parsedOwnershipMin = Number(ownershipMin);
     const parsedOwnershipMax = Number(ownershipMax);
     const safeOwnershipMin = Number.isFinite(parsedOwnershipMin) ? parsedOwnershipMin : 0;
@@ -85,45 +167,41 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
       return matchesPosition && matchesTeam && matchesSearch && matchesOwnership;
     });
 
-    const sorted = [...filtered].sort((a, b) => {
-      const aValue = a[sortKey];
-      const bValue = b[sortKey];
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDir === "asc" ? aValue - bValue : bValue - aValue;
+    return [...filtered].sort((a, b) => {
+      if (sortKey === "name") {
+        const comparison = a.name.localeCompare(b.name);
+        return sortDir === "asc" ? comparison : -comparison;
       }
 
-      const comparison = String(aValue).localeCompare(String(bValue));
-      return sortDir === "asc" ? comparison : -comparison;
+      const aValue = a.windows[selectedWindow][sortKey];
+      const bValue = b.windows[selectedWindow][sortKey];
+      return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
-
-    return sorted;
-  }, [ownershipMax, ownershipMin, players, positionFilter, search, sortDir, sortKey, teamFilter]);
+  }, [
+    deferredSearch,
+    ownershipMax,
+    ownershipMin,
+    players,
+    positionFilter,
+    selectedWindow,
+    sortDir,
+    sortKey,
+    teamFilter,
+  ]);
 
   const visibleRanges = useMemo(() => {
-    if (filteredAndSorted.length === 0) {
-      return {
-        seasonPts: { min: 0, max: 0 },
-        avgPtsPerGw: { min: 0, max: 0 },
-        ghostPtsPerGw: { min: 0, max: 0 },
+    const ranges = {} as Record<NumericColumnKey, { min: number; max: number }>;
+
+    for (const column of visibleColumns) {
+      const values = filteredAndSorted.map((player) => player.windows[selectedWindow][column.key]);
+      ranges[column.key] = {
+        min: values.length > 0 ? Math.min(...values) : 0,
+        max: values.length > 0 ? Math.max(...values) : 0,
       };
     }
 
-    return {
-      seasonPts: {
-        min: Math.min(...filteredAndSorted.map((player) => player.seasonPts)),
-        max: Math.max(...filteredAndSorted.map((player) => player.seasonPts)),
-      },
-      avgPtsPerGw: {
-        min: Math.min(...filteredAndSorted.map((player) => player.avgPtsPerGw)),
-        max: Math.max(...filteredAndSorted.map((player) => player.avgPtsPerGw)),
-      },
-      ghostPtsPerGw: {
-        min: Math.min(...filteredAndSorted.map((player) => player.ghostPtsPerGw)),
-        max: Math.max(...filteredAndSorted.map((player) => player.ghostPtsPerGw)),
-      },
-    };
-  }, [filteredAndSorted]);
+    return ranges;
+  }, [filteredAndSorted, selectedWindow, visibleColumns]);
 
   function handleSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
@@ -132,12 +210,18 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
     }
 
     setSortKey(nextKey);
-    if (nextKey === "name") {
-      setSortDir("asc");
-      return;
-    }
+    setSortDir(nextKey === "name" ? "asc" : "desc");
+  }
 
-    setSortDir("desc");
+  function toggleColumn(columnKey: NumericColumnKey) {
+    setVisibleOptionalColumns((current) => {
+      if (current.includes(columnKey)) {
+        return current.filter((key) => key !== columnKey);
+      }
+
+      const next = [...current, columnKey];
+      return OPTIONAL_COLUMN_KEYS.filter((key) => next.includes(key));
+    });
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -146,7 +230,7 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
     <div className="space-y-3">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
         <div className="overflow-x-auto">
-          <div className="flex min-w-max items-end gap-2 text-xs">
+          <div className="flex min-w-max flex-wrap items-end gap-2 text-xs">
             <label className="shrink-0 space-y-1">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
               <input
@@ -221,6 +305,63 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                 />
               </div>
             </div>
+
+            <div className="shrink-0 space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Window</span>
+              <div className="flex gap-1">
+                {WINDOW_OPTIONS.map((option) => {
+                  const active = selectedWindow === option.key;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setSelectedWindow(option.key)}
+                      className={`rounded-md border px-3 py-1 text-xs font-semibold ${
+                        active
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div ref={columnPanelRef} className="relative shrink-0 space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Columns</span>
+              <button
+                type="button"
+                onClick={() => setIsColumnPanelOpen((current) => !current)}
+                className="rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-1 text-xs font-semibold text-brand-cream"
+              >
+                Add / Remove
+              </button>
+              {isColumnPanelOpen ? (
+                <div className="absolute right-0 top-full z-40 mt-2 w-60 rounded-xl border border-brand-cream/20 bg-[#102116] p-3 shadow-2xl">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-creamDark">
+                    Extra columns
+                  </div>
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                    {COLUMN_DEFINITIONS.filter((column) => !column.alwaysVisible).map((column) => {
+                      const checked = visibleOptionalColumns.includes(column.key);
+                      return (
+                        <label key={column.key} className="flex items-center gap-2 text-xs text-brand-cream">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleColumn(column.key)}
+                            className="h-3.5 w-3.5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                          />
+                          <span>{column.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -235,36 +376,21 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
                   <span aria-hidden="true">{sortArrow("name")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
-                <button
-                  type="button"
-                  onClick={() => handleSort("seasonPts")}
-                  className="inline-flex items-center justify-center gap-1"
+              {visibleColumns.map((column) => (
+                <th
+                  key={column.key}
+                  className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 >
-                  <span>Season Pts</span>
-                  <span aria-hidden="true">{sortArrow("seasonPts")}</span>
-                </button>
-              </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
-                <button
-                  type="button"
-                  onClick={() => handleSort("avgPtsPerGw")}
-                  className="inline-flex items-center justify-center gap-1"
-                >
-                  <span>Avg Pts/GW</span>
-                  <span aria-hidden="true">{sortArrow("avgPtsPerGw")}</span>
-                </button>
-              </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
-                <button
-                  type="button"
-                  onClick={() => handleSort("ghostPtsPerGw")}
-                  className="inline-flex items-center justify-center gap-1"
-                >
-                  <span>Ghost Pts/GW</span>
-                  <span aria-hidden="true">{sortArrow("ghostPtsPerGw")}</span>
-                </button>
-              </th>
+                  <button
+                    type="button"
+                    onClick={() => handleSort(column.key)}
+                    className="inline-flex items-center justify-center gap-1"
+                  >
+                    <span>{column.label}</span>
+                    <span aria-hidden="true">{sortArrow(column.key)}</span>
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -273,80 +399,62 @@ export default function PlayersTableClient({ players }: PlayersTableClientProps)
               const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
 
               return (
-                <tr key={player.id} className="text-brand-cream">
+                <tr
+                  key={player.id}
+                  className="cursor-pointer text-brand-cream"
+                  onClick={() => router.push(rowHref)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      router.push(rowHref);
+                    }
+                  }}
+                  role="link"
+                  tabIndex={0}
+                >
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      <div className="flex items-center gap-1 font-semibold leading-tight">
-                        <span>{player.name}</span>
-                        <AvailabilityIcon
-                          chanceOfPlaying={player.chanceOfPlaying}
-                          status={player.availabilityStatus}
-                          news={player.availabilityNews}
-                        />
-                      </div>
-                      <div className="mt-0.5 text-xs text-brand-creamDark/70">
-                        {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
-                      </div>
-                    </Link>
+                    <div className="flex items-center gap-1 font-semibold leading-tight">
+                      <span>{player.name}</span>
+                      <AvailabilityIcon
+                        chanceOfPlaying={player.chanceOfPlaying}
+                        status={player.availabilityStatus}
+                        news={player.availabilityNews}
+                      />
+                    </div>
+                    <div className="mt-0.5 text-xs text-brand-creamDark/70">
+                      {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
+                    </div>
                   </td>
-                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
-                    <Link href={rowHref} className="inline-flex">
-                      <span
-                        className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                        style={{
-                          backgroundColor: pointsBadgeBackground(
-                            player.seasonPts,
-                            visibleRanges.seasonPts.min,
-                            visibleRanges.seasonPts.max
-                          ),
-                        }}
-                      >
-                        {player.seasonPts.toFixed(2)}
-                      </span>
-                    </Link>
-                  </td>
-                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
-                    <Link href={rowHref} className="inline-flex">
-                      <span
-                        className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                        style={{
-                          backgroundColor: pointsBadgeBackground(
-                            player.avgPtsPerGw,
-                            visibleRanges.avgPtsPerGw.min,
-                            visibleRanges.avgPtsPerGw.max
-                          ),
-                        }}
-                      >
-                        {player.avgPtsPerGw.toFixed(2)}
-                      </span>
-                    </Link>
-                  </td>
-                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
-                    <Link href={rowHref} className="inline-flex">
-                      <span
-                        className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                        style={{
-                          backgroundColor: pointsBadgeBackground(
-                            player.ghostPtsPerGw,
-                            visibleRanges.ghostPtsPerGw.min,
-                            visibleRanges.ghostPtsPerGw.max
-                          ),
-                        }}
-                      >
-                        {player.ghostPtsPerGw.toFixed(2)}
-                      </span>
-                    </Link>
-                  </td>
+                  {visibleColumns.map((column) => {
+                    const value = player.windows[selectedWindow][column.key];
+                    const range = visibleRanges[column.key];
+
+                    return (
+                      <td key={column.key} className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
+                        <span
+                          className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
+                          style={{
+                            backgroundColor: pointsBadgeBackground(value, range.min, range.max),
+                          }}
+                        >
+                          {formatValue(value, column)}
+                        </span>
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
-            {filteredAndSorted.length === 0 && (
+            {filteredAndSorted.length === 0 ? (
               <tr>
-                <td colSpan={4} className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark">
+                <td
+                  colSpan={visibleColumns.length + 1}
+                  className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark"
+                >
                   No players match the current filters.
                 </td>
               </tr>
-            )}
+            ) : null}
           </tbody>
         </table>
       </div>

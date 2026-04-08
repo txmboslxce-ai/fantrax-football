@@ -98,6 +98,33 @@ export type PlayerSeasonSummary = {
   current_gameweek: number;
 };
 
+export type PlayerTableWindowKey = "last5" | "last10" | "season";
+
+export type PlayerWindowStats = {
+  fantasy_pts_per_start: number;
+  ghost_pts_per_start: number;
+  games_started: number;
+  minutes_per_start: number;
+  floor_per_start: number;
+  ceiling_per_start: number;
+  season_pts: number;
+  avg_pts_per_gw: number;
+  ghost_pts_per_gw: number;
+  ghost_pts_pct: number;
+  goals_pts_pct: number;
+  assist_pts_pct: number;
+  clean_sheet_pts_pct: number;
+  games_played: number;
+  total_minutes: number;
+  std_deviation: number;
+  median_pts_per_start: number;
+  coefficient_of_variation: number;
+  home_pts_per_start: number;
+  home_pts_pct: number;
+  away_pts_per_start: number;
+  away_pts_pct: number;
+};
+
 function toNumber(value: number | string | null | undefined): number {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -107,6 +134,79 @@ function toNumber(value: number | string | null | undefined): number {
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
+}
+
+function roundTo2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function goalPoints(position: string, goals: number): number {
+  if (position === "DEF" || position === "GK") {
+    return goals * 10;
+  }
+
+  if (position === "MID" || position === "FWD") {
+    return goals * 9;
+  }
+
+  return 0;
+}
+
+function assistPoints(position: string, assists: number): number {
+  if (position === "DEF" || position === "GK") {
+    return assists * 7;
+  }
+
+  if (position === "MID" || position === "FWD") {
+    return assists * 6;
+  }
+
+  return 0;
+}
+
+function cleanSheetPoints(position: string, cleanSheet: number): number {
+  if (position === "DEF" || position === "GK") {
+    return cleanSheet * 6;
+  }
+
+  if (position === "MID") {
+    return cleanSheet;
+  }
+
+  return 0;
+}
+
+function average(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  return sorted[middle];
+}
+
+function standardDeviation(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const mean = average(values);
+  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
 }
 
 export function mapPosition(position: string): "GK" | "DEF" | "MID" | "FWD" {
@@ -214,6 +314,50 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
     aerials: playedRows.reduce((sum, row) => sum + row.aerials_won, 0),
     key_passes: playedRows.reduce((sum, row) => sum + row.key_passes, 0),
     current_gameweek: rows.reduce((max, row) => Math.max(max, row.gameweek), 0),
+  };
+}
+
+export function summarizePlayerWindow(rows: DecoratedGameweek[], position: "GK" | "DEF" | "MID" | "FWD"): PlayerWindowStats {
+  const playedRows = rows.filter((row) => row.games_played > 0);
+  const startedRows = rows.filter((row) => row.games_started === 1);
+  const homeStartedRows = startedRows.filter((row) => row.isHome === true);
+  const awayStartedRows = startedRows.filter((row) => row.isHome === false);
+
+  const seasonPts = playedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
+  const totalGhostPts = playedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
+  const totalGoalPts = playedRows.reduce((sum, row) => sum + goalPoints(position, row.goals), 0);
+  const totalAssistPts = playedRows.reduce((sum, row) => sum + assistPoints(position, row.assists), 0);
+  const totalCleanSheetPts = playedRows.reduce((sum, row) => sum + cleanSheetPoints(position, row.clean_sheet), 0);
+  const startedPoints = startedRows.map((row) => row.raw_fantrax_pts);
+  const startedTotalPts = startedPoints.reduce((sum, value) => sum + value, 0);
+  const homeStartedTotalPts = homeStartedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
+  const awayStartedTotalPts = awayStartedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
+  const pointsStdDeviation = standardDeviation(startedPoints);
+  const pointsMean = average(startedPoints);
+
+  return {
+    fantasy_pts_per_start: roundTo2(pointsMean),
+    ghost_pts_per_start: roundTo2(average(startedRows.map((row) => row.ghost_pts))),
+    games_started: startedRows.length,
+    minutes_per_start: roundTo2(average(startedRows.map((row) => row.minutes_played))),
+    floor_per_start: roundTo2(startedRows.length > 0 ? Math.min(...startedPoints) : 0),
+    ceiling_per_start: roundTo2(startedRows.length > 0 ? Math.max(...startedPoints) : 0),
+    season_pts: roundTo2(seasonPts),
+    avg_pts_per_gw: roundTo2(average(playedRows.map((row) => row.raw_fantrax_pts))),
+    ghost_pts_per_gw: roundTo2(average(playedRows.map((row) => row.ghost_pts))),
+    ghost_pts_pct: roundTo2(seasonPts !== 0 ? (totalGhostPts / seasonPts) * 100 : 0),
+    goals_pts_pct: roundTo2(seasonPts !== 0 ? (totalGoalPts / seasonPts) * 100 : 0),
+    assist_pts_pct: roundTo2(seasonPts !== 0 ? (totalAssistPts / seasonPts) * 100 : 0),
+    clean_sheet_pts_pct: roundTo2(seasonPts !== 0 ? (totalCleanSheetPts / seasonPts) * 100 : 0),
+    games_played: playedRows.reduce((sum, row) => sum + row.games_played, 0),
+    total_minutes: playedRows.reduce((sum, row) => sum + row.minutes_played, 0),
+    std_deviation: roundTo2(pointsStdDeviation),
+    median_pts_per_start: roundTo2(median(startedPoints)),
+    coefficient_of_variation: roundTo2(pointsMean !== 0 ? pointsStdDeviation / pointsMean : 0),
+    home_pts_per_start: roundTo2(average(homeStartedRows.map((row) => row.raw_fantrax_pts))),
+    home_pts_pct: roundTo2(startedTotalPts !== 0 ? (homeStartedTotalPts / startedTotalPts) * 100 : 0),
+    away_pts_per_start: roundTo2(average(awayStartedRows.map((row) => row.raw_fantrax_pts))),
+    away_pts_pct: roundTo2(startedTotalPts !== 0 ? (awayStartedTotalPts / startedTotalPts) * 100 : 0),
   };
 }
 

@@ -4,6 +4,15 @@ import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
 import PredictionsTab from "@/app/portal/players/components/PredictionsTab";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
 import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
+import {
+  decorateGameweeks,
+  mapPosition,
+  summarizePlayerWindow,
+  type FixtureRow,
+  type PlayerGameweekRow,
+  type PlayerTableWindowKey,
+  type PlayerWindowStats,
+} from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
 
@@ -21,66 +30,16 @@ type PageProps = {
 
 type PlayersTabKey = "players" | "form" | "waiver" | "fixtures" | "predictions";
 
-type PlayerWithStatsRow = {
-  player_id: string;
-  games_played: number;
-  games_started: number;
-  raw_fantrax_pts: number;
-  ghost_pts: number;
-  players:
-    | {
-        id: string;
-        name: string;
-        team: string;
-        position: string;
-        ownership_pct: string | null;
-        fpl_player_data:
-          | {
-              chance_of_playing_next_round: number | null;
-              status: string | null;
-              news: string | null;
-            }
-          | Array<{
-              chance_of_playing_next_round: number | null;
-              status: string | null;
-              news: string | null;
-            }>
-          | null;
-      }
-    | Array<{
-        id: string;
-        name: string;
-        team: string;
-        position: string;
-        ownership_pct: string | null;
-        fpl_player_data:
-          | {
-              chance_of_playing_next_round: number | null;
-              status: string | null;
-              news: string | null;
-            }
-          | Array<{
-              chance_of_playing_next_round: number | null;
-              status: string | null;
-              news: string | null;
-            }>
-          | null;
-      }>
-    | null;
-};
-
-type AggregatedPlayer = {
+type PlayerRecord = {
   id: string;
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
-  seasonPts: number;
-  avgPtsPerGw: number;
-  ghostPtsPerGw: number;
   ownershipPct: number;
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
+  windows: Record<PlayerTableWindowKey, PlayerWindowStats>;
 };
 
 const SEASON = "2025-26";
@@ -92,21 +51,6 @@ const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
   { key: "fixtures", label: "Fixture Planner" },
   { key: "predictions", label: "Predictions" },
 ];
-
-function mapPosition(position: string): "GK" | "DEF" | "MID" | "FWD" {
-  switch (position) {
-    case "G":
-      return "GK";
-    case "D":
-      return "DEF";
-    case "M":
-      return "MID";
-    case "F":
-      return "FWD";
-    default:
-      return "MID";
-  }
-}
 
 function parseOwnership(value: string | null): number {
   if (!value) {
@@ -142,90 +86,115 @@ async function getCurrentGameweek(): Promise<number> {
   return Number((data ?? [])[0]?.gameweek ?? 1);
 }
 
-async function getPlayersTableData(): Promise<AggregatedPlayer[]> {
+async function getPlayersTableData(): Promise<PlayerRecord[]> {
   const supabase = await createServerSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("player_gameweeks")
-    .select(
-      "player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, players!inner(id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
-    )
-    .eq("season", SEASON)
-    .gt("games_played", 0);
+  const [{ data: players, error: playersError }, { data: gameweeks, error: gameweeksError }, { data: fixtures, error: fixturesError }] =
+    await Promise.all([
+      supabase
+        .from("players")
+        .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
+        .order("name"),
+      supabase
+        .from("player_gameweeks")
+        .select(
+          "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
+        )
+        .eq("season", SEASON),
+      supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
+    ]);
 
-  if (error) {
-    throw new Error(`Unable to load players: ${error.message}`);
+  if (playersError) {
+    throw new Error(`Unable to load players: ${playersError.message}`);
+  }
+  if (gameweeksError) {
+    throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
+  }
+  if (fixturesError) {
+    throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
   }
 
-  const byPlayer = new Map<
-    string,
-    {
-      id: string;
-      name: string;
-      team: string;
-      position: "GK" | "DEF" | "MID" | "FWD";
-      ownershipPct: number;
-      seasonPts: number;
-      ghostPts: number;
-      gameweeksPlayed: number;
-      totalGamesPlayed: number;
-      chanceOfPlaying: number | null;
-      availabilityStatus: string | null;
-      availabilityNews: string | null;
-    }
-  >();
+  const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
+  let latestGameweek = 0;
 
-  for (const row of (data ?? []) as PlayerWithStatsRow[]) {
-    const player = Array.isArray(row.players) ? row.players[0] : row.players;
-    if (!player) {
+  for (const row of (gameweeks ?? []) as PlayerGameweekRow[]) {
+    latestGameweek = Math.max(latestGameweek, row.gameweek);
+    const existing = rowsByPlayer.get(row.player_id);
+    if (existing) {
+      existing.push(row);
       continue;
     }
 
-    const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
+    rowsByPlayer.set(row.player_id, [row]);
+  }
 
-    const existing = byPlayer.get(row.player_id);
-    if (!existing) {
-      byPlayer.set(row.player_id, {
+  const fixturesByTeam = new Map<string, FixtureRow[]>();
+  for (const fixture of (fixtures ?? []) as FixtureRow[]) {
+    const homeTeamFixtures = fixturesByTeam.get(fixture.home_team);
+    if (homeTeamFixtures) {
+      homeTeamFixtures.push(fixture);
+    } else {
+      fixturesByTeam.set(fixture.home_team, [fixture]);
+    }
+
+    const awayTeamFixtures = fixturesByTeam.get(fixture.away_team);
+    if (awayTeamFixtures) {
+      awayTeamFixtures.push(fixture);
+    } else {
+      fixturesByTeam.set(fixture.away_team, [fixture]);
+    }
+  }
+
+  const windowStarts: Record<PlayerTableWindowKey, number> = {
+    last5: Math.max(1, latestGameweek - 4),
+    last10: Math.max(1, latestGameweek - 9),
+    season: 1,
+  };
+
+  const records = ((players ?? []) as Array<{
+    id: string;
+    name: string;
+    team: string;
+    position: string;
+    ownership_pct: string | null;
+    fpl_player_data:
+      | {
+          chance_of_playing_next_round: number | null;
+          status: string | null;
+          news: string | null;
+        }
+      | Array<{
+          chance_of_playing_next_round: number | null;
+          status: string | null;
+          news: string | null;
+        }>
+      | null;
+  }>)
+    .map((player) => {
+      const position = mapPosition(player.position);
+      const playerRows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
+      const decoratedRows = decorateGameweeks(playerRows, player.team, fixturesByTeam.get(player.team) ?? []);
+      const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
+
+      return {
         id: player.id,
         name: player.name,
         team: player.team,
-        position: mapPosition(player.position),
+        position,
         ownershipPct: parseOwnership(player.ownership_pct),
-        seasonPts: row.games_played > 0 ? Number(row.raw_fantrax_pts ?? 0) : 0,
-        ghostPts: row.games_played > 0 ? Number(row.ghost_pts ?? 0) : 0,
-        gameweeksPlayed: row.games_played > 0 ? 1 : 0,
-        totalGamesPlayed: row.games_played > 0 ? Number(row.games_played ?? 0) : 0,
         chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
         availabilityStatus: availabilityRaw?.status ?? null,
         availabilityNews: availabilityRaw?.news ?? null,
-      });
-      continue;
-    }
+        windows: {
+          last5: summarizePlayerWindow(decoratedRows.filter((row) => row.gameweek >= windowStarts.last5), position),
+          last10: summarizePlayerWindow(decoratedRows.filter((row) => row.gameweek >= windowStarts.last10), position),
+          season: summarizePlayerWindow(decoratedRows, position),
+        },
+      };
+    })
+    .sort((a, b) => b.windows.season.season_pts - a.windows.season.season_pts);
 
-    if (row.games_played > 0) {
-      existing.seasonPts += Number(row.raw_fantrax_pts ?? 0);
-      existing.ghostPts += Number(row.ghost_pts ?? 0);
-      existing.gameweeksPlayed += 1;
-      existing.totalGamesPlayed += Number(row.games_played ?? 0);
-    }
-  }
-
-  const players: AggregatedPlayer[] = Array.from(byPlayer.values()).map((player) => ({
-    id: player.id,
-    name: player.name,
-    team: player.team,
-    position: player.position,
-    seasonPts: player.seasonPts,
-    avgPtsPerGw: player.gameweeksPlayed > 0 ? player.seasonPts / player.gameweeksPlayed : 0,
-    ghostPtsPerGw: player.gameweeksPlayed > 0 ? player.ghostPts / player.gameweeksPlayed : 0,
-    ownershipPct: player.ownershipPct,
-    chanceOfPlaying: player.chanceOfPlaying,
-    availabilityStatus: player.availabilityStatus,
-    availabilityNews: player.availabilityNews,
-  }));
-
-  players.sort((a, b) => b.seasonPts - a.seasonPts);
-  return players;
+  return records;
 }
 
 export default async function PlayersPage({ searchParams }: PageProps) {
