@@ -150,6 +150,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
   const [sortKey, setSortKey] = useState<SortKey>("goals");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<ColumnCategory, boolean>>({
     Attacking: false,
     Defensive: false,
@@ -275,6 +276,27 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
 
   return (
     <div className="space-y-3">
+      {/* Filters — hidden on mobile until button tapped, always visible on md+ */}
+      <div
+        className={
+          mobileFiltersOpen
+            ? "fixed inset-0 z-50 space-y-3 overflow-y-auto bg-brand-dark p-4 pb-24 md:static md:inset-auto md:z-auto md:overflow-visible md:bg-transparent md:p-0"
+            : "hidden md:block md:space-y-3"
+        }
+      >
+        {mobileFiltersOpen ? (
+          <div className="flex items-center justify-between md:hidden">
+            <span className="text-sm font-bold uppercase tracking-widest text-brand-cream">Filters</span>
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(false)}
+              className="rounded-full border border-brand-cream/35 px-4 py-1.5 text-sm font-semibold text-brand-cream"
+            >
+              Done
+            </button>
+          </div>
+        ) : null}
+
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
         <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
           <label className="space-y-1 md:shrink-0">
@@ -490,6 +512,19 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
           </div>
         </div>
       ) : null}
+      </div>{/* end filter wrapper */}
+
+      {/* Floating Filters button — mobile only */}
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+        </svg>
+        Filters
+      </button>
 
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -531,7 +566,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
         </div>
       </div>
 
-      <div className="overflow-x-scroll rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
+      <div className="max-h-[calc(100vh-260px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <div className="flex items-center justify-between border-b border-brand-cream/10 bg-brand-dark/70 px-3 py-2 text-xs text-brand-creamDark">
           <span>Player column stays pinned while you scroll.</span>
           <span>Scroll horizontally for more stats.</span>
