@@ -28,6 +28,27 @@ function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function normalizeForMatch(value: string): string {
+  return normalize(value)
+    .replace(/&/g, " and ")
+    .replace(/[.'’]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const TEAM_ALIASES: Record<string, string> = {
+  "man utd": "manchester united",
+  "man united": "manchester united",
+  "man city": "manchester city",
+  spurs: "tottenham",
+  wolves: "wolverhampton",
+  "nottm forest": "nottingham forest",
+  "nottm. forest": "nottingham forest",
+  "nottm forest fc": "nottingham forest",
+  "nottingham for": "nottingham forest",
+  "nott'm forest": "nottingham forest",
+};
+
 function parseKickoffValue(value: unknown): string | null {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -50,33 +71,70 @@ function parseKickoffValue(value: unknown): string | null {
     return null;
   }
 
+  const ukDateTimeMatch = text.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?(?:\s*(GMT|UTC))?$/i
+  );
+  if (ukDateTimeMatch) {
+    const [, dayRaw, monthRaw, yearRaw, hourRaw = "0", minuteRaw = "0", secondRaw = "0"] = ukDateTimeMatch;
+    const day = Number(dayRaw);
+    const month = Number(monthRaw);
+    const year = Number(yearRaw);
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    const second = Number(secondRaw);
+
+    if (
+      Number.isInteger(day) &&
+      Number.isInteger(month) &&
+      Number.isInteger(year) &&
+      Number.isInteger(hour) &&
+      Number.isInteger(minute) &&
+      Number.isInteger(second)
+    ) {
+      const kickoff = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+      if (
+        kickoff.getUTCFullYear() === year &&
+        kickoff.getUTCMonth() === month - 1 &&
+        kickoff.getUTCDate() === day &&
+        kickoff.getUTCHours() === hour &&
+        kickoff.getUTCMinutes() === minute &&
+        kickoff.getUTCSeconds() === second
+      ) {
+        return kickoff.toISOString();
+      }
+    }
+  }
+
   const kickoff = new Date(text);
   return Number.isNaN(kickoff.getTime()) ? null : kickoff.toISOString();
 }
 
 function resolveTeamAbbrev(teamNameRaw: string, teams: TeamRow[]): { abbrev: string | null; reason?: string } {
   const teamName = normalize(teamNameRaw);
+  const normalizedTeamName = normalizeForMatch(teamNameRaw);
+  const aliasExpanded = TEAM_ALIASES[normalizedTeamName];
+  const candidateNames = Array.from(new Set([teamName, normalizedTeamName, aliasExpanded].filter((value): value is string => Boolean(value))));
+
   if (!teamName) {
     return { abbrev: null, reason: "empty team name" };
   }
 
-  const exactFullName = teams.find((team) => normalize(team.full_name ?? "") === teamName);
+  const exactFullName = teams.find((team) => candidateNames.includes(normalize(team.full_name ?? "")) || candidateNames.includes(normalizeForMatch(team.full_name ?? "")));
   if (exactFullName) {
     return { abbrev: exactFullName.abbrev };
   }
 
-  const exactName = teams.find((team) => normalize(team.name ?? "") === teamName);
+  const exactName = teams.find((team) => candidateNames.includes(normalize(team.name ?? "")) || candidateNames.includes(normalizeForMatch(team.name ?? "")));
   if (exactName) {
     return { abbrev: exactName.abbrev };
   }
 
   const partialMatches = teams.filter((team) => {
-    const fullName = normalize(team.full_name ?? "");
-    const shortName = normalize(team.name ?? "");
+    const fullName = normalizeForMatch(team.full_name ?? "");
+    const shortName = normalizeForMatch(team.name ?? "");
 
-    return (
-      (fullName && (fullName.includes(teamName) || teamName.includes(fullName))) ||
-      (shortName && (shortName.includes(teamName) || teamName.includes(shortName)))
+    return candidateNames.some(
+      (candidate) => (fullName && (fullName.includes(candidate) || candidate.includes(fullName))) || (shortName && (shortName.includes(candidate) || candidate.includes(shortName)))
     );
   });
 
@@ -153,9 +211,9 @@ export async function POST(request: Request) {
   const upserts: Array<{ season: string; gameweek: number; home_team: string; away_team: string; kickoff_at: string | null }> = [];
 
   rows.forEach((row, index) => {
-    const gameweekRaw = getCellValue(row, ["Gameweek", "gameweek"]);
-    const homeRaw = getCellValue(row, ["Home", "home"]);
-    const awayRaw = getCellValue(row, ["Away", "away"]);
+    const gameweekRaw = getCellValue(row, ["Gameweek", "gameweek", "Round Number", "round number", "Round", "round"]);
+    const homeRaw = getCellValue(row, ["Home", "home", "Home Team", "home team"]);
+    const awayRaw = getCellValue(row, ["Away", "away", "Away Team", "away team"]);
     const kickoffRaw = getCellRawValue(row, [
       "Kickoff",
       "kickoff",
