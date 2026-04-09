@@ -222,12 +222,12 @@ export default async function PlayersPage({ searchParams }: PageProps) {
         <p className="mt-2 text-sm text-brand-creamDark">Season {SEASON} player outputs. Click any row for player detail.</p>
       </div>
 
-      <nav className="flex flex-wrap gap-2">
+      <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
         {PLAYER_TABS.map((tab) => (
           <Link
             key={tab.key}
             href={`/portal/players?tab=${tab.key}`}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
               activeTab === tab.key
                 ? "border-brand-greenLight bg-brand-green text-brand-cream"
                 : "border-brand-cream/35 bg-brand-dark text-brand-cream hover:bg-brand-greenDark"
