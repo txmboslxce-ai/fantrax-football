@@ -46,6 +46,10 @@ type RosterInsert = {
   fantrax_player_id: string;
 };
 
+function normalizeName(name: string): string {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
 async function fantraxPost<T>(leagueId: string, msgs: unknown[]): Promise<T> {
   const response = await fetch(
     `https://www.fantrax.com/fxpa/req?leagueId=${encodeURIComponent(leagueId)}`,
@@ -121,7 +125,7 @@ export async function POST(request: Request) {
 
   const playerIdByName = new Map<string, string>();
   for (const player of dbPlayers) {
-    playerIdByName.set((player.name as string).toLowerCase().trim(), player.id as string);
+    playerIdByName.set(normalizeName(player.name as string), player.id as string);
   }
 
   // Step 2 — fetch each team's roster individually
@@ -152,7 +156,7 @@ export async function POST(request: Request) {
 
         const rawName = row.scorer.name ?? "";
         const fantraxPlayerId = row.scorer.scorerId ?? "";
-        const normalizedName = rawName.toLowerCase().trim();
+        const normalizedName = normalizeName(rawName);
 
         if (!normalizedName) continue;
 
