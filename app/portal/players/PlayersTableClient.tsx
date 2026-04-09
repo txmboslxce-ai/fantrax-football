@@ -120,6 +120,19 @@ function formatValue(value: number, column: ColumnDefinition): string {
   return column.isPercent ? `${formatted}%` : formatted;
 }
 
+function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" {
+  if (position === "GK") {
+    return "G";
+  }
+  if (position === "DEF") {
+    return "D";
+  }
+  if (position === "MID") {
+    return "M";
+  }
+  return "F";
+}
+
 export default function PlayersTableClient({ players, leagueRoster }: PlayersTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -591,6 +604,9 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-10 text-brand-creamDark">
             <tr>
+              <th className="border-b border-r border-brand-cream/35 bg-[#0F1F13] px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+                #
+              </th>
               <th className="sticky left-0 z-30 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
@@ -615,60 +631,73 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
             </tr>
           </thead>
           <tbody>
-            {filteredAndSorted.map((player, index) => {
-              const rowHref = `/portal/players/${player.id}`;
-              const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+            {(() => {
+              const posCounters: Record<string, number> = {};
+              return filteredAndSorted.map((player, index) => {
+                const rowHref = `/portal/players/${player.id}`;
+                const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+                const overallRank = index + 1;
+                const posKey = positionLetter(player.position);
+                posCounters[posKey] = (posCounters[posKey] ?? 0) + 1;
+                const posRank = posCounters[posKey];
 
-              return (
-                <tr
-                  key={player.id}
-                  className="cursor-pointer text-brand-cream"
-                  onClick={() => router.push(rowHref)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      router.push(rowHref);
-                    }
-                  }}
-                  role="link"
-                  tabIndex={0}
-                >
-                  <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
-                      <span>{player.name}</span>
-                      <AvailabilityIcon
-                        chanceOfPlaying={player.chanceOfPlaying}
-                        status={player.availabilityStatus}
-                        news={player.availabilityNews}
-                      />
-                      <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
-                    </div>
-                    <div className="mt-0.5 text-xs text-brand-creamDark/70">
-                      {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
-                    </div>
-                  </td>
-                  {visibleColumns.map((column) => {
-                    const value = player.windows[selectedWindow][column.key];
-                    const range = visibleRanges[column.key];
+                return (
+                  <tr
+                    key={player.id}
+                    className="cursor-pointer text-brand-cream"
+                    onClick={() => router.push(rowHref)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push(rowHref);
+                      }
+                    }}
+                    role="link"
+                    tabIndex={0}
+                  >
+                    <td className={`border-b border-r border-brand-cream/10 px-3 py-3 text-center ${rowShade}`}>
+                      <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
+                      <div className="text-xs text-brand-creamDark/80">
+                        {posKey} #{posRank}
+                      </div>
+                    </td>
+                    <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
+                      <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
+                        <span>{player.name}</span>
+                        <AvailabilityIcon
+                          chanceOfPlaying={player.chanceOfPlaying}
+                          status={player.availabilityStatus}
+                          news={player.availabilityNews}
+                        />
+                        <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+                      </div>
+                      <div className="mt-0.5 text-xs text-brand-creamDark/70">
+                        {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
+                      </div>
+                    </td>
+                    {visibleColumns.map((column) => {
+                      const value = player.windows[selectedWindow][column.key];
+                      const range = visibleRanges[column.key];
 
-                    return (
-                      <td key={column.key} className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
-                        <span
-                          className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                          style={{ backgroundColor: pointsBadgeBackground(value, range.min, range.max) }}
-                        >
-                          {formatValue(value, column)}
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+                      return (
+                        <td key={column.key} className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
+                          <span
+                            className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
+                            style={{ backgroundColor: pointsBadgeBackground(value, range.min, range.max) }}
+                          >
+                            {formatValue(value, column)}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              });
+            })()}
             {filteredAndSorted.length === 0 ? (
               <tr>
                 <td
-                  colSpan={visibleColumns.length + 1}
+                  colSpan={visibleColumns.length + 2}
                   className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark"
                 >
                   No players match the current filters.

@@ -224,9 +224,11 @@ const goalkeeperOnlyStats = new Set<StatKey>(["saves", "goals_against", "penalty
 const outfieldOnlyStats = new Set<StatKey>(["goals_against_outfield"]);
 
 const CELL_WIDTHS = {
+  rankMobile: 72,
   playerMobile: 120,
   formMobile: 72,
   statMobile: 72,
+  rank: 72,
   player: 220,
   formPts: 106,
   formPPG: 106,
@@ -778,6 +780,22 @@ export default function GWOverviewClient({
     visibleRowsByPlayerByGw,
   ]);
 
+  const rankedPlayers = useMemo(() => {
+    const positionCounters: Record<string, number> = {};
+
+    return filteredPlayers.map((player, index) => {
+      const posKey = positionLetter(player.position);
+      positionCounters[posKey] = (positionCounters[posKey] ?? 0) + 1;
+
+      return {
+        player,
+        overallRank: index + 1,
+        positionKey: posKey,
+        positionRank: positionCounters[posKey],
+      };
+    });
+  }, [filteredPlayers]);
+
   return (
     <div className="space-y-3 overflow-x-hidden">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
@@ -1007,6 +1025,7 @@ export default function GWOverviewClient({
           className="border-separate border-spacing-0 text-sm"
           style={{
             minWidth:
+              CELL_WIDTHS.rankMobile +
               CELL_WIDTHS.playerMobile +
               CELL_WIDTHS.formMobile +
               CELL_WIDTHS.formMobile +
@@ -1017,7 +1036,13 @@ export default function GWOverviewClient({
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
+                className="sticky left-0 top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
+              >
+                #
+              </th>
+              <th
+                rowSpan={2}
+                className="sticky left-[72px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -1102,7 +1127,7 @@ export default function GWOverviewClient({
           </thead>
 
           <tbody>
-            {filteredPlayers.map((player, index) => {
+            {rankedPlayers.map(({ player, overallRank, positionKey, positionRank }, index) => {
               const rowShade = index % 2 === 0 ? "bg-[#15221a]" : "bg-[#0f1a14]";
               const playerRowsByGw = visibleRowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
@@ -1110,7 +1135,7 @@ export default function GWOverviewClient({
               const selectedRowClass = isSelectedRow
                 ? "shadow-[inset_0_0_0_2px_rgba(232,228,217,0.78),inset_0_0_0_9999px_rgba(7,16,10,0.14)]"
                 : "";
-              const selectedLeadCellClass = isSelectedRow ? "border-l-2 border-l-[#E8E4D9]" : "";
+              const selectedRankCellClass = isSelectedRow ? "border-l-2 border-l-[#E8E4D9]" : "";
 
               return (
                 <tr
@@ -1119,7 +1144,15 @@ export default function GWOverviewClient({
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass} ${selectedLeadCellClass}`}
+                    className={`sticky left-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 px-2 py-1.5 text-center text-brand-cream ${rowShade} ${selectedRowClass} ${selectedRankCellClass}`}
+                  >
+                    <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
+                    <div className="text-xs text-brand-creamDark/80">
+                      {positionKey} #{positionRank}
+                    </div>
+                  </td>
+                  <td
+                    className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
