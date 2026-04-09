@@ -414,6 +414,7 @@ export default function GWOverviewClient({
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [selectedGameweeks, setSelectedGameweeks] = useState<number[]>(() => [...selectedGws].sort((a, b) => a - b));
   const [isGwPickerOpen, setIsGwPickerOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [gpStatusDraft, setGpStatusDraft] = useState<GPStatus[]>(["Started", "Sub", "DNP"]);
   const [gwStatusFilters, setGwStatusFilters] = useState<Record<number, GPStatus[]>>({});
   const [sortState, setSortState] = useState<SortState>(() => ({ kind: "gwStat", direction: "desc", gw: Math.max(...selectedGws) }));
@@ -796,107 +797,161 @@ export default function GWOverviewClient({
     });
   }, [filteredPlayers]);
 
+  const hasActiveFilters = useMemo(() => {
+    const normalizedSelectedGws = [...selectedGameweeks].sort((a, b) => a - b);
+    const normalizedInitialGws = [...selectedGws].sort((a, b) => a - b);
+    const hasCustomGameweeks =
+      normalizedSelectedGws.length !== normalizedInitialGws.length ||
+      normalizedSelectedGws.some((gw, index) => gw !== normalizedInitialGws[index]);
+
+    return (
+      venueFilter !== "All" ||
+      availabilityFilter !== "All" ||
+      searchPlayer.trim().length > 0 ||
+      selectedStat !== "raw_fantrax_pts" ||
+      positionFilter !== "All" ||
+      teamFilter !== "All" ||
+      ownershipMin !== "0" ||
+      ownershipMax !== "100" ||
+      Object.values(gwStatusFilters).some((statuses) => statuses.length !== gpStatusFilters.length) ||
+      hasCustomGameweeks
+    );
+  }, [
+    availabilityFilter,
+    gpStatusFilters.length,
+    gwStatusFilters,
+    ownershipMax,
+    ownershipMin,
+    positionFilter,
+    searchPlayer,
+    selectedGameweeks,
+    selectedGws,
+    selectedStat,
+    teamFilter,
+    venueFilter,
+  ]);
+
   return (
     <div className="space-y-3 overflow-x-hidden">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-brand-cream">
-          <div className="flex flex-wrap gap-1">
-            {venueFilters.map((filter) => {
-              const active = venueFilter === filter;
-              return (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setVenueFilter(filter)}
-                  className={`rounded border px-2 py-1 text-xs font-semibold ${
-                    active
-                      ? "border-brand-green bg-brand-green text-brand-cream"
-                      : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-                  }`}
-                >
-                  {filter}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsGwPickerOpen((current) => !current)}
-            className={`rounded border px-3 py-1.5 text-xs font-semibold ${
-              isGwPickerOpen
-                ? "border-brand-green bg-brand-green text-brand-cream"
-                : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-            }`}
-          >
-            {isGwPickerOpen ? "Hide gameweeks" : "Select gameweeks"}
-          </button>
-        </div>
-      </div>
-
-      {isGwPickerOpen ? (
-        <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
-          <div className="mb-4">
-            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Gameweeks</h2>
-            <p className="mt-1 text-sm text-brand-creamDark">Select which gameweeks to show in the Form Table.</p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-            {allGws.map((gw) => {
-              const checked = selectedGameweeks.includes(gw);
-              const disabled = checked && selectedGameweeks.length === 1;
-
-              return (
-                <label
-                  key={gw}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm ${
-                    disabled
-                      ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/60"
-                      : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={() => toggleGameweekSelection(gw)}
-                    className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
-                  />
-                  <span>{`GW${gw}`}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
-        <div className="flex flex-wrap gap-2">
-          {selectedGameweeksAsc.map((gw) => (
-            <span
-              key={gw}
-              className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+      <div
+        className={
+          mobileFiltersOpen
+            ? "fixed inset-0 z-50 space-y-3 overflow-y-auto bg-brand-dark p-4 pb-24 md:static md:inset-auto md:z-auto md:overflow-visible md:bg-transparent md:p-0"
+            : "hidden md:block md:space-y-3"
+        }
+      >
+        {mobileFiltersOpen ? (
+          <div className="flex items-center justify-between md:hidden">
+            <span className="text-sm font-bold uppercase tracking-widest text-brand-cream">Filters</span>
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(false)}
+              className="rounded-full border border-brand-cream/35 px-4 py-1.5 text-sm font-semibold text-brand-cream"
             >
-              <span>{`GW${gw}`}</span>
-              <button
-                type="button"
-                onClick={() => toggleGameweekSelection(gw)}
-                disabled={selectedGameweeks.length === 1}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label={`Remove GW${gw}`}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-        {gameweekLoadError ? <p className="mt-2 text-xs text-red-400">{gameweekLoadError}</p> : null}
-        {loadingGameweeks.length > 0 ? (
-          <p className="mt-2 text-xs text-brand-creamDark">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
+              Done
+            </button>
+          </div>
         ) : null}
-      </div>
 
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-        <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+        <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-brand-cream">
+            <div className="flex flex-wrap gap-1">
+              {venueFilters.map((filter) => {
+                const active = venueFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setVenueFilter(filter)}
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
+                      active
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsGwPickerOpen((current) => !current)}
+              className={`rounded border px-3 py-1.5 text-xs font-semibold ${
+                isGwPickerOpen
+                  ? "border-brand-green bg-brand-green text-brand-cream"
+                  : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+              }`}
+            >
+              {isGwPickerOpen ? "Hide gameweeks" : "Select gameweeks"}
+            </button>
+          </div>
+        </div>
+
+        {isGwPickerOpen ? (
+          <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
+            <div className="mb-4">
+              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Gameweeks</h2>
+              <p className="mt-1 text-sm text-brand-creamDark">Select which gameweeks to show in the Form Table.</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+              {allGws.map((gw) => {
+                const checked = selectedGameweeks.includes(gw);
+                const disabled = checked && selectedGameweeks.length === 1;
+
+                return (
+                  <label
+                    key={gw}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm ${
+                      disabled
+                        ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/60"
+                        : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={() => toggleGameweekSelection(gw)}
+                      className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                    />
+                    <span>{`GW${gw}`}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+          <div className="flex flex-wrap gap-2">
+            {selectedGameweeksAsc.map((gw) => (
+              <span
+                key={gw}
+                className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+              >
+                <span>{`GW${gw}`}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleGameweekSelection(gw)}
+                  disabled={selectedGameweeks.length === 1}
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={`Remove GW${gw}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          {gameweekLoadError ? <p className="mt-2 text-xs text-red-400">{gameweekLoadError}</p> : null}
+          {loadingGameweeks.length > 0 ? (
+            <p className="mt-2 text-xs text-brand-creamDark">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
+          ) : null}
+        </div>
+
+        <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+          <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
             {leagueRoster ? (
               <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
                 <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
@@ -1017,10 +1072,25 @@ export default function GWOverviewClient({
                 />
               </div>
             </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-h-[calc(100vh-280px)] overflow-auto rounded-xl border border-brand-cream/20">
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
+      >
+        {hasActiveFilters ? (
+          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
+        ) : null}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+        </svg>
+        Filters
+      </button>
+
+      <div className="h-[calc(100dvh-160px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table
           className="border-separate border-spacing-0 text-sm"
           style={{
