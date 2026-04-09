@@ -64,7 +64,13 @@ async function fantraxPost<T>(leagueId: string, msgs: unknown[]): Promise<T> {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient();
+  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  try {
+    supabase = await createServerSupabaseClient();
+  } catch (err) {
+    console.error("[my-league/sync] createServerSupabaseClient error:", err);
+    return NextResponse.json({ message: "Failed to initialise database client." }, { status: 500 });
+  }
 
   const {
     data: { user },
@@ -170,6 +176,7 @@ export async function POST(request: Request) {
   const { error: deleteError } = await supabase.from("league_rosters").delete().eq("profile_id", user.id);
 
   if (deleteError) {
+    console.error("[my-league/sync] deleteError:", JSON.stringify(deleteError));
     return NextResponse.json({ message: "Failed to clear existing roster data." }, { status: 500 });
   }
 
