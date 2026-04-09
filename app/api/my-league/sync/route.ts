@@ -144,11 +144,7 @@ export async function POST(request: Request) {
 
     const tables = rosterData?.responses?.[0]?.data?.tables ?? [];
 
-    if (inserts.length === 0) {
-      // Log structure for the first team only
-      console.log(`[my-league/sync] first team (${teamId}) tables count:`, tables.length);
-      console.log(`[my-league/sync] first team first table rows sample:`, JSON.stringify(tables[0]?.rows?.slice(0, 2)));
-    }
+    console.log(`[sync] team: ${teamId} first player: ${rosterData?.responses?.[0]?.data?.tables?.[0]?.rows?.[0]?.scorer?.name ?? "none"}`);
 
     for (const table of tables) {
       for (const row of table.rows ?? []) {
