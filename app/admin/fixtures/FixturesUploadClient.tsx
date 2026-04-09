@@ -42,7 +42,8 @@ export default function FixturesUploadClient() {
       <div className="mx-auto max-w-4xl rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
         <h1 className="text-3xl font-black">Upload Fixtures</h1>
         <p className="mt-2 text-sm text-brand-creamDark">
-          Upload a FixtureKey XLSX with columns: Gameweek, Home, Away. Expected: 380 rows (10 fixtures x 38 gameweeks).
+          Upload a FixtureKey XLSX with columns: Gameweek, Home, Away. Optional kickoff columns such as `Kickoff` or `Kickoff Time`
+          will be stored and used to order fixtures. Expected: 380 rows (10 fixtures x 38 gameweeks).
         </p>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">

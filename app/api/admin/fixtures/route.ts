@@ -10,17 +10,48 @@ type TeamRow = {
   name: string | null;
 };
 
-function getCellValue(record: Record<string, unknown>, keys: string[]): string {
+function getCellRawValue(record: Record<string, unknown>, keys: string[]): unknown {
   for (const key of keys) {
     if (record[key] !== undefined && record[key] !== null) {
-      return String(record[key]).trim();
+      return record[key];
     }
   }
-  return "";
+  return undefined;
+}
+
+function getCellValue(record: Record<string, unknown>, keys: string[]): string {
+  const value = getCellRawValue(record, keys);
+  return value === undefined ? "" : String(value).trim();
 }
 
 function normalize(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function parseKickoffValue(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (parsed) {
+      const kickoff = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H, parsed.M, Math.round(parsed.S ?? 0)));
+      return Number.isNaN(kickoff.getTime()) ? null : kickoff.toISOString();
+    }
+  }
+
+  const text = String(value).trim();
+  if (!text) {
+    return null;
+  }
+
+  const kickoff = new Date(text);
+  return Number.isNaN(kickoff.getTime()) ? null : kickoff.toISOString();
 }
 
 function resolveTeamAbbrev(teamNameRaw: string, teams: TeamRow[]): { abbrev: string | null; reason?: string } {
@@ -119,12 +150,24 @@ export async function POST(request: Request) {
   }
 
   const errors: string[] = [];
-  const upserts: Array<{ season: string; gameweek: number; home_team: string; away_team: string }> = [];
+  const upserts: Array<{ season: string; gameweek: number; home_team: string; away_team: string; kickoff_at: string | null }> = [];
 
   rows.forEach((row, index) => {
     const gameweekRaw = getCellValue(row, ["Gameweek", "gameweek"]);
     const homeRaw = getCellValue(row, ["Home", "home"]);
     const awayRaw = getCellValue(row, ["Away", "away"]);
+    const kickoffRaw = getCellRawValue(row, [
+      "Kickoff",
+      "kickoff",
+      "Kickoff Time",
+      "kickoff_time",
+      "Kick Off",
+      "kick off",
+      "Datetime",
+      "datetime",
+      "Date",
+      "date",
+    ]);
 
     const gameweek = Number(gameweekRaw);
     if (!Number.isInteger(gameweek) || gameweek < 1 || gameweek > 38) {
@@ -149,11 +192,18 @@ export async function POST(request: Request) {
       return;
     }
 
+    const kickoffAt = parseKickoffValue(kickoffRaw);
+    if (kickoffRaw !== undefined && kickoffRaw !== null && String(kickoffRaw).trim() !== "" && !kickoffAt) {
+      errors.push(`Row ${index + 2}: invalid kickoff '${String(kickoffRaw).trim()}'`);
+      return;
+    }
+
     upserts.push({
       season,
       gameweek,
       home_team: homeResult.abbrev.toUpperCase(),
       away_team: awayResult.abbrev.toUpperCase(),
+      kickoff_at: kickoffAt,
     });
   });
 
