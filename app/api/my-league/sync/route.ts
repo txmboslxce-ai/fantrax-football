@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     let rosterData: TeamRosterResponse;
     try {
       rosterData = await fantraxPost<TeamRosterResponse>(leagueId, [
-        { method: "getTeamRosterInfo", data: { leagueId, fantasyTeamId: teamId } },
+        { method: "getTeamRosterInfo", data: { leagueId, teamId } },
       ]);
     } catch {
       console.warn(`[my-league/sync] Failed to fetch roster for team ${teamId} (${teamName}), skipping.`);
