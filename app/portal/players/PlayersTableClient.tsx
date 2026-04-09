@@ -230,6 +230,23 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
     }, {} as Record<ColumnCategory, ColumnDefinition[]>);
   }, []);
 
+  const hasActiveFilters = useMemo(() => {
+    const defaultSet = new Set<NumericColumnKey>(DEFAULT_SELECTED_COLUMN_KEYS);
+    const currentSet = new Set(selectedColumns);
+    const columnsChanged =
+      defaultSet.size !== currentSet.size ||
+      DEFAULT_SELECTED_COLUMN_KEYS.some((k) => !currentSet.has(k));
+    return (
+      positionFilter !== "All" ||
+      availabilityFilter !== "All" ||
+      teamFilter !== "All" ||
+      search !== "" ||
+      ownershipMin !== "0" ||
+      ownershipMax !== "100" ||
+      columnsChanged
+    );
+  }, [positionFilter, availabilityFilter, teamFilter, search, ownershipMin, ownershipMax, selectedColumns]);
+
   function handleSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -496,22 +513,23 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
           </div>
         </div>
       ) : null}
-      </div>{/* end filter wrapper */}
-
-      {/* Floating Filters button — mobile only */}
-      <button
-        type="button"
-        onClick={() => setMobileFiltersOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
-        </svg>
-        Filters
-      </button>
-
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Active columns — visible inside drawer and on desktop */}
+        <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Active Columns</span>
+            <button
+              type="button"
+              onClick={clearAllColumns}
+              disabled={selectedColumnDefinitions.length === 0}
+              className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                selectedColumnDefinitions.length === 0
+                  ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
+                  : "border-brand-cream/35 text-brand-cream"
+              }`}
+            >
+              Clear all
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {selectedColumnDefinitions.length > 0 ? (
               selectedColumnDefinitions.map((column) => (
@@ -534,27 +552,25 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
               <span className="text-xs text-brand-creamDark">No optional columns selected.</span>
             )}
           </div>
-
-          <button
-            type="button"
-            onClick={clearAllColumns}
-            disabled={selectedColumnDefinitions.length === 0}
-            className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${
-              selectedColumnDefinitions.length === 0
-                ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
-                : "border-brand-cream/35 text-brand-cream"
-            }`}
-          >
-            Clear all
-          </button>
         </div>
-      </div>
+      </div>{/* end filter wrapper */}
+
+      {/* Floating Filters button — mobile only */}
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
+      >
+        {hasActiveFilters ? (
+          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
+        ) : null}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+        </svg>
+        Filters
+      </button>
 
       <div className="max-h-[calc(100vh-260px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
-        <div className="flex items-center justify-between border-b border-brand-cream/10 bg-brand-dark/70 px-3 py-2 text-xs text-brand-creamDark">
-          <span>Player column stays pinned while you scroll.</span>
-          <span>Scroll horizontally for more stats.</span>
-        </div>
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="text-brand-creamDark">
             <tr>
