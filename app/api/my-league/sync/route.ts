@@ -103,6 +103,7 @@ export async function POST(request: Request) {
   }
 
   const fantasyTeams = teamsData?.responses?.[0]?.data?.fantasyTeams;
+  console.log("[my-league/sync] fantasyTeams sample (first 2):", JSON.stringify(fantasyTeams?.slice(0, 2)));
 
   if (!Array.isArray(fantasyTeams) || fantasyTeams.length === 0) {
     return NextResponse.json(
@@ -142,6 +143,12 @@ export async function POST(request: Request) {
     }
 
     const tables = rosterData?.responses?.[0]?.data?.tables ?? [];
+
+    if (inserts.length === 0) {
+      // Log structure for the first team only
+      console.log(`[my-league/sync] first team (${teamId}) tables count:`, tables.length);
+      console.log(`[my-league/sync] first team first table rows sample:`, JSON.stringify(tables[0]?.rows?.slice(0, 2)));
+    }
 
     for (const table of tables) {
       for (const row of table.rows ?? []) {
