@@ -605,10 +605,10 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="text-brand-creamDark">
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-0 top-0 z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
                 #
               </th>
-              <th className="sticky left-[72px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-[56px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
                 <button type="button" onClick={() => onSort("player")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("player")}</span>
@@ -617,7 +617,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
               {visibleColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
@@ -656,13 +656,13 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                     role="link"
                     tabIndex={0}
                   >
-                    <td className={`sticky left-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
+                    <td className={`sticky left-0 z-20 w-[56px] min-w-[56px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
                       <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
                       <div className="text-xs text-brand-creamDark/80">
                         {posKey} #{posRank}
                       </div>
                     </td>
-                    <td className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
+                    <td className={`sticky left-[56px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           <span>{row.player}</span>
@@ -683,7 +683,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                       const range = visibleRanges[column.key];
 
                       return (
-                        <td key={column.key} className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center ${rowShade}`}>
+                        <td key={column.key} className={`border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
                           <span
                             className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
                             style={{ backgroundColor: pointsBadgeBackground(value, range.min, range.max) }}
