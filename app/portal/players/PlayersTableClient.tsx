@@ -125,6 +125,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
@@ -175,7 +176,12 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesSearch = !normalizedSearch || player.name.toLowerCase().includes(normalizedSearch);
       const matchesOwnership = player.ownershipPct >= lowerOwnershipBound && player.ownershipPct <= upperOwnershipBound;
-      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership;
+      const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[player.id]) : false;
+      const matchesAvailability =
+        availabilityFilter === "All" ||
+        (availabilityFilter === "Available" && !isTaken) ||
+        (availabilityFilter === "Taken" && isTaken);
+      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesAvailability;
     });
 
     return [...filtered].sort((a, b) => {
@@ -189,7 +195,9 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
   }, [
+    availabilityFilter,
     deferredSearch,
+    leagueRoster,
     ownershipMax,
     ownershipMin,
     players,
@@ -262,7 +270,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
           <label className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
             <input
@@ -295,6 +303,31 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
               })}
             </div>
           </div>
+
+          {leagueRoster ? (
+            <div className="space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+              <div className="flex flex-wrap gap-1">
+                {(["All", "Available", "Taken"] as const).map((option) => {
+                  const active = availabilityFilter === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAvailabilityFilter(option)}
+                      className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                        active
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <label className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
