@@ -254,9 +254,9 @@ export default async function PlayersPage({ searchParams }: PageProps) {
         />
       ) : null}
 
-      {activeTab === "waiver" ? <WaiverWireClient /> : null}
-      {activeTab === "fixtures" ? <FixturePlannerClient /> : null}
-      {activeTab === "predictions" && currentGw ? <PredictionsTab season={SEASON} currentGw={currentGw} /> : null}
+      {activeTab === "waiver" ? <WaiverWireClient leagueRoster={leagueRoster} /> : null}
+      {activeTab === "fixtures" ? <FixturePlannerClient leagueRoster={leagueRoster} /> : null}
+      {activeTab === "predictions" && currentGw ? <PredictionsTab season={SEASON} currentGw={currentGw} leagueRoster={leagueRoster} /> : null}
     </div>
   );
 }

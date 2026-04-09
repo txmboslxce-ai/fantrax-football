@@ -1,9 +1,13 @@
 "use client";
 
 import { createClient } from "@/lib/supabase";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
+import Link from "next/link";
+import RosterPill from "@/app/components/ui/RosterPill";
 import { useEffect, useMemo, useState } from "react";
 
 type WaiverRow = {
+  id: string;
   name: string;
   team: string;
   position: "G" | "D" | "M" | "F";
@@ -15,12 +19,14 @@ type PlayerGameweekJoinRow = {
   raw_fantrax_pts: number | string | null;
   players:
     | {
+        id: string;
         name: string;
         team: string;
         position: string;
         ownership_pct: string | null;
       }
     | Array<{
+        id: string;
         name: string;
         team: string;
         position: string;
@@ -132,7 +138,7 @@ const positionBadgeClass: Record<WaiverRow["position"], string> = {
   F: "bg-[#27412d]",
 };
 
-export default function WaiverWireClient() {
+export default function WaiverWireClient({ leagueRoster }: { leagueRoster: LeagueRosterData | null }) {
   const supabase = useMemo(() => createClient(), []);
   const [gameweeks, setGameweeks] = useState<number[]>([]);
   const [selectedGw, setSelectedGw] = useState<number | null>(null);
@@ -140,6 +146,7 @@ export default function WaiverWireClient() {
   const [formationLabel, setFormationLabel] = useState<string | null>(null);
   const [loadingGameweeks, setLoadingGameweeks] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -197,7 +204,7 @@ export default function WaiverWireClient() {
 
       const { data, error: rowsError } = await supabase
         .from("player_gameweeks")
-        .select("raw_fantrax_pts, players!inner(name, team, position, ownership_pct)")
+        .select("raw_fantrax_pts, players!inner(id, name, team, position, ownership_pct)")
         .eq("season", SEASON)
         .eq("gameweek", selectedGw)
         .gt("games_played", 0);
@@ -227,6 +234,7 @@ export default function WaiverWireClient() {
           }
 
           return {
+            id: player.id,
             name: player.name,
             team: player.team,
             position: player.position,
@@ -249,7 +257,15 @@ export default function WaiverWireClient() {
     };
   }, [selectedGw, supabase]);
 
-  const totalPoints = rows.reduce((sum, row) => sum + row.rawFantraxPts, 0);
+  const filteredRows = useMemo(() => {
+    if (availabilityFilter === "All" || !leagueRoster) return rows;
+    return rows.filter((row) => {
+      const isTaken = Boolean(leagueRoster.teamByPlayerId[row.id]);
+      return availabilityFilter === "Taken" ? isTaken : !isTaken;
+    });
+  }, [rows, availabilityFilter, leagueRoster]);
+
+  const totalPoints = filteredRows.reduce((sum, row) => sum + row.rawFantraxPts, 0);
 
   return (
     <div className="space-y-4">
@@ -271,6 +287,28 @@ export default function WaiverWireClient() {
             </select>
             {formationLabel ? <p className="text-xs text-brand-creamDark">{formationLabel}</p> : null}
           </label>
+
+          {leagueRoster ? (
+            <div className="space-y-1 text-xs">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+              <div className="flex gap-1">
+                {(["All", "Available", "Taken"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setAvailabilityFilter(option)}
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                      availabilityFilter === option
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -295,9 +333,16 @@ export default function WaiverWireClient() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => (
-                <tr key={`${row.name}-${row.team}-${row.position}-${index}`} className={index % 2 === 0 ? "bg-brand-dark/65" : "bg-brand-dark/85"}>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3 font-semibold">{row.name}</td>
+              {filteredRows.map((row, index) => (
+                <tr key={`${row.id}-${index}`} className={index % 2 === 0 ? "bg-brand-dark/65" : "bg-brand-dark/85"}>
+                  <td className="border-b border-r border-brand-cream/10 px-4 py-3 font-semibold">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Link href={`/portal/players/${row.id}`} className="hover:text-brand-green hover:underline">
+                        {row.name}
+                      </Link>
+                      <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
+                    </div>
+                  </td>
                   <td className="border-b border-r border-brand-cream/10 px-4 py-3">{row.team}</td>
                   <td className="border-b border-r border-brand-cream/10 px-4 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold text-brand-cream ${positionBadgeClass[row.position]}`}>

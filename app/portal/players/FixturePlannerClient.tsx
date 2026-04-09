@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import RosterPill from "@/app/components/ui/RosterPill";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 
 type PlayerGameweekJoinedRow = {
   player_id: string;
@@ -158,7 +160,7 @@ function gradientCellColor(value: number, min: number, max: number): string {
   return mixColor(yellow, green, (ratio - 0.5) * 2);
 }
 
-export default function FixturePlannerClient() {
+export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: LeagueRosterData | null }) {
   const supabase = useMemo(() => createClient(), []);
 
   const [rows, setRows] = useState<PlayerPlannerRow[]>([]);
@@ -178,6 +180,7 @@ export default function FixturePlannerClient() {
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const [loading, setLoading] = useState(true);
@@ -384,11 +387,16 @@ export default function FixturePlannerClient() {
       const matchesTeam = teamFilter === "All" || row.team === teamFilter;
       const matchesSearch = !normalizedSearch || row.name.toLowerCase().includes(normalizedSearch);
       const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
-      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership;
+      const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[row.id]) : false;
+      const matchesAvailability =
+        availabilityFilter === "All" ||
+        (availabilityFilter === "Available" && !isTaken) ||
+        (availabilityFilter === "Taken" && isTaken);
+      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesAvailability;
     });
 
     return [...filtered].sort((a, b) => (sortDirection === "desc" ? b.seasonPts - a.seasonPts : a.seasonPts - b.seasonPts));
-  }, [ownershipMax, ownershipMin, positionFilter, rows, search, sortDirection, teamFilter]);
+  }, [availabilityFilter, leagueRoster, ownershipMax, ownershipMin, positionFilter, rows, search, sortDirection, teamFilter]);
 
   const sortArrow = sortDirection === "asc" ? "↑" : "↓";
 
@@ -483,6 +491,28 @@ export default function FixturePlannerClient() {
                 />
               </div>
             </div>
+
+            {leagueRoster ? (
+              <div className="shrink-0 space-y-1">
+                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+                <div className="flex gap-1">
+                  {(["All", "Available", "Taken"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAvailabilityFilter(option)}
+                      className={`rounded-md border px-3 py-1 text-xs font-semibold ${
+                        availabilityFilter === option
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -522,13 +552,14 @@ export default function FixturePlannerClient() {
                 <tr key={row.id} className="text-brand-cream">
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
                     <Link href={`/portal/players/${row.id}`} className="block hover:text-brand-greenLight">
-                      <div className="flex items-center gap-1 font-semibold leading-tight">
+                      <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
                         <span>{row.name}</span>
                         <AvailabilityIcon
                           chanceOfPlaying={row.chanceOfPlaying}
                           status={row.availabilityStatus}
                           news={row.availabilityNews}
                         />
+                        <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                       </div>
                       <div className="mt-0.5 text-xs text-brand-creamDark/70">
                         {row.team} / {positionLetter(row.position)} / {row.ownershipPct.toFixed(1)}%

@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import RosterPill from "@/app/components/ui/RosterPill";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 
 type PositionFilter = "All" | "G" | "D" | "M" | "F";
 type SortKey = "predictedPts" | "playerName";
@@ -47,6 +50,7 @@ type PredictionsResponse = {
 type PredictionsTabProps = {
   season: string;
   currentGw: number;
+  leagueRoster: LeagueRosterData | null;
 };
 
 const positionFilters: PositionFilter[] = ["All", "G", "D", "M", "F"];
@@ -172,7 +176,7 @@ function withRanks(rows: PredictionRow[]): RankedPredictionRow[] {
   });
 }
 
-export default function PredictionsTab({ season, currentGw }: PredictionsTabProps) {
+export default function PredictionsTab({ season, currentGw, leagueRoster }: PredictionsTabProps) {
   const [selectedGw, setSelectedGw] = useState(currentGw + 1);
   const [position, setPosition] = useState<PositionFilter>("All");
   const [rankedRows, setRankedRows] = useState<RankedPredictionRow[]>([]);
@@ -184,6 +188,7 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
 
   const gwOptions = useMemo(() => Array.from({ length: 5 }, (_, idx) => currentGw + idx + 1), [currentGw]);
 
@@ -258,9 +263,14 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
       const matchesSearch = !normalizedSearch || row.playerName.toLowerCase().includes(normalizedSearch);
       const matchesTeam = teamFilter === "All" || row.team === teamFilter;
       const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
-      return matchesSearch && matchesTeam && matchesOwnership;
+      const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[row.playerId]) : false;
+      const matchesAvailability =
+        availabilityFilter === "All" ||
+        (availabilityFilter === "Available" && !isTaken) ||
+        (availabilityFilter === "Taken" && isTaken);
+      return matchesSearch && matchesTeam && matchesOwnership && matchesAvailability;
     });
-  }, [ownershipMax, ownershipMin, rankedRows, searchPlayer, teamFilter]);
+  }, [availabilityFilter, leagueRoster, ownershipMax, ownershipMin, rankedRows, searchPlayer, teamFilter]);
 
   const sortedRows = useMemo(() => {
     const sorted = [...filteredRows];
@@ -419,6 +429,28 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
               />
             </div>
           </div>
+
+          {leagueRoster ? (
+            <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+              <div className="flex flex-nowrap gap-1">
+                {(["All", "Available", "Taken"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setAvailabilityFilter(option)}
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                      availabilityFilter === option
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -516,13 +548,16 @@ export default function PredictionsTab({ season, currentGw }: PredictionsTabProp
                       </td>
 
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3">
-                        <div className="flex items-center gap-1 font-semibold leading-tight">
-                          <span>{row.playerName}</span>
+                        <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
+                          <Link href={`/portal/players/${row.playerId}`} className="hover:text-brand-green hover:underline">
+                            {row.playerName}
+                          </Link>
                           <AvailabilityIcon
                             chanceOfPlaying={row.chanceOfPlaying}
                             status={row.availabilityStatus}
                             news={row.availabilityNews}
                           />
+                          <RosterPill playerId={row.playerId} leagueRoster={leagueRoster} />
                         </div>
                         <div className="mt-1 flex items-center gap-2 text-xs text-brand-creamDark/80">
                           <span className={`inline-flex rounded-full px-2 py-0.5 font-bold text-brand-cream ${positionBadgeClass[row.position]}`}>
