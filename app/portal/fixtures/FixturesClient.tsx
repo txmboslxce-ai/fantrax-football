@@ -102,13 +102,17 @@ export default function FixturesClient({ fixtures, defaultGameweek }: FixturesCl
               </div>
               <div className="grid flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
                 <div className="text-right">
-                  <p className="text-sm text-brand-creamDark">{fixture.homeAbbrev}</p>
-                  <p className="text-lg font-black text-brand-cream">{fixture.homeTeam}</p>
+                  <p className="text-base font-black text-brand-cream sm:text-sm sm:font-normal sm:text-brand-creamDark">
+                    {fixture.homeAbbrev}
+                  </p>
+                  <p className="hidden text-lg font-black text-brand-cream sm:block">{fixture.homeTeam}</p>
                 </div>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-brand-greenLight">vs</p>
                 <div>
-                  <p className="text-sm text-brand-creamDark">{fixture.awayAbbrev}</p>
-                  <p className="text-lg font-black text-brand-cream">{fixture.awayTeam}</p>
+                  <p className="text-base font-black text-brand-cream sm:text-sm sm:font-normal sm:text-brand-creamDark">
+                    {fixture.awayAbbrev}
+                  </p>
+                  <p className="hidden text-lg font-black text-brand-cream sm:block">{fixture.awayTeam}</p>
                 </div>
               </div>
               <div className="rounded-full border border-brand-cream/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
