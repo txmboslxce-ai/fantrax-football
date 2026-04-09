@@ -2,8 +2,8 @@
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
-import type { PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
+import type { PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -144,6 +144,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
   const [minGames, setMinGames] = useState("0");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
   const [selectedColumns, setSelectedColumns] = useState<StatColumnKey[]>(DEFAULT_SELECTED_COLUMN_KEYS);
   const [sortKey, setSortKey] = useState<SortKey>("goals");
@@ -193,7 +194,12 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
       const matchesTeam = teamFilter === "All" || row.team === teamFilter;
       const matchesGames = row.windows[selectedWindow].games_played >= safeMinGames;
       const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
-      return matchesSearch && matchesPosition && matchesTeam && matchesGames && matchesOwnership;
+      const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[row.id]) : false;
+      const matchesAvailability =
+        availabilityFilter === "All" ||
+        (availabilityFilter === "Available" && !isTaken) ||
+        (availabilityFilter === "Taken" && isTaken);
+      return matchesSearch && matchesPosition && matchesTeam && matchesGames && matchesOwnership && matchesAvailability;
     });
 
     return [...filtered].sort((a, b) => {
@@ -206,7 +212,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
       const bValue = b.windows[selectedWindow][sortKey];
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
-  }, [deferredSearch, minGames, ownershipMax, ownershipMin, position, rows, selectedWindow, sortDir, sortKey, teamFilter]);
+  }, [availabilityFilter, deferredSearch, leagueRoster, minGames, ownershipMax, ownershipMin, position, rows, selectedWindow, sortDir, sortKey, teamFilter]);
 
   const visibleRanges = useMemo(() => {
     const ranges = {} as Record<StatColumnKey, { min: number; max: number }>;
@@ -269,21 +275,21 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-          <label className="space-y-1">
+      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+        <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+          <label className="space-y-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Player"
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none md:w-40"
             />
           </label>
 
-          <div className="space-y-1">
+          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-nowrap gap-1">
               {positions.map((filter) => {
                 const active = position === filter;
                 return (
@@ -291,7 +297,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                     key={filter}
                     type="button"
                     onClick={() => setPosition(filter)}
-                    className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -304,12 +310,37 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
             </div>
           </div>
 
-          <label className="space-y-1">
+          {leagueRoster ? (
+            <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
+              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+              <div className="flex flex-nowrap gap-1">
+                {(["All", "Available", "Taken"] as const).map((option) => {
+                  const active = availabilityFilter === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAvailabilityFilter(option)}
+                      className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                        active
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          <label className="space-y-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
             <select
               value={teamFilter}
               onChange={(event) => setTeamFilter(event.target.value)}
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-24"
             >
               <option value="All">All</option>
               {teams.map((team) => (
@@ -320,20 +351,20 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
             </select>
           </label>
 
-          <label className="space-y-1">
+          <label className="space-y-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Min games</span>
             <input
               type="number"
               min={0}
               value={minGames}
               onChange={(event) => setMinGames(event.target.value)}
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-16"
             />
           </label>
 
-          <div className="space-y-1">
+          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1 md:flex">
               <input
                 type="number"
                 min={0}
@@ -342,7 +373,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                 value={ownershipMin}
                 onChange={(event) => setOwnershipMin(event.target.value)}
                 placeholder="Min"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
               />
               <input
                 type="number"
@@ -352,16 +383,16 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                 value={ownershipMax}
                 onChange={(event) => setOwnershipMax(event.target.value)}
                 placeholder="Max"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
               />
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-brand-cream/10 pt-3">
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2 border-t border-brand-cream/10 pt-2">
           <div className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Window</span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-nowrap gap-1">
               {WINDOW_OPTIONS.map((option) => {
                 const active = selectedWindow === option.key;
                 return (
@@ -369,7 +400,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                     key={option.key}
                     type="button"
                     onClick={() => setSelectedWindow(option.key)}
-                    className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -385,7 +416,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
           <button
             type="button"
             onClick={() => setIsColumnPanelOpen((current) => !current)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+            className={`rounded border px-2 py-1 text-xs font-semibold ${
               isColumnPanelOpen
                 ? "border-brand-green bg-brand-green text-brand-cream"
                 : "border-brand-cream/35 bg-brand-dark text-brand-cream"

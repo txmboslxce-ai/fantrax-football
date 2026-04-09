@@ -269,21 +269,21 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
-          <label className="space-y-1">
+      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+        <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+          <label className="space-y-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Player"
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none md:w-40"
             />
           </label>
 
-          <div className="space-y-1">
+          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-nowrap gap-1">
               {positionFilters.map((filter) => {
                 const active = positionFilter === filter;
                 return (
@@ -291,7 +291,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     key={filter}
                     type="button"
                     onClick={() => setPositionFilter(filter)}
-                    className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -305,9 +305,9 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
           </div>
 
           {leagueRoster ? (
-            <div className="space-y-1">
+            <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-nowrap gap-1">
                 {(["All", "Available", "Taken"] as const).map((option) => {
                   const active = availabilityFilter === option;
                   return (
@@ -315,7 +315,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                       key={option}
                       type="button"
                       onClick={() => setAvailabilityFilter(option)}
-                      className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                      className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                         active
                           ? "border-brand-green bg-brand-green text-brand-cream"
                           : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -329,12 +329,12 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
             </div>
           ) : null}
 
-          <label className="space-y-1">
+          <label className="space-y-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
             <select
               value={teamFilter}
               onChange={(event) => setTeamFilter(event.target.value)}
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-24"
             >
               <option value="All">All</option>
               {teams.map((team) => (
@@ -345,9 +345,9 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
             </select>
           </label>
 
-          <div className="space-y-1">
+          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1 md:flex">
               <input
                 type="number"
                 min={0}
@@ -356,7 +356,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                 value={ownershipMin}
                 onChange={(event) => setOwnershipMin(event.target.value)}
                 placeholder="Min"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
               />
               <input
                 type="number"
@@ -366,16 +366,16 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                 value={ownershipMax}
                 onChange={(event) => setOwnershipMax(event.target.value)}
                 placeholder="Max"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2.5 py-1.5 text-xs text-brand-cream"
+                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
               />
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-brand-cream/10 pt-3">
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2 border-t border-brand-cream/10 pt-2">
           <div className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Window</span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-nowrap gap-1">
               {WINDOW_OPTIONS.map((option) => {
                 const active = selectedWindow === option.key;
                 return (
@@ -383,7 +383,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     key={option.key}
                     type="button"
                     onClick={() => setSelectedWindow(option.key)}
-                    className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold ${
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-brand-cream/35 bg-brand-dark text-brand-cream"
@@ -399,7 +399,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
           <button
             type="button"
             onClick={() => setIsColumnPanelOpen((current) => !current)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+            className={`rounded border px-2 py-1 text-xs font-semibold ${
               isColumnPanelOpen
                 ? "border-brand-green bg-brand-green text-brand-cream"
                 : "border-brand-cream/35 bg-brand-dark text-brand-cream"

@@ -407,6 +407,7 @@ export default function GWOverviewClient({
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [selectedGameweeks, setSelectedGameweeks] = useState<number[]>(() => [...selectedGws].sort((a, b) => a - b));
@@ -706,6 +707,12 @@ export default function GWOverviewClient({
         return false;
       }
 
+      if (availabilityFilter !== "All" && leagueRoster) {
+        const isTaken = Boolean(leagueRoster.teamByPlayerId[player.id]);
+        if (availabilityFilter === "Available" && isTaken) return false;
+        if (availabilityFilter === "Taken" && !isTaken) return false;
+      }
+
       for (const gw of displayedGws) {
         const allowedStatuses = gwStatusFilters[gw] ?? gpStatusFilters;
         if (allowedStatuses.length === gpStatusFilters.length) {
@@ -754,8 +761,10 @@ export default function GWOverviewClient({
       return compareText(a.name, b.name, "asc");
     });
   }, [
+    availabilityFilter,
     formByPlayer,
     gwStatusFilters,
+    leagueRoster,
     ownershipMax,
     ownershipMin,
     players,
@@ -870,6 +879,31 @@ export default function GWOverviewClient({
 
       <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
         <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+            {leagueRoster ? (
+              <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
+                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+                <div className="flex flex-nowrap gap-1">
+                  {(["All", "Available", "Taken"] as const).map((option) => {
+                    const active = availabilityFilter === option;
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setAvailabilityFilter(option)}
+                        className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                          active
+                            ? "border-brand-green bg-brand-green text-brand-cream"
+                            : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             <label className="space-y-1 md:shrink-0">
               <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
               <input
