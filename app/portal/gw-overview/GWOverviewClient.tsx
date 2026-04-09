@@ -1051,7 +1051,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/20 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -1064,7 +1064,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/20 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -1076,12 +1076,10 @@ export default function GWOverviewClient({
                 </button>
               </th>
 
-              {displayedGws.map((gw, gwIndex) => (
+              {displayedGws.map((gw) => (
                 <th
                   key={`gw-header-${gw}`}
-                  className={`relative sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px] ${
-                    gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
-                  }`}
+                  className="relative sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px]"
                 >
                   <div className="inline-flex items-center gap-1">
                     <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
@@ -1144,7 +1142,7 @@ export default function GWOverviewClient({
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 px-2 py-1.5 text-center text-brand-cream ${rowShade} ${selectedRowClass} ${selectedRankCellClass}`}
+                    className={`sticky left-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center text-brand-cream ${rowShade} ${selectedRowClass} ${selectedRankCellClass}`}
                   >
                     <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
                     <div className="text-xs text-brand-creamDark/80">
@@ -1152,7 +1150,7 @@ export default function GWOverviewClient({
                     </div>
                   </td>
                   <td
-                    className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/30 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
+                    className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
@@ -1173,23 +1171,23 @@ export default function GWOverviewClient({
                     </div>
                   </td>
                   <td
-                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/30 px-2 py-1.5 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
                   >
                     {form.formPPG.toFixed(2)}
                   </td>
 
-                  {displayedGws.map((gw, gwIndex) => {
+                  {displayedGws.map((gw) => {
                     const row = playerRowsByGw?.get(gw);
                     const noRow = !row;
                     const applicable = isStatApplicable(player.position, selectedStat);
 
                     let statCellContent = "-";
-                    let statCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream/85`;
+                    let statCellClass = `border-b border-r border-brand-cream/10 ${rowShade} text-brand-cream/85`;
                     let statBadgeStyle: CSSProperties | undefined;
                     let showStatBadge = false;
 
@@ -1200,9 +1198,9 @@ export default function GWOverviewClient({
                       if (selectedStat === "raw_fantrax_pts") {
                         showStatBadge = true;
                         statBadgeStyle = { backgroundColor: pointsGradientBackground(value) };
-                        statCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
+                        statCellClass = `border-b border-r border-brand-cream/10 ${rowShade} text-brand-cream`;
                       } else {
-                        statCellClass = `border-b border-r border-brand-cream/30 ${rowShade} text-brand-cream`;
+                        statCellClass = `border-b border-r border-brand-cream/10 ${rowShade} text-brand-cream`;
                       }
                     }
 
@@ -1212,9 +1210,7 @@ export default function GWOverviewClient({
                     return (
                       <Fragment key={`${player.id}-${gw}`}>
                         <td
-                          className={`w-[72px] min-w-[72px] md:w-[118px] md:min-w-[118px] ${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs ${
-                            gwIndex >= 0 ? "border-l-4 border-l-brand-cream/60" : ""
-                          }`}
+                          className={`w-[72px] min-w-[72px] md:w-[118px] md:min-w-[118px] ${statCellClass} ${selectedRowClass} px-2 py-1.5 text-center text-xs`}
                         >
                           <div className="flex flex-col items-center gap-1">
                             <div>
