@@ -38,6 +38,11 @@ type CompareClientProps = {
   players: ComparePlayerSnapshot[];
 };
 
+type CompareSlot = {
+  id: string;
+  label: string;
+};
+
 const rows: Array<{ label: string; key: keyof ComparePlayerSnapshot["comparison"] }> = [
   { label: "Season Pts", key: "seasonPts" },
   { label: "Avg/GW", key: "avgGw" },
@@ -60,11 +65,13 @@ function SearchablePlayerPicker({
   value,
   onChange,
   players,
+  onRemove,
 }: {
   label: string;
   value: string;
   onChange: (id: string, query: string) => void;
   players: ComparePlayerSnapshot[];
+  onRemove?: () => void;
 }) {
   const [query, setQuery] = useState(value);
 
@@ -80,7 +87,18 @@ function SearchablePlayerPicker({
 
   return (
     <label className="relative space-y-1 text-sm text-brand-creamDark">
-      {label}
+      <span className="flex items-center justify-between gap-2">
+        <span>{label}</span>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-xs font-semibold text-brand-creamDark transition-colors hover:text-brand-cream"
+          >
+            Remove
+          </button>
+        ) : null}
+      </span>
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
@@ -108,47 +126,70 @@ function SearchablePlayerPicker({
 }
 
 export default function CompareClient({ players }: CompareClientProps) {
-  const initialLeft = players[0];
-  const initialRight = players[1] ?? players[0];
+  const initialSelections: CompareSlot[] = [
+    { id: "", label: "" },
+    { id: "", label: "" },
+  ];
 
-  const [leftId, setLeftId] = useState<string>(initialLeft?.id ?? "");
-  const [rightId, setRightId] = useState<string>(initialRight?.id ?? "");
-  const [leftLabel, setLeftLabel] = useState<string>(initialLeft ? playerLabel(initialLeft) : "");
-  const [rightLabel, setRightLabel] = useState<string>(initialRight ? playerLabel(initialRight) : "");
+  const [slots, setSlots] = useState<CompareSlot[]>(initialSelections);
 
-  const selected = useMemo(() => {
-    const left = players.find((player) => player.id === leftId) ?? null;
-    const right = players.find((player) => player.id === rightId) ?? null;
-    return { left, right };
-  }, [leftId, players, rightId]);
+  const selectedPlayers = useMemo(
+    () => slots.map((slot) => players.find((player) => player.id === slot.id) ?? null).filter((player): player is ComparePlayerSnapshot => player != null),
+    [players, slots]
+  );
+
+  function updateSlot(index: number, nextSlot: CompareSlot) {
+    setSlots((current) => current.map((slot, slotIndex) => (slotIndex === index ? nextSlot : slot)));
+  }
+
+  function addSlot() {
+    setSlots((current) => {
+      if (current.length >= 4) {
+        return current;
+      }
+      return [...current, { id: "", label: "" }];
+    });
+  }
+
+  function removeSlot(index: number) {
+    setSlots((current) => {
+      if (current.length <= 2) {
+        return current;
+      }
+      return current.filter((_, slotIndex) => slotIndex !== index);
+    });
+  }
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-2">
-        <SearchablePlayerPicker
-          label="Player 1"
-          value={leftLabel}
-          onChange={(id, query) => {
-            setLeftId(id);
-            setLeftLabel(query);
-          }}
-          players={players}
-        />
-        <SearchablePlayerPicker
-          label="Player 2"
-          value={rightLabel}
-          onChange={(id, query) => {
-            setRightId(id);
-            setRightLabel(query);
-          }}
-          players={players}
-        />
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {slots.map((slot, index) => (
+            <SearchablePlayerPicker
+              key={`${index}-${slot.id || "empty"}`}
+              label={`Player ${index + 1}`}
+              value={slot.label}
+              onChange={(id, query) => updateSlot(index, { id, label: query })}
+              players={players}
+              onRemove={index >= 2 ? () => removeSlot(index) : undefined}
+            />
+          ))}
+        </div>
+        {slots.length < 4 ? (
+          <button
+            type="button"
+            onClick={addSlot}
+            className="rounded-full border border-brand-cream/35 bg-brand-dark px-4 py-2 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-greenDark"
+          >
+            Add player
+          </button>
+        ) : null}
       </div>
 
-      {selected.left && selected.right && (
+      {selectedPlayers.length >= 2 && (
         <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {[selected.left, selected.right].map((player) => (
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+            {selectedPlayers.map((player) => (
               <article key={player.id} className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-5 text-brand-cream">
                 <h2 className="inline-flex items-center gap-1 text-xl font-black">
                   <span>{player.name}</span>
@@ -182,53 +223,39 @@ export default function CompareClient({ players }: CompareClientProps) {
               <thead className="bg-brand-dark text-brand-creamDark">
                 <tr>
                   <th className="px-4 py-3">Stat</th>
-                  <th className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1">
-                      <span>{selected.left.name}</span>
-                      <AvailabilityIcon
-                        chanceOfPlaying={selected.left.chanceOfPlaying}
-                        status={selected.left.availabilityStatus}
-                        news={selected.left.availabilityNews}
-                      />
-                    </span>
-                  </th>
-                  <th className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1">
-                      <span>{selected.right.name}</span>
-                      <AvailabilityIcon
-                        chanceOfPlaying={selected.right.chanceOfPlaying}
-                        status={selected.right.availabilityStatus}
-                        news={selected.right.availabilityNews}
-                      />
-                    </span>
-                  </th>
+                  {selectedPlayers.map((player) => (
+                    <th key={player.id} className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1">
+                        <span>{player.name}</span>
+                        <AvailabilityIcon
+                          chanceOfPlaying={player.chanceOfPlaying}
+                          status={player.availabilityStatus}
+                          news={player.availabilityNews}
+                        />
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const { left, right } = selected;
-                  if (!left || !right) {
-                    return null;
-                  }
+                {rows.map((row, index) => {
+                  const values = selectedPlayers.map((player) => player.comparison[row.key]);
+                  const bestValue = Math.max(...values);
 
-                  return rows.map((row, index) => {
-                    const leftValue = left.comparison[row.key];
-                    const rightValue = right.comparison[row.key];
-                    const leftBetter = leftValue > rightValue;
-                    const rightBetter = rightValue > leftValue;
-
-                    return (
-                      <tr
-                        key={row.key}
-                        className={index % 2 === 0 ? "bg-brand-dark/70 text-brand-cream" : "bg-brand-dark text-brand-cream"}
-                      >
-                        <td className="px-4 py-3 font-semibold">{row.label}</td>
-                        <td className={`px-4 py-3 ${leftBetter ? "font-bold text-brand-greenLight" : ""}`}>{leftValue.toFixed(2)}</td>
-                        <td className={`px-4 py-3 ${rightBetter ? "font-bold text-brand-greenLight" : ""}`}>{rightValue.toFixed(2)}</td>
-                      </tr>
-                    );
-                  });
-                })()}
+                  return (
+                    <tr
+                      key={row.key}
+                      className={index % 2 === 0 ? "bg-brand-dark/70 text-brand-cream" : "bg-brand-dark text-brand-cream"}
+                    >
+                      <td className="px-4 py-3 font-semibold">{row.label}</td>
+                      {values.map((value, valueIndex) => (
+                        <td key={`${row.key}-${selectedPlayers[valueIndex].id}`} className={`px-4 py-3 ${value === bestValue ? "font-bold text-brand-greenLight" : ""}`}>
+                          {value.toFixed(2)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
