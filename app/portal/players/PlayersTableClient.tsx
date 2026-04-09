@@ -572,9 +572,9 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
 
       <div className="overflow-x-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="text-brand-creamDark">
+          <thead className="sticky top-0 z-10 text-brand-creamDark">
             <tr>
-              <th className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-0 z-30 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
@@ -583,7 +583,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
               {visibleColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
+                  className="z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
