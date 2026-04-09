@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type LeagueTeam = {
   id: string;
@@ -49,6 +49,13 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ teams: number; playersRostered: number; unmatchedPlayers: string[] } | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string>(teams[0]?.id ?? "");
+
+  // Keep selectedTeamId valid when the teams prop changes (e.g. after a re-sync)
+  useEffect(() => {
+    if (teams.length > 0 && !teams.some((t) => t.id === selectedTeamId)) {
+      setSelectedTeamId(teams[0].id);
+    }
+  }, [teams, selectedTeamId]);
 
   async function handleSync(idToSync: string) {
     if (!idToSync.trim()) return;
@@ -140,7 +147,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
 
   // League view
   const selectedTeamPlayers = players
-    .filter((p) => !selectedTeamId || p.teamId === selectedTeamId)
+    .filter((p) => p.teamId === selectedTeamId)
     .sort((a, b) => (POSITION_ORDER[a.position] ?? 4) - (POSITION_ORDER[b.position] ?? 4) || a.playerName.localeCompare(b.playerName));
 
   return (

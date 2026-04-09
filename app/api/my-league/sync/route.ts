@@ -179,6 +179,12 @@ export async function POST(request: Request) {
     }
   }
 
+  // Deduplicate by fantrax_player_id — a player can appear in multiple tables
+  // (active + injured/reserve list) within a single team's response
+  const dedupedInserts = Array.from(
+    new Map(inserts.map((row) => [row.fantrax_player_id, row])).values()
+  );
+
   // Replace existing roster data with fresh data
   const { error: deleteError } = await supabase.from("league_rosters").delete().eq("profile_id", user.id);
 
@@ -187,10 +193,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Failed to clear existing roster data." }, { status: 500 });
   }
 
-  if (inserts.length > 0) {
-    const { error: insertError } = await supabase.from("league_rosters").insert(inserts);
+  if (dedupedInserts.length > 0) {
+    const { error: insertError } = await supabase.from("league_rosters").insert(dedupedInserts);
 
     if (insertError) {
+      console.error("[my-league/sync] insertError:", JSON.stringify(insertError));
       return NextResponse.json({ message: `Failed to save roster data: ${insertError.message}` }, { status: 500 });
     }
   }
@@ -209,7 +216,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     teams: fantasyTeams.length,
-    playersRostered: inserts.length,
+    playersRostered: dedupedInserts.length,
     unmatchedPlayers: unmatchedNames,
   });
 }
