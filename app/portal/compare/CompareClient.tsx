@@ -78,7 +78,7 @@ function SearchablePlayerPicker({
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) {
-      return players.slice(0, 8);
+      return [];
     }
     return players
       .filter((player) => `${player.name} ${player.team}`.toLowerCase().includes(term))
@@ -105,22 +105,24 @@ function SearchablePlayerPicker({
         placeholder="Search player"
         className="w-full rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-2 text-brand-cream"
       />
-      <div className="absolute z-20 mt-1 w-full rounded-md border border-brand-cream/25 bg-brand-dark shadow-lg">
-        {filtered.map((player) => (
-          <button
-            key={player.id}
-            type="button"
-            onClick={() => {
-              const labelValue = playerLabel(player);
-              setQuery(labelValue);
-              onChange(player.id, labelValue);
-            }}
-            className="block w-full px-3 py-2 text-left text-sm text-brand-cream hover:bg-brand-greenDark"
-          >
-            {playerLabel(player)}
-          </button>
-        ))}
-      </div>
+      {filtered.length > 0 ? (
+        <div className="absolute z-20 mt-1 w-full rounded-md border border-brand-cream/25 bg-brand-dark shadow-lg">
+          {filtered.map((player) => (
+            <button
+              key={player.id}
+              type="button"
+              onClick={() => {
+                const labelValue = playerLabel(player);
+                setQuery(labelValue);
+                onChange(player.id, labelValue);
+              }}
+              className="block w-full px-3 py-2 text-left text-sm text-brand-cream hover:bg-brand-greenDark"
+            >
+              {playerLabel(player)}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </label>
   );
 }
