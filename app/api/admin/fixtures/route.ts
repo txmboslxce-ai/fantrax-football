@@ -211,7 +211,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: errors.length ? errors : ["No valid fixture rows"] }, { status: 400 });
   }
 
-  const { error } = await db.from("fixtures").upsert(upserts, { onConflict: "season,gameweek,home_team" });
+  let error =
+    (
+      await db.from("fixtures").upsert(upserts, {
+        onConflict: "season,gameweek,home_team",
+      })
+    ).error;
+
+  if (error?.message.includes("kickoff_at")) {
+    const fallbackUpserts = upserts.map(({ kickoff_at: _kickoffAt, ...fixture }) => fixture);
+    error = (
+      await db.from("fixtures").upsert(fallbackUpserts, {
+        onConflict: "season,gameweek,home_team",
+      })
+    ).error;
+  }
 
   if (error) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: [error.message, ...errors] }, { status: 500 });

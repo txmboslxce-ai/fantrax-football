@@ -31,6 +31,42 @@ type LatestGameweekRow = {
   gameweek: number;
 };
 
+async function loadFixtures(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>
+): Promise<{ data: FixtureRow[]; hasKickoffAt: boolean }> {
+  const withKickoff = await supabase
+    .from("fixtures")
+    .select("id, gameweek, home_team, away_team, kickoff_at")
+    .eq("season", SEASON)
+    .order("gameweek");
+
+  if (!withKickoff.error) {
+    return { data: (withKickoff.data ?? []) as FixtureRow[], hasKickoffAt: true };
+  }
+
+  if (!withKickoff.error.message.includes("kickoff_at")) {
+    throw new Error(`Unable to load fixtures: ${withKickoff.error.message}`);
+  }
+
+  const withoutKickoff = await supabase
+    .from("fixtures")
+    .select("id, gameweek, home_team, away_team")
+    .eq("season", SEASON)
+    .order("gameweek");
+
+  if (withoutKickoff.error) {
+    throw new Error(`Unable to load fixtures: ${withoutKickoff.error.message}`);
+  }
+
+  return {
+    data: ((withoutKickoff.data ?? []) as Array<Omit<FixtureRow, "kickoff_at">>).map((fixture) => ({
+      ...fixture,
+      kickoff_at: null,
+    })),
+    hasKickoffAt: false,
+  };
+}
+
 function parseRequestedGameweek(value: string | string[] | undefined): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
   const parsed = Number(raw);
@@ -43,16 +79,11 @@ export default async function FixturesPage({ searchParams }: PageProps) {
 
   const supabase = await createServerSupabaseClient();
 
-  const [{ data: fixturesData, error: fixturesError }, { data: teamsData, error: teamsError }, { data: currentGwData, error: currentGwError }] =
-    await Promise.all([
-      supabase.from("fixtures").select("id, gameweek, home_team, away_team, kickoff_at").eq("season", SEASON).order("gameweek"),
-      supabase.from("teams").select("abbrev, full_name, name"),
-      supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
-    ]);
-
-  if (fixturesError) {
-    throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
-  }
+  const [{ data: fixturesData }, { data: teamsData, error: teamsError }, { data: currentGwData, error: currentGwError }] = await Promise.all([
+    loadFixtures(supabase),
+    supabase.from("teams").select("abbrev, full_name, name"),
+    supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
+  ]);
 
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);

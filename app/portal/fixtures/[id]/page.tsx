@@ -61,6 +61,40 @@ type PlayerGameweekRow = {
   accurate_crosses: number;
 };
 
+async function loadFixture(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  fixtureId: string
+): Promise<FixtureRow | null> {
+  const withKickoff = await supabase
+    .from("fixtures")
+    .select("id, gameweek, home_team, away_team, kickoff_at")
+    .eq("season", SEASON)
+    .eq("id", fixtureId)
+    .limit(1);
+
+  if (!withKickoff.error) {
+    return ((withKickoff.data ?? []) as FixtureRow[])[0] ?? null;
+  }
+
+  if (!withKickoff.error.message.includes("kickoff_at")) {
+    throw new Error(`Unable to load fixture: ${withKickoff.error.message}`);
+  }
+
+  const withoutKickoff = await supabase
+    .from("fixtures")
+    .select("id, gameweek, home_team, away_team")
+    .eq("season", SEASON)
+    .eq("id", fixtureId)
+    .limit(1);
+
+  if (withoutKickoff.error) {
+    throw new Error(`Unable to load fixture: ${withoutKickoff.error.message}`);
+  }
+
+  const fixture = ((withoutKickoff.data ?? []) as Array<Omit<FixtureRow, "kickoff_at">>)[0];
+  return fixture ? { ...fixture, kickoff_at: null } : null;
+}
+
 function formatKickoff(value: string | null): string | null {
   if (!value) {
     return null;
@@ -125,21 +159,16 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: fixtureData, error: fixtureError }, { data: teamsData, error: teamsError }, leagueRoster] = await Promise.all([
-    supabase.from("fixtures").select("id, gameweek, home_team, away_team, kickoff_at").eq("season", SEASON).eq("id", resolvedParams.id).limit(1),
+  const [fixture, { data: teamsData, error: teamsError }, leagueRoster] = await Promise.all([
+    loadFixture(supabase, resolvedParams.id),
     supabase.from("teams").select("abbrev, full_name, name"),
     user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
   ]);
-
-  if (fixtureError) {
-    throw new Error(`Unable to load fixture: ${fixtureError.message}`);
-  }
 
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
 
-  const fixture = ((fixtureData ?? []) as FixtureRow[])[0];
   if (!fixture) {
     notFound();
   }
