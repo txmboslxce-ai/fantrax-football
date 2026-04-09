@@ -6,12 +6,10 @@ import { useMemo, useState } from "react";
 type TeamRow = {
   abbrev: string;
   teamName: string;
-  scoredTotal: number;
   scoredFwd: number;
   scoredMid: number;
   scoredDef: number;
   scoredGk: number;
-  concededTotal: number;
   concededFwd: number;
   concededMid: number;
   concededDef: number;
@@ -20,20 +18,18 @@ type TeamRow = {
 
 type SortKey =
   | "teamName"
-  | "scoredTotal"
   | "scoredFwd"
   | "scoredMid"
   | "scoredDef"
   | "scoredGk"
-  | "concededTotal"
   | "concededFwd"
   | "concededMid"
   | "concededDef"
   | "concededGk";
 
 export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("scoredTotal");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("teamName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -109,44 +105,14 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
                 Team
               </button>
             </th>
-            <th className="px-4 py-2 text-center font-bold text-brand-cream" colSpan={5}>
-              Points Scored
-            </th>
-            <th className="border-l-2 border-brand-cream/30 px-4 py-2 text-center font-bold text-brand-cream" colSpan={5}>
+            <th className="px-4 py-2 text-center font-bold text-brand-cream" colSpan={4}>
               Points Conceded
+            </th>
+            <th className="border-l-2 border-brand-cream/30 px-4 py-2 text-center font-bold text-brand-cream" colSpan={4}>
+              Points Scored
             </th>
           </tr>
           <tr>
-            <th className="px-4 py-3 text-xs text-brand-creamDark">
-              <button type="button" onClick={() => handleSort("scoredTotal")} className={headerButtonClass}>
-                Total
-              </button>
-            </th>
-            <th className="px-4 py-3 text-xs text-brand-creamDark">
-              <button type="button" onClick={() => handleSort("scoredFwd")} className={headerButtonClass}>
-                FWD
-              </button>
-            </th>
-            <th className="px-4 py-3 text-xs text-brand-creamDark">
-              <button type="button" onClick={() => handleSort("scoredMid")} className={headerButtonClass}>
-                MID
-              </button>
-            </th>
-            <th className="px-4 py-3 text-xs text-brand-creamDark">
-              <button type="button" onClick={() => handleSort("scoredDef")} className={headerButtonClass}>
-                DEF
-              </button>
-            </th>
-            <th className="px-4 py-3 text-xs text-brand-creamDark">
-              <button type="button" onClick={() => handleSort("scoredGk")} className={headerButtonClass}>
-                GK
-              </button>
-            </th>
-            <th className="border-l-2 border-brand-cream/30 px-4 py-3 text-xs text-brand-creamDark">
-              <button type="button" onClick={() => handleSort("concededTotal")} className={headerButtonClass}>
-                Total
-              </button>
-            </th>
             <th className="px-4 py-3 text-xs text-brand-creamDark">
               <button type="button" onClick={() => handleSort("concededFwd")} className={headerButtonClass}>
                 FWD
@@ -167,6 +133,26 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
                 GK
               </button>
             </th>
+            <th className="border-l-2 border-brand-cream/30 px-4 py-3 text-xs text-brand-creamDark">
+              <button type="button" onClick={() => handleSort("scoredFwd")} className={headerButtonClass}>
+                FWD
+              </button>
+            </th>
+            <th className="px-4 py-3 text-xs text-brand-creamDark">
+              <button type="button" onClick={() => handleSort("scoredMid")} className={headerButtonClass}>
+                MID
+              </button>
+            </th>
+            <th className="px-4 py-3 text-xs text-brand-creamDark">
+              <button type="button" onClick={() => handleSort("scoredDef")} className={headerButtonClass}>
+                DEF
+              </button>
+            </th>
+            <th className="px-4 py-3 text-xs text-brand-creamDark">
+              <button type="button" onClick={() => handleSort("scoredGk")} className={headerButtonClass}>
+                GK
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -177,48 +163,6 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
                   {row.teamName}
                 </Link>
               </td>
-              <td className="px-4 py-3">{row.scoredTotal.toFixed(2)}</td>
-              <td className="px-4 py-3">
-                <span
-                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
-                  style={{
-                    backgroundColor: gradientBackground(row.scoredFwd, positionalRanges.scoredFwd.min, positionalRanges.scoredFwd.max),
-                  }}
-                >
-                  {row.scoredFwd.toFixed(2)}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
-                  style={{
-                    backgroundColor: gradientBackground(row.scoredMid, positionalRanges.scoredMid.min, positionalRanges.scoredMid.max),
-                  }}
-                >
-                  {row.scoredMid.toFixed(2)}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
-                  style={{
-                    backgroundColor: gradientBackground(row.scoredDef, positionalRanges.scoredDef.min, positionalRanges.scoredDef.max),
-                  }}
-                >
-                  {row.scoredDef.toFixed(2)}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
-                  style={{
-                    backgroundColor: gradientBackground(row.scoredGk, positionalRanges.scoredGk.min, positionalRanges.scoredGk.max),
-                  }}
-                >
-                  {row.scoredGk.toFixed(2)}
-                </span>
-              </td>
-              <td className="border-l-2 border-brand-cream/20 px-4 py-3">{row.concededTotal.toFixed(2)}</td>
               <td className="px-4 py-3">
                 <span
                   className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
@@ -273,6 +217,62 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
                   }}
                 >
                   {row.concededGk.toFixed(2)}
+                </span>
+              </td>
+              <td className="border-l-2 border-brand-cream/20 px-4 py-3">
+                <span
+                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
+                  style={{
+                    backgroundColor: gradientBackground(
+                      row.scoredFwd,
+                      positionalRanges.scoredFwd.min,
+                      positionalRanges.scoredFwd.max
+                    ),
+                  }}
+                >
+                  {row.scoredFwd.toFixed(2)}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span
+                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
+                  style={{
+                    backgroundColor: gradientBackground(
+                      row.scoredMid,
+                      positionalRanges.scoredMid.min,
+                      positionalRanges.scoredMid.max
+                    ),
+                  }}
+                >
+                  {row.scoredMid.toFixed(2)}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span
+                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
+                  style={{
+                    backgroundColor: gradientBackground(
+                      row.scoredDef,
+                      positionalRanges.scoredDef.min,
+                      positionalRanges.scoredDef.max
+                    ),
+                  }}
+                >
+                  {row.scoredDef.toFixed(2)}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span
+                  className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
+                  style={{
+                    backgroundColor: gradientBackground(
+                      row.scoredGk,
+                      positionalRanges.scoredGk.min,
+                      positionalRanges.scoredGk.max
+                    ),
+                  }}
+                >
+                  {row.scoredGk.toFixed(2)}
                 </span>
               </td>
             </tr>

@@ -94,6 +94,17 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
     return mixColor(yellow, green, (ratio - 0.5) * 2);
   }
 
+  function renderStatBadge(value: number, min: number, max: number) {
+    return (
+      <span
+        className="inline-flex min-w-14 justify-center rounded-md px-2 py-0.5 text-xs font-bold text-white"
+        style={{ backgroundColor: gradientBackground(value, min, max) }}
+      >
+        {value.toFixed(2)}
+      </span>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -182,60 +193,24 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
                       {player.position}
                     </Link>
                   </td>
-                  <td
-                    className="px-4 py-3 font-semibold text-[#0f1f13]"
-                    style={{
-                      backgroundColor: gradientBackground(
-                        player.seasonPts,
-                        statRanges.seasonPts.min,
-                        statRanges.seasonPts.max
-                      ),
-                    }}
-                  >
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      {player.seasonPts.toFixed(2)}
+                  <td className="px-4 py-3 text-center">
+                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                      {renderStatBadge(player.seasonPts, statRanges.seasonPts.min, statRanges.seasonPts.max)}
                     </Link>
                   </td>
-                  <td
-                    className="px-4 py-3 font-semibold text-[#0f1f13]"
-                    style={{
-                      backgroundColor: gradientBackground(
-                        player.avgPtsPerGw,
-                        statRanges.avgPtsPerGw.min,
-                        statRanges.avgPtsPerGw.max
-                      ),
-                    }}
-                  >
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      {player.avgPtsPerGw.toFixed(2)}
+                  <td className="px-4 py-3 text-center">
+                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                      {renderStatBadge(player.avgPtsPerGw, statRanges.avgPtsPerGw.min, statRanges.avgPtsPerGw.max)}
                     </Link>
                   </td>
-                  <td
-                    className="px-4 py-3 font-semibold text-[#0f1f13]"
-                    style={{
-                      backgroundColor: gradientBackground(
-                        player.avgPtsPerGame,
-                        statRanges.avgPtsPerGame.min,
-                        statRanges.avgPtsPerGame.max
-                      ),
-                    }}
-                  >
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      {player.avgPtsPerGame.toFixed(2)}
+                  <td className="px-4 py-3 text-center">
+                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                      {renderStatBadge(player.avgPtsPerGame, statRanges.avgPtsPerGame.min, statRanges.avgPtsPerGame.max)}
                     </Link>
                   </td>
-                  <td
-                    className="px-4 py-3 font-semibold text-[#0f1f13]"
-                    style={{
-                      backgroundColor: gradientBackground(
-                        player.ghostPtsPerGw,
-                        statRanges.ghostPtsPerGw.min,
-                        statRanges.ghostPtsPerGw.max
-                      ),
-                    }}
-                  >
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
-                      {player.ghostPtsPerGw.toFixed(2)}
+                  <td className="px-4 py-3 text-center">
+                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                      {renderStatBadge(player.ghostPtsPerGw, statRanges.ghostPtsPerGw.min, statRanges.ghostPtsPerGw.max)}
                     </Link>
                   </td>
                   <td className="px-4 py-3">

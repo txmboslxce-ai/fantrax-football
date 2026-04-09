@@ -47,6 +47,7 @@ type OpponentGameweekJoinedRow = {
 type FixtureTabRow = {
   id: string;
   gameweek: number;
+  opponentAbbrev: string;
   opponentName: string;
   isHome: boolean;
   avgPerStart: number | null;
@@ -651,6 +652,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       return {
         id: fixture.id,
         gameweek: fixture.gameweek,
+        opponentAbbrev: opponentCode,
         opponentName: teamNames.get(opponentCode) ?? opponentCode,
         isHome: fixture.home_team === teamAbbrev,
         avgPerStart,
@@ -892,7 +894,12 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                                 {row.gameweek}
                               </td>
                               <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftOpponent, minWidth: 240 }}>
-                                {row.opponentName}
+                                <Link
+                                  href={`/portal/teams/${encodeURIComponent(row.opponentAbbrev.toLowerCase())}`}
+                                  className="font-semibold hover:text-brand-greenLight"
+                                >
+                                  {row.opponentName}
+                                </Link>
                               </td>
                               <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftHa, minWidth: 72 }}>
                                 {row.isHome ? "H" : "A"}
@@ -938,7 +945,15 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
 
                         return (
                           <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/75" : "bg-brand-dark/90"}>
-                            <td className="px-4 py-3 font-semibold">{row.name}</td>
+                            <td className="px-4 py-3 font-semibold">
+                              {row.id ? (
+                                <Link href={`/portal/players/${row.id}`} className="hover:text-brand-greenLight">
+                                  {row.name}
+                                </Link>
+                              ) : (
+                                row.name
+                              )}
+                            </td>
                             <td className="px-4 py-3">{row.position}</td>
                             <td className="px-4 py-3">
                               <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPillClass}`}>
