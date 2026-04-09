@@ -570,7 +570,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         Filters
       </button>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
+      <div className="h-[calc(100dvh-220px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-10 text-brand-creamDark">
             <tr>
