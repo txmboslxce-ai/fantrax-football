@@ -127,6 +127,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
   const [teamFilter, setTeamFilter] = useState("All");
+  const [minGames, setMinGames] = useState("0");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
@@ -165,6 +166,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
 
   const filteredAndSorted = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
+    const parsedMinGames = Number(minGames);
+    const safeMinGames = Number.isFinite(parsedMinGames) ? parsedMinGames : 0;
     const parsedOwnershipMin = Number(ownershipMin);
     const parsedOwnershipMax = Number(ownershipMax);
     const safeOwnershipMin = Number.isFinite(parsedOwnershipMin) ? parsedOwnershipMin : 0;
@@ -177,12 +180,13 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesSearch = !normalizedSearch || player.name.toLowerCase().includes(normalizedSearch);
       const matchesOwnership = player.ownershipPct >= lowerOwnershipBound && player.ownershipPct <= upperOwnershipBound;
+      const matchesGames = player.windows[selectedWindow].games_started >= safeMinGames;
       const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[player.id]) : false;
       const matchesAvailability =
         availabilityFilter === "All" ||
         (availabilityFilter === "Available" && !isTaken) ||
         (availabilityFilter === "Taken" && isTaken);
-      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesAvailability;
+      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesGames && matchesAvailability;
     });
 
     return [...filtered].sort((a, b) => {
@@ -199,6 +203,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
     availabilityFilter,
     deferredSearch,
     leagueRoster,
+    minGames,
     ownershipMax,
     ownershipMin,
     players,
@@ -241,6 +246,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       availabilityFilter !== "All" ||
       teamFilter !== "All" ||
       search !== "" ||
+      minGames !== "0" ||
       ownershipMin !== "0" ||
       ownershipMax !== "100" ||
       columnsChanged
@@ -382,6 +388,17 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="space-y-1 md:shrink-0">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Min games</span>
+            <input
+              type="number"
+              min={0}
+              value={minGames}
+              onChange={(event) => setMinGames(event.target.value)}
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-16"
+            />
           </label>
 
           <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
