@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -105,11 +106,30 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
           <p className="mt-2 text-sm text-brand-creamDark">Connect your Fantrax league to track roster availability.</p>
         </div>
 
-        <div className="mx-auto max-w-md rounded-xl border border-brand-cream/20 bg-brand-dark/60 p-6 sm:p-8">
+        <div className="mx-auto max-w-lg rounded-xl border border-brand-cream/20 bg-brand-dark/60 p-6 sm:p-8">
           <h2 className="text-lg font-bold text-brand-cream">Connect Your League</h2>
-          <p className="mt-2 text-sm text-brand-creamDark">
-            Enter your Fantrax league ID to see roster availability across all player tables.
-          </p>
+
+          <ol className="mt-4 space-y-3 text-sm text-brand-creamDark">
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/20 text-xs font-bold text-brand-green">1</span>
+              <span>Go to your Fantrax league and click <span className="font-semibold text-brand-cream">League</span> in the left sidebar.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/20 text-xs font-bold text-brand-green">2</span>
+              <span>Find the league ID in your browser&apos;s URL bar:</span>
+            </li>
+          </ol>
+
+          <div className="mt-3 rounded-lg border border-brand-cream/15 bg-brand-dark px-4 py-3 font-mono text-xs text-brand-creamDark">
+            fantrax.com/fantasy/league/<span className="rounded bg-brand-green/30 px-1 py-0.5 font-bold text-brand-cream">abc123def456</span>/home
+          </div>
+
+          <ol className="mt-3 space-y-3 text-sm text-brand-creamDark" start={3}>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/20 text-xs font-bold text-brand-green">3</span>
+              <span>Paste it in the field below and click <span className="font-semibold text-brand-cream">Sync League</span>.</span>
+            </li>
+          </ol>
 
           <div className="mt-5 space-y-3">
             <label className="space-y-1.5">
@@ -227,7 +247,13 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
               return (
                 <tr key={player.playerId} className={rowShade}>
                   <td className={`sticky left-0 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <div className="font-semibold text-brand-cream">{player.playerName}</div>
+                    <Link
+                      href={`/portal/players/${player.playerId}`}
+                      className="font-semibold text-brand-cream hover:text-brand-green hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {player.playerName}
+                    </Link>
                     <div className="mt-0.5 text-xs text-brand-creamDark/70">
                       {player.team} / {player.position}
                     </div>
@@ -255,6 +281,34 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
               </tr>
             ) : null}
           </tbody>
+          {selectedTeamPlayers.length > 0 ? (() => {
+            const n = selectedTeamPlayers.length;
+            const totalSeasonPts = selectedTeamPlayers.reduce((sum, p) => sum + p.seasonPts, 0);
+            const avgPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.avgPtsPerGw, 0) / n;
+            const avgGhostPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.ghostPtsPerGw, 0) / n;
+            const avgOwnership = selectedTeamPlayers.reduce((sum, p) => sum + p.ownershipPct, 0) / n;
+            return (
+              <tfoot>
+                <tr className="bg-[#1a3a22]">
+                  <td className="sticky left-0 border-t border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-xs font-bold uppercase tracking-wide text-brand-cream">
+                    Team Total
+                  </td>
+                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                    {totalSeasonPts.toFixed(2)}
+                  </td>
+                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                    {avgPtsPerGw.toFixed(2)}
+                  </td>
+                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                    {avgGhostPtsPerGw.toFixed(2)}
+                  </td>
+                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                    {avgOwnership.toFixed(1)}%
+                  </td>
+                </tr>
+              </tfoot>
+            );
+          })() : null}
         </table>
       </div>
     </div>
