@@ -1220,7 +1220,7 @@ export default function GWOverviewClient({
                     </div>
                   </td>
                   <td
-                    className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 bg-brand-dark px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
+                    className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}

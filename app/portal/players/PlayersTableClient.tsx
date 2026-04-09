@@ -602,12 +602,12 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
 
       <div className="h-[calc(100dvh-160px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="sticky top-0 z-10 text-brand-creamDark">
+          <thead className="text-brand-creamDark">
             <tr>
-              <th className="border-b border-r border-brand-cream/35 bg-[#0F1F13] px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-0 top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
                 #
               </th>
-              <th className="sticky left-0 z-30 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-[72px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
@@ -616,7 +616,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
               {visibleColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
@@ -644,7 +644,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                 return (
                   <tr
                     key={player.id}
-                    className="cursor-pointer text-brand-cream"
+                    className={`${rowShade} cursor-pointer text-brand-cream`}
                     onClick={() => router.push(rowHref)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -655,23 +655,25 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     role="link"
                     tabIndex={0}
                   >
-                    <td className={`border-b border-r border-brand-cream/10 px-3 py-3 text-center ${rowShade}`}>
+                    <td className={`sticky left-0 z-20 w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
                       <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
                       <div className="text-xs text-brand-creamDark/80">
                         {posKey} #{posRank}
                       </div>
                     </td>
-                    <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                      <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
-                        <span>{player.name}</span>
-                        <AvailabilityIcon
-                          chanceOfPlaying={player.chanceOfPlaying}
-                          status={player.availabilityStatus}
-                          news={player.availabilityNews}
-                        />
-                        <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+                    <td className={`sticky left-[72px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
+                      <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
+                        <span className="inline-flex flex-wrap items-center gap-1">
+                          <span>{player.name}</span>
+                          <AvailabilityIcon
+                            chanceOfPlaying={player.chanceOfPlaying}
+                            status={player.availabilityStatus}
+                            news={player.availabilityNews}
+                          />
+                          <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+                        </span>
                       </div>
-                      <div className="mt-0.5 text-xs text-brand-creamDark/70">
+                      <div className="mt-0.5 truncate text-xs text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
                         {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
                       </div>
                     </td>
