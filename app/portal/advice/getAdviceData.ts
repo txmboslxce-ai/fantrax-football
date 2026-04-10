@@ -182,21 +182,37 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     else fixturesByGw.set(fix.gameweek, [fix]);
   }
 
-  // A gameweek is complete when every fixture in it has player data uploaded
-  // for BOTH the home and away team. The next gameweek is the first one that
-  // is not yet complete.
-  function isGwComplete(gw: number): boolean {
-    const gwFixtures = fixturesByGw.get(gw) ?? [];
-    if (gwFixtures.length === 0) return false;
-    return gwFixtures.every(
-      (f) =>
-        gwTeamsWithData.has(`${gw}:${f.home_team}`) &&
-        gwTeamsWithData.has(`${gw}:${f.away_team}`),
-    );
+  // Find the highest gameweek that has any player data at all.
+  const gwsWithAnyData = new Set<number>();
+  for (const key of gwTeamsWithData) {
+    gwsWithAnyData.add(Number(key.split(":")[0]));
   }
+  const maxDataGw = gwsWithAnyData.size > 0 ? Math.max(...gwsWithAnyData) : 0;
 
-  const allFixtureGws = [...fixturesByGw.keys()].sort((a, b) => a - b);
-  const nextGw = allFixtureGws.find((gw) => !isGwComplete(gw)) ?? null;
+  // Determine whether the highest played GW looks complete. We check what
+  // fraction of teams that have a fixture in that GW have uploaded data.
+  // Using a >50% threshold so one or two missing teams (postponements, upload
+  // lag) don't prevent us advancing to the next gameweek.
+  let nextGw: number | null = null;
+  if (maxDataGw === 0) {
+    // No data at all — fall back to the first fixture GW
+    const allFixtureGws = [...fixturesByGw.keys()].sort((a, b) => a - b);
+    nextGw = allFixtureGws[0] ?? null;
+  } else {
+    const maxGwFixtures = fixturesByGw.get(maxDataGw) ?? [];
+    const teamsInMaxGw = new Set<string>();
+    for (const f of maxGwFixtures) {
+      teamsInMaxGw.add(f.home_team);
+      teamsInMaxGw.add(f.away_team);
+    }
+    const teamsWithDataInMaxGw = [...teamsInMaxGw].filter((t) =>
+      gwTeamsWithData.has(`${maxDataGw}:${t}`),
+    ).length;
+    const coverageRatio = teamsInMaxGw.size > 0 ? teamsWithDataInMaxGw / teamsInMaxGw.size : 0;
+
+    // If the majority of teams have data, treat that GW as done and move on.
+    nextGw = coverageRatio > 0.5 ? maxDataGw + 1 : maxDataGw;
+  }
 
   // --- opponent conceded accumulation ---
   // oppMap[opponent_team][position][stat] = { sum, count }
