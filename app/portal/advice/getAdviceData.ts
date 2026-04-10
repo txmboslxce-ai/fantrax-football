@@ -164,18 +164,39 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   }
 
   const rowsByPlayer = new Map<string, GwRow[]>();
-  const playedGameweeks = new Set<number>();
+  // Track which teams have player data per gameweek
+  const gwTeamsWithData = new Set<string>(); // `${gw}:${team}`
   for (const row of gws) {
-    playedGameweeks.add(row.gameweek);
+    const info = playerInfo.get(row.player_id);
+    if (info) gwTeamsWithData.add(`${row.gameweek}:${info.team}`);
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) existing.push(row);
     else rowsByPlayer.set(row.player_id, [row]);
   }
 
-  // Find the first fixture gameweek that has no player data yet — that is
-  // the actual upcoming gameweek, regardless of upload lag.
-  const allFixtureGws = [...new Set(fixtures.map((f) => f.gameweek))].sort((a, b) => a - b);
-  const nextGw = allFixtureGws.find((gw) => !playedGameweeks.has(gw)) ?? null;
+  // Group fixtures by gameweek so we can check completeness
+  const fixturesByGw = new Map<number, FixRow[]>();
+  for (const fix of fixtures) {
+    const existing = fixturesByGw.get(fix.gameweek);
+    if (existing) existing.push(fix);
+    else fixturesByGw.set(fix.gameweek, [fix]);
+  }
+
+  // A gameweek is complete when every fixture in it has player data uploaded
+  // for BOTH the home and away team. The next gameweek is the first one that
+  // is not yet complete.
+  function isGwComplete(gw: number): boolean {
+    const gwFixtures = fixturesByGw.get(gw) ?? [];
+    if (gwFixtures.length === 0) return false;
+    return gwFixtures.every(
+      (f) =>
+        gwTeamsWithData.has(`${gw}:${f.home_team}`) &&
+        gwTeamsWithData.has(`${gw}:${f.away_team}`),
+    );
+  }
+
+  const allFixtureGws = [...fixturesByGw.keys()].sort((a, b) => a - b);
+  const nextGw = allFixtureGws.find((gw) => !isGwComplete(gw)) ?? null;
 
   // --- opponent conceded accumulation ---
   // oppMap[opponent_team][position][stat] = { sum, count }

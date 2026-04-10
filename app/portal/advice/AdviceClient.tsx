@@ -102,6 +102,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
   const [teamFilter, setTeamFilter] = useState("All");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("All");
+  const [minStarts, setMinStarts] = useState("0");
   const [playerStatMin, setPlayerStatMin] = useState(0);
   const [oppStatMin, setOppStatMin] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("playerStat");
@@ -141,6 +142,8 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
         if (availabilityFilter === "Available" && taken) return false;
         if (availabilityFilter === "Taken" && !taken) return false;
       }
+      const safeMinStarts = Math.max(0, Number(minStarts) || 0);
+      if (row.gamesStarted < safeMinStarts) return false;
       if (row.playerStats[selectedStat] < playerStatMin) return false;
       if (row.oppStats[selectedStat] < oppStatMin) return false;
       return true;
@@ -173,6 +176,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
     availabilityFilter,
     leagueRoster,
     selectedStat,
+    minStarts,
     playerStatMin,
     oppStatMin,
     sortKey,
@@ -222,6 +226,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
     venueFilter !== "All" ||
     availabilityFilter !== "All" ||
     search !== "" ||
+    minStarts !== "0" ||
     playerStatMin > 0 ||
     oppStatMin > 0;
 
@@ -305,6 +310,18 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                 </option>
               ))}
             </select>
+          </label>
+
+          {/* Min starts */}
+          <label className="space-y-1 md:shrink-0">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Min starts</span>
+            <input
+              type="number"
+              min={0}
+              value={minStarts}
+              onChange={(e) => setMinStarts(e.target.value)}
+              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-16"
+            />
           </label>
 
           {/* Venue */}
