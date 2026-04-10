@@ -1,5 +1,6 @@
 import LineupPredictorClient from "@/app/portal/lineup-predictor/LineupPredictorClient";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { isAdminEmail } from "@/lib/admin";
 import { SEASON } from "@/lib/portal/playerMetrics";
 
 export type LineupPlayer = {
@@ -7,6 +8,7 @@ export type LineupPlayer = {
   playerName: string;
   position: "G" | "D" | "M" | "F";
   isStarter: boolean;
+  isOut: boolean;
   startProbability: number;
   prevGwMinutes: number | null;
   ptsPerStart: number;
@@ -70,7 +72,13 @@ const POS_ORDER: Record<"G" | "D" | "M" | "F", number> = { G: 0, D: 1, M: 2, F: 
 export default async function LineupPredictorPage() {
   const supabase = await createServerSupabaseClient();
 
-  // 1 — find the latest uploaded GW (games_played > 0, same pattern as FixturePlannerClient)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isAdmin = isAdminEmail(user?.email);
+
+  // 1 — find the latest uploaded GW (games_played > 0)
   const { data: latestGwData } = await supabase
     .from("player_gameweeks")
     .select("gameweek")
@@ -82,7 +90,7 @@ export default async function LineupPredictorPage() {
   const latestGw: number = (latestGwData ?? [])[0]?.gameweek ?? 0;
   const nextGw = latestGw + 1;
 
-  // 2 — load predictions, season gameweeks, and previous GW minutes in parallel
+  // 2 — load predictions, season gameweeks, prev GW minutes in parallel
   const [
     { data: predictionsRaw, error: predictionsError },
     { data: gwsRaw, error: gwsError },
@@ -100,7 +108,6 @@ export default async function LineupPredictorPage() {
       .from("player_gameweeks")
       .select("player_id, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts")
       .eq("season", SEASON),
-    // Previous GW minutes — only the latest played gameweek
     supabase
       .from("player_gameweeks")
       .select("player_id, gameweek, games_played, minutes_played")
@@ -111,7 +118,7 @@ export default async function LineupPredictorPage() {
   if (predictionsError) throw new Error(`Failed to load predictions: ${predictionsError.message}`);
   if (gwsError) throw new Error(`Failed to load gameweeks: ${gwsError.message}`);
 
-  // 3 — build per-player season aggregates
+  // 3 — season per-start aggregates
   const seasonByPlayer = new Map<string, { totalPts: number; starts: number }>();
   for (const row of (gwsRaw ?? []) as GwRow[]) {
     const gs = Number(row.games_started ?? 0);
@@ -124,14 +131,14 @@ export default async function LineupPredictorPage() {
     }
   }
 
-  // 4 — prev GW minutes lookup
+  // 4 — prev GW minutes
   const prevGwMins = new Map<string, number | null>();
   for (const row of (prevGwRaw ?? []) as GwRow[]) {
     const gp = Number(row.games_played ?? 0);
     prevGwMins.set(row.player_id, gp > 0 ? Number(row.minutes_played ?? 0) : null);
   }
 
-  // 5 — group predictions by team, sort into starters then subs
+  // 5 — group by team
   const teamMap = new Map<string, LineupPlayer[]>();
 
   for (const raw of (predictionsRaw ?? []) as PredictionRow[]) {
@@ -140,18 +147,21 @@ export default async function LineupPredictorPage() {
 
     const availRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
     const sp = toNum(raw.start_probability);
+    const cop = availRaw?.chance_of_playing_next_round ?? null;
+    const isOut = cop === 0;
     const season = seasonByPlayer.get(raw.player_id) ?? { totalPts: 0, starts: 0 };
 
     const lp: LineupPlayer = {
       playerId: raw.player_id,
       playerName: player.name,
       position: player.position,
-      isStarter: sp >= 0.5,
+      isOut,
+      isStarter: !isOut && sp >= 0.5,
       startProbability: sp,
       prevGwMinutes: prevGwMins.get(raw.player_id) ?? null,
       ptsPerStart: season.starts > 0 ? Math.round((season.totalPts / season.starts) * 100) / 100 : 0,
       gamesStarted: season.starts,
-      chanceOfPlaying: availRaw?.chance_of_playing_next_round ?? null,
+      chanceOfPlaying: cop,
       availabilityStatus: availRaw?.status ?? null,
       availabilityNews: availRaw?.news ?? null,
     };
@@ -161,16 +171,19 @@ export default async function LineupPredictorPage() {
     else teamMap.set(player.team, [lp]);
   }
 
-  // 6 — for each team sort: starters by position order, then subs by startProb desc
+  // 6 — sort each team's players into sections, then sort teams alphabetically
   const lineups: TeamLineup[] = Array.from(teamMap.entries())
     .map(([team, players]) => {
       const starters = players
         .filter((p) => p.isStarter)
         .sort((a, b) => POS_ORDER[a.position] - POS_ORDER[b.position] || b.startProbability - a.startProbability);
-      const subs = players
-        .filter((p) => !p.isStarter)
+      const potentials = players
+        .filter((p) => !p.isOut && !p.isStarter)
         .sort((a, b) => b.startProbability - a.startProbability);
-      return { team, gameweek: nextGw, players: [...starters, ...subs] };
+      const out = players
+        .filter((p) => p.isOut)
+        .sort((a, b) => POS_ORDER[a.position] - POS_ORDER[b.position]);
+      return { team, gameweek: nextGw, players: [...starters, ...potentials, ...out] };
     })
     .sort((a, b) => a.team.localeCompare(b.team));
 
@@ -179,10 +192,10 @@ export default async function LineupPredictorPage() {
       <div>
         <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Lineup Predictor</h1>
         <p className="mt-2 text-sm text-brand-creamDark">
-          Predicted starting XIs for GW{nextGw} — {SEASON}. Subs ranked by start probability.
+          Predicted starting XIs for GW{nextGw} — {SEASON}.
         </p>
       </div>
-      <LineupPredictorClient lineups={lineups} />
+      <LineupPredictorClient lineups={lineups} isAdmin={isAdmin} season={SEASON} gameweek={nextGw} />
     </div>
   );
 }

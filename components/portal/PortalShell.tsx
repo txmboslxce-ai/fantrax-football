@@ -6,6 +6,7 @@ import { useState } from "react";
 
 type PortalShellProps = {
   email: string | null;
+  isAdmin: boolean;
   children: React.ReactNode;
 };
 
@@ -13,6 +14,7 @@ type NavItem = {
   href: string;
   label: string;
   locked?: boolean;
+  adminOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -25,6 +27,7 @@ const navItems: NavItem[] = [
   { href: "/portal/advice", label: "Advice" },
   { href: "/portal/lineup-predictor", label: "Lineup Predictor" },
   { href: "/portal/my-league", label: "My League" },
+  { href: "/portal/admin", label: "Admin", adminOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -34,10 +37,12 @@ function isActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
-function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavLinks({ pathname, isAdmin, onNavigate }: { pathname: string; isAdmin: boolean; onNavigate?: () => void }) {
   return (
     <ul className="space-y-1">
       {navItems.map((item) => {
+        if (item.adminOnly && !isAdmin) return null;
+
         if (item.locked) {
           return (
             <li key={item.href}>
@@ -57,7 +62,13 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
               href={item.href}
               onClick={onNavigate}
               className={`block rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                active ? "bg-brand-green text-brand-cream" : "text-brand-cream hover:bg-brand-cream/10"
+                item.adminOnly
+                  ? active
+                    ? "bg-amber-700/60 text-amber-100"
+                    : "text-amber-300/70 hover:bg-amber-500/10"
+                  : active
+                  ? "bg-brand-green text-brand-cream"
+                  : "text-brand-cream hover:bg-brand-cream/10"
               }`}
             >
               {item.label}
@@ -69,7 +80,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   );
 }
 
-export default function PortalShell({ email, children }: PortalShellProps) {
+export default function PortalShell({ email, isAdmin, children }: PortalShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -91,7 +102,7 @@ export default function PortalShell({ email, children }: PortalShellProps) {
 
         {mobileOpen && (
           <div id="portal-mobile-nav" className="mt-3 space-y-3">
-            <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <NavLinks pathname={pathname} isAdmin={isAdmin} onNavigate={() => setMobileOpen(false)} />
             <div className="rounded-md border border-brand-cream/20 p-3 text-xs text-brand-creamDark">
               <p className="truncate">{email ?? "Unknown user"}</p>
               <form action="/auth/logout" method="post" className="mt-2">
@@ -111,7 +122,7 @@ export default function PortalShell({ email, children }: PortalShellProps) {
         <aside className="hidden w-72 flex-col border-r border-brand-cream/20 bg-brand-dark px-4 py-6 md:sticky md:top-[69px] md:flex md:h-[calc(100vh-69px)] md:overflow-y-auto">
           <p className="px-3 text-xs font-bold uppercase tracking-widest text-brand-creamDark">Subscriber Portal</p>
           <div className="mt-4 flex-1">
-            <NavLinks pathname={pathname} />
+            <NavLinks pathname={pathname} isAdmin={isAdmin} />
           </div>
 
           <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/70 p-3">

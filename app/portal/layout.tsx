@@ -1,5 +1,6 @@
 import PortalShell from "@/components/portal/PortalShell";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { isAdminEmail } from "@/lib/admin";
 
 export default async function PortalLayout({
   children,
@@ -11,5 +12,9 @@ export default async function PortalLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  return <PortalShell email={user?.email ?? null}>{children}</PortalShell>;
+  return (
+    <PortalShell email={user?.email ?? null} isAdmin={isAdminEmail(user?.email)}>
+      {children}
+    </PortalShell>
+  );
 }
