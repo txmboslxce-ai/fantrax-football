@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { href: "/portal/teams", label: "Teams" },
   { href: "/portal/compare", label: "Compare" },
   { href: "/portal/stats", label: "Stats" },
+  { href: "/portal/advice", label: "Advice" },
   { href: "/portal/my-league", label: "My League" },
 ];
 
