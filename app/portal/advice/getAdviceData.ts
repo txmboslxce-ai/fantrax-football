@@ -164,17 +164,17 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   }
 
   const rowsByPlayer = new Map<string, GwRow[]>();
-  // Track which teams have player data per gameweek
-  const gwTeamsWithData = new Set<string>(); // `${gw}:${team}`
+  // Track the highest gameweek that has any player data — read directly from
+  // the row values so there is no dependency on team-name matching.
+  let maxDataGw = 0;
   for (const row of gws) {
-    const info = playerInfo.get(row.player_id);
-    if (info) gwTeamsWithData.add(`${row.gameweek}:${info.team}`);
+    if (row.gameweek > maxDataGw) maxDataGw = row.gameweek;
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) existing.push(row);
     else rowsByPlayer.set(row.player_id, [row]);
   }
 
-  // Group fixtures by gameweek so we can check completeness
+  // Group fixtures by gameweek.
   const fixturesByGw = new Map<number, FixRow[]>();
   for (const fix of fixtures) {
     const existing = fixturesByGw.get(fix.gameweek);
@@ -182,37 +182,18 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     else fixturesByGw.set(fix.gameweek, [fix]);
   }
 
-  // Find the highest gameweek that has any player data at all.
-  const gwsWithAnyData = new Set<number>();
-  for (const key of gwTeamsWithData) {
-    gwsWithAnyData.add(Number(key.split(":")[0]));
-  }
-  const maxDataGw = gwsWithAnyData.size > 0 ? Math.max(...gwsWithAnyData) : 0;
-
-  // Determine whether the highest played GW looks complete. We check what
-  // fraction of teams that have a fixture in that GW have uploaded data.
-  // Using a >50% threshold so one or two missing teams (postponements, upload
-  // lag) don't prevent us advancing to the next gameweek.
-  let nextGw: number | null = null;
-  if (maxDataGw === 0) {
-    // No data at all — fall back to the first fixture GW
-    const allFixtureGws = [...fixturesByGw.keys()].sort((a, b) => a - b);
-    nextGw = allFixtureGws[0] ?? null;
-  } else {
-    const maxGwFixtures = fixturesByGw.get(maxDataGw) ?? [];
-    const teamsInMaxGw = new Set<string>();
-    for (const f of maxGwFixtures) {
-      teamsInMaxGw.add(f.home_team);
-      teamsInMaxGw.add(f.away_team);
-    }
-    const teamsWithDataInMaxGw = [...teamsInMaxGw].filter((t) =>
-      gwTeamsWithData.has(`${maxDataGw}:${t}`),
-    ).length;
-    const coverageRatio = teamsInMaxGw.size > 0 ? teamsWithDataInMaxGw / teamsInMaxGw.size : 0;
-
-    // Only advance once every team with a scheduled fixture has data uploaded.
-    nextGw = coverageRatio === 1 ? maxDataGw + 1 : maxDataGw;
-  }
+  // The upcoming GW is maxDataGw + 1 when that GW has scheduled fixtures
+  // (i.e. the season hasn't ended). If GW maxDataGw + 1 doesn't exist in
+  // the fixtures table we are in the final round, so stay on maxDataGw.
+  // Using the simple max-based signal avoids fragile team-name matching
+  // against playerInfo, which previously caused the pointer to get stuck
+  // on old GWs when any player row lacked a match in the players table.
+  const nextGw: number | null =
+    maxDataGw === 0
+      ? ([...fixturesByGw.keys()].sort((a, b) => a - b)[0] ?? null)
+      : fixturesByGw.has(maxDataGw + 1)
+      ? maxDataGw + 1
+      : maxDataGw;
 
   // --- opponent conceded accumulation ---
   // oppMap[opponent_team][position][stat] = { sum, count }
