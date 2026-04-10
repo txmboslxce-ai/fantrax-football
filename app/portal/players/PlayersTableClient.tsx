@@ -600,14 +600,14 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         Filters
       </button>
 
-      <div className="h-[calc(100dvh-160px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
+      <div className="overflow-x-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="text-brand-creamDark">
+          <thead className="sticky top-0 z-20 text-brand-creamDark">
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
                 #
               </th>
-              <th className="sticky left-[56px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-[48px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
@@ -655,13 +655,13 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     role="link"
                     tabIndex={0}
                   >
-                    <td className={`sticky left-0 z-20 w-[56px] min-w-[56px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
+                    <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-brand-cream/10 px-1.5 py-1.5 text-center ${rowShade}`}>
                       <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
                       <div className="text-xs text-brand-creamDark/80">
                         {posKey} #{posRank}
                       </div>
                     </td>
-                    <td className={`sticky left-[56px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
+                    <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           <span>{player.name}</span>

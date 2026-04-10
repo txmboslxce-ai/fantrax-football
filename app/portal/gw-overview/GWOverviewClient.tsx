@@ -224,11 +224,11 @@ const goalkeeperOnlyStats = new Set<StatKey>(["saves", "goals_against", "penalty
 const outfieldOnlyStats = new Set<StatKey>(["goals_against_outfield"]);
 
 const CELL_WIDTHS = {
-  rankMobile: 56,
+  rankMobile: 48,
   playerMobile: 120,
   formMobile: 72,
   statMobile: 72,
-  rank: 56,
+  rank: 48,
   player: 220,
   formPts: 106,
   formPPG: 106,
@@ -1090,7 +1090,7 @@ export default function GWOverviewClient({
         Filters
       </button>
 
-      <div className="h-[calc(100dvh-160px)] overflow-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
+      <div className="overflow-x-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table
           className="border-separate border-spacing-0 text-sm"
           style={{
@@ -1102,17 +1102,17 @@ export default function GWOverviewClient({
               displayedGws.length * CELL_WIDTHS.statMobile,
           }}
         >
-          <thead>
+          <thead className="sticky top-0 z-20 text-brand-creamDark">
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
+                className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
               >
                 #
               </th>
               <th
                 rowSpan={2}
-                className="sticky left-[56px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
+                className="sticky left-[48px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -1212,7 +1212,7 @@ export default function GWOverviewClient({
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 w-[56px] min-w-[56px] border-b border-r border-brand-cream/10 px-2 py-1.5 text-center text-brand-cream ${rowShade} ${selectedRowClass} ${selectedRankCellClass}`}
+                    className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-brand-cream/10 px-1.5 py-1.5 text-center text-brand-cream ${rowShade} ${selectedRowClass} ${selectedRankCellClass}`}
                   >
                     <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
                     <div className="text-xs text-brand-creamDark/80">
@@ -1220,7 +1220,7 @@ export default function GWOverviewClient({
                     </div>
                   </td>
                   <td
-                    className={`sticky left-[56px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
+                    className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
