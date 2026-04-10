@@ -127,6 +127,7 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     { data: playersRaw, error: playersError },
     { data: gwsRaw, error: gwsError },
     { data: fixturesRaw, error: fixturesError },
+    { data: latestGwRaw, error: latestGwError },
   ] = await Promise.all([
     supabase
       .from("players")
@@ -139,11 +140,23 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
       )
       .eq("season", SEASON),
     supabase.from("fixtures").select("gameweek, home_team, away_team").eq("season", SEASON),
+    // Dedicated query for the latest uploaded GW — filtered to games_played > 0
+    // so DNP rows (games_played = 0) don't corrupt the result. Ordered desc
+    // limit 1 is the same pattern used in FixturePlannerClient which is known
+    // to return the correct current gameweek.
+    supabase
+      .from("player_gameweeks")
+      .select("gameweek")
+      .eq("season", SEASON)
+      .gt("games_played", 0)
+      .order("gameweek", { ascending: false })
+      .limit(1),
   ]);
 
   if (playersError) throw new Error(`Failed to load players: ${playersError.message}`);
   if (gwsError) throw new Error(`Failed to load gameweeks: ${gwsError.message}`);
   if (fixturesError) throw new Error(`Failed to load fixtures: ${fixturesError.message}`);
+  if (latestGwError) throw new Error(`Failed to load latest gameweek: ${latestGwError.message}`);
 
   const players = (playersRaw ?? []) as PlayerDbRow[];
   const gws = (gwsRaw ?? []) as GwRow[];
@@ -164,11 +177,7 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   }
 
   const rowsByPlayer = new Map<string, GwRow[]>();
-  // Track the highest gameweek that has any player data — read directly from
-  // the row values so there is no dependency on team-name matching.
-  let maxDataGw = 0;
   for (const row of gws) {
-    if (row.gameweek > maxDataGw) maxDataGw = row.gameweek;
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) existing.push(row);
     else rowsByPlayer.set(row.player_id, [row]);
@@ -182,18 +191,17 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     else fixturesByGw.set(fix.gameweek, [fix]);
   }
 
-  // The upcoming GW is maxDataGw + 1 when that GW has scheduled fixtures
-  // (i.e. the season hasn't ended). If GW maxDataGw + 1 doesn't exist in
-  // the fixtures table we are in the final round, so stay on maxDataGw.
-  // Using the simple max-based signal avoids fragile team-name matching
-  // against playerInfo, which previously caused the pointer to get stuck
-  // on old GWs when any player row lacked a match in the players table.
+  // Use the dedicated latest-GW query result (games_played > 0, ordered desc
+  // limit 1) — the same approach as FixturePlannerClient, which is known to
+  // return the correct current gameweek. nextGw = latestGw + 1, or latestGw
+  // itself if the season has ended and no future fixtures exist.
+  const latestGw = Number((latestGwRaw ?? [])[0]?.gameweek ?? 0);
   const nextGw: number | null =
-    maxDataGw === 0
+    latestGw === 0
       ? ([...fixturesByGw.keys()].sort((a, b) => a - b)[0] ?? null)
-      : fixturesByGw.has(maxDataGw + 1)
-      ? maxDataGw + 1
-      : maxDataGw;
+      : fixturesByGw.has(latestGw + 1)
+      ? latestGw + 1
+      : latestGw;
 
   // --- opponent conceded accumulation ---
   // oppMap[opponent_team][position][stat] = { sum, count }
