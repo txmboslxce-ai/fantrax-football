@@ -148,8 +148,11 @@ function positionLetter(position: StatsRow["position"]): "G" | "D" | "M" | "F" {
   return "F";
 }
 
+const MOBILE_ROW_CAP = 150;
+
 export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRow[]; leagueRoster: LeagueRosterData | null }) {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [position, setPosition] = useState<(typeof positions)[number]>("All");
@@ -183,6 +186,13 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
   }, [selectedColumns]);
 
   const hasReachedColumnLimit = selectedColumns.length >= MAX_SELECTED_COLUMNS;
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     if (sortKey !== "player" && !visibleColumns.some((column) => column.key === sortKey)) {
@@ -634,7 +644,8 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
           <tbody>
             {(() => {
               const posCounters: Record<string, number> = {};
-              return filteredSorted.map((row, index) => {
+              const visibleRows = isMobile ? filteredSorted.slice(0, MOBILE_ROW_CAP) : filteredSorted;
+              return visibleRows.map((row, index) => {
                 const rowHref = `/portal/players/${row.id}`;
                 const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
                 const overallRank = index + 1;
@@ -710,6 +721,11 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
           </tbody>
         </table>
       </div>
+      {isMobile && filteredSorted.length > MOBILE_ROW_CAP ? (
+        <p className="px-1 py-2 text-center text-xs text-brand-creamDark/60">
+          Showing {MOBILE_ROW_CAP} of {filteredSorted.length} players. Use filters to narrow results.
+        </p>
+      ) : null}
     </div>
   );
 }

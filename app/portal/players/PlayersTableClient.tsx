@@ -133,8 +133,11 @@ function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" 
   return "F";
 }
 
+const MOBILE_ROW_CAP = 150;
+
 export default function PlayersTableClient({ players, leagueRoster }: PlayersTableClientProps) {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
@@ -169,6 +172,13 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const selectedColumnDefinitions = visibleColumns;
 
   const hasReachedColumnLimit = selectedColumns.length >= MAX_SELECTED_COLUMNS;
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     if (sortKey !== "name" && !visibleColumns.some((column) => column.key === sortKey)) {
@@ -633,7 +643,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
           <tbody>
             {(() => {
               const posCounters: Record<string, number> = {};
-              return filteredAndSorted.map((player, index) => {
+              const visibleRows = isMobile ? filteredAndSorted.slice(0, MOBILE_ROW_CAP) : filteredAndSorted;
+              return visibleRows.map((player, index) => {
                 const rowHref = `/portal/players/${player.id}`;
                 const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
                 const overallRank = index + 1;
@@ -709,6 +720,11 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
           </tbody>
         </table>
       </div>
+      {isMobile && filteredAndSorted.length > MOBILE_ROW_CAP ? (
+        <p className="px-1 py-2 text-center text-xs text-brand-creamDark/60">
+          Showing {MOBILE_ROW_CAP} of {filteredAndSorted.length} players. Use filters to narrow results.
+        </p>
+      ) : null}
     </div>
   );
 }
