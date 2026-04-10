@@ -210,8 +210,8 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     ).length;
     const coverageRatio = teamsInMaxGw.size > 0 ? teamsWithDataInMaxGw / teamsInMaxGw.size : 0;
 
-    // If the majority of teams have data, treat that GW as done and move on.
-    nextGw = coverageRatio > 0.5 ? maxDataGw + 1 : maxDataGw;
+    // Only advance once every team with a scheduled fixture has data uploaded.
+    nextGw = coverageRatio === 1 ? maxDataGw + 1 : maxDataGw;
   }
 
   // --- opponent conceded accumulation ---
