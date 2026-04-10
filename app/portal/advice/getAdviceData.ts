@@ -164,13 +164,18 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   }
 
   const rowsByPlayer = new Map<string, GwRow[]>();
-  let maxGw = 0;
+  const playedGameweeks = new Set<number>();
   for (const row of gws) {
-    maxGw = Math.max(maxGw, row.gameweek);
+    playedGameweeks.add(row.gameweek);
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) existing.push(row);
     else rowsByPlayer.set(row.player_id, [row]);
   }
+
+  // Find the first fixture gameweek that has no player data yet — that is
+  // the actual upcoming gameweek, regardless of upload lag.
+  const allFixtureGws = [...new Set(fixtures.map((f) => f.gameweek))].sort((a, b) => a - b);
+  const nextGw = allFixtureGws.find((gw) => !playedGameweeks.has(gw)) ?? null;
 
   // --- opponent conceded accumulation ---
   // oppMap[opponent_team][position][stat] = { sum, count }
@@ -243,11 +248,13 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
 
     const position = mapPosition(p.position);
 
-    // Next fixture: first fixture for this team where gameweek > maxGw
+    // Next fixture: the exact upcoming gameweek (first with no player data yet)
     const nextFix =
-      fixtures
-        .filter((f) => f.gameweek > maxGw && (f.home_team === p.team || f.away_team === p.team))
-        .sort((a, b) => a.gameweek - b.gameweek)[0] ?? null;
+      nextGw !== null
+        ? fixtures.find(
+            (f) => f.gameweek === nextGw && (f.home_team === p.team || f.away_team === p.team),
+          ) ?? null
+        : null;
 
     const nextFixtureOpponent = nextFix
       ? nextFix.home_team === p.team

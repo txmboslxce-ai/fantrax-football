@@ -179,22 +179,24 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
     sortDir,
   ]);
 
-  // Ranges for colour coding — derived from currently visible rows
+  // Ranges for colour coding — always derived from the full unfiltered dataset
+  // so colours remain consistent when filters change (you can compare against
+  // the whole league, not just the filtered subset).
   const oppStatRange = useMemo(() => {
-    const vals = filteredAndSorted.map((r) => r.oppStats[selectedStat]);
+    const vals = players.map((r) => r.oppStats[selectedStat]);
     return {
       min: vals.length > 0 ? Math.min(...vals) : 0,
       max: vals.length > 0 ? Math.max(...vals) : 0,
     };
-  }, [filteredAndSorted, selectedStat]);
+  }, [players, selectedStat]);
 
   const playerStatRange = useMemo(() => {
-    const vals = filteredAndSorted.map((r) => r.playerStats[selectedStat]);
+    const vals = players.map((r) => r.playerStats[selectedStat]);
     return {
       min: vals.length > 0 ? Math.min(...vals) : 0,
       max: vals.length > 0 ? Math.max(...vals) : 0,
     };
-  }, [filteredAndSorted, selectedStat]);
+  }, [players, selectedStat]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
