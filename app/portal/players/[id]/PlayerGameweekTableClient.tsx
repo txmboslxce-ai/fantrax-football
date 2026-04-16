@@ -117,6 +117,9 @@ type Props = {
 export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTeam }: Props) {
   const [selectedColumns, setSelectedColumns] = useState<GameweekColumnKey[]>(DEFAULT_SELECTED_COLUMNS);
   const [homeAwayFilter, setHomeAwayFilter] = useState<"All" | "Home" | "Away">("All");
+  const [appearanceFilter, setAppearanceFilter] = useState<Set<"Started" | "Sub" | "DNP">>(
+    new Set(["Started", "Sub", "DNP"])
+  );
   const [fdrMin, setFdrMin] = useState("1");
   const [fdrMax, setFdrMax] = useState("20");
   const [sortKey, setSortKey] = useState<SortKey>("gameweek");
@@ -161,9 +164,15 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
       const opponent = row.opponents.length > 0 ? row.opponents[0] : row.opponent;
       const fdr = opponent ? (fdrRankByTeam[opponent] ?? 10) : 10;
       if (fdr < fdrLow || fdr > fdrHigh) return false;
+      const isStarted = row.games_started >= 1;
+      const isSub = row.games_played > 0 && row.games_started === 0;
+      const isDnp = row.games_played === 0;
+      if (isStarted && !appearanceFilter.has("Started")) return false;
+      if (isSub && !appearanceFilter.has("Sub")) return false;
+      if (isDnp && !appearanceFilter.has("DNP")) return false;
       return true;
     });
-  }, [rows, homeAwayFilter, fdrLow, fdrHigh, fdrRankByTeam]);
+  }, [rows, homeAwayFilter, fdrLow, fdrHigh, fdrRankByTeam, appearanceFilter]);
 
   const sortedRows = useMemo(() => {
     return [...filteredRows].sort((a, b) => {
@@ -204,6 +213,18 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
       if (current.length >= MAX_SELECTED_COLUMNS) return current;
       const next = [...current, key];
       return COLUMN_DEFINITIONS.map((col) => col.key).filter((k) => next.includes(k));
+    });
+  }
+
+  function toggleAppearance(type: "Started" | "Sub" | "DNP") {
+    setAppearanceFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
     });
   }
 
@@ -248,6 +269,25 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               onClick={() => setHomeAwayFilter(opt)}
               className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
                 homeAwayFilter === opt
+                  ? "bg-brand-green text-brand-cream"
+                  : "text-brand-creamDark hover:text-brand-cream"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        {/* Appearance filter */}
+        <div className="flex items-center gap-1.5 rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Show</span>
+          {(["Started", "Sub", "DNP"] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggleAppearance(opt)}
+              className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
+                appearanceFilter.has(opt)
                   ? "bg-brand-green text-brand-cream"
                   : "text-brand-creamDark hover:text-brand-cream"
               }`}
