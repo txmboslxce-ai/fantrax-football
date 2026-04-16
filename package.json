@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "sofa:map": "tsx scripts/map-sofascore-players.ts",
-    "sofa:apply": "tsx scripts/apply-sofascore-mappings.ts"
+    "sofa:apply": "tsx scripts/apply-sofascore-mappings.ts",
+    "sofa:sync": "tsx scripts/sync-sofascore-lineups.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
