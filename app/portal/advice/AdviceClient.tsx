@@ -3,6 +3,7 @@
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
+import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 import type { AdvicePlayerRow, AdviceStatKey } from "./getAdviceData";
 
@@ -409,7 +410,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
             </button>
           </div>
         ) : null}
-        <FilterPanel />
+        {FilterPanel()}
       </div>
 
       {/* Mobile filter button */}
@@ -482,7 +483,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                   <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
                     <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                       <span className="inline-flex flex-wrap items-center gap-1">
-                        <span>{row.playerName}</span>
+                        <Link href={`/portal/players/${row.playerId}`} className="hover:underline">{row.playerName}</Link>
                         <AvailabilityIcon
                           chanceOfPlaying={row.chanceOfPlaying}
                           status={row.availabilityStatus}
