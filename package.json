@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sofa:map": "tsx scripts/map-sofascore-players.ts",
+    "sofa:apply": "tsx scripts/apply-sofascore-mappings.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -14,9 +16,9 @@
     "@types/papaparse": "^5.5.2",
     "next": "16.1.6",
     "papaparse": "^5.5.3",
-    "recharts": "^2.15.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^2.15.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -24,9 +26,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
