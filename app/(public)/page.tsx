@@ -51,7 +51,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
             <h2 className="text-3xl font-bold">Join the Portal</h2>
-            <p className="mt-3 max-w-2xl text-brand-creamDark">Get premium waiver notes, rankings, and community access built for serious fantasy managers.</p>
+            <p className="mt-3 max-w-2xl text-brand-creamDark">The data behind the podcast, built into a tool for your Fantrax league.</p>
           </div>
           <Link
             href="/pricing"
