@@ -9,10 +9,9 @@ const navLinks = [
 ];
 
 const socialLinks = [
-  { href: "#", label: "Twitter/X" },
-  { href: "#", label: "Instagram" },
-  { href: "#", label: "Spotify" },
-  { href: "#", label: "Apple Podcasts" },
+  { href: "https://www.instagram.com/fantraxandfootball", label: "Instagram" },
+  { href: "https://open.spotify.com/show/2g6xYDAZvN1OIfJ5Hh1Tmn?si=3fe57265a1aa4f0d", label: "Spotify" },
+  { href: "https://podcasts.apple.com/us/podcast/fantrax-and-football/id1826549507", label: "Apple Podcasts" },
 ];
 
 export default function Footer() {
@@ -36,7 +35,7 @@ export default function Footer() {
           <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand-creamDark">Follow</p>
           <div className="flex flex-col gap-2 text-sm">
             {socialLinks.map((link) => (
-              <a key={link.label} href={link.href} className="transition-colors hover:text-white">
+              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">
                 {link.label}
               </a>
             ))}
