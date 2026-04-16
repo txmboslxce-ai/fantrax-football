@@ -125,6 +125,14 @@ function mixColor(a: [number, number, number], b: [number, number, number], rati
   return `rgb(${r}, ${g}, ${blue})`;
 }
 
+function fdrBadgeClass(rank: number): string {
+  if (rank <= 4) return "bg-red-800/80 text-red-100";
+  if (rank <= 8) return "bg-orange-700/70 text-orange-100";
+  if (rank <= 12) return "bg-yellow-600/60 text-yellow-100";
+  if (rank <= 16) return "bg-lime-700/60 text-lime-100";
+  return "bg-green-700/60 text-green-100";
+}
+
 function gradientCellColor(value: number, min: number, max: number): string {
   const red: [number, number, number] = [239, 68, 68];
   const yellow: [number, number, number] = [234, 179, 8];
@@ -268,10 +276,11 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   let overviewData:
     | {
         totalTeamPoints: number;
-      topScorers: Array<{ id: string; name: string; points: number }>;
-      concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", { perGame: number; perStart: number }>;
-      upcoming: ReturnType<typeof nextFixtures>;
-    }
+        topScorers: Array<{ id: string; name: string; points: number }>;
+        concededByPosition: Record<"GK" | "DEF" | "MID" | "FWD", { perGame: number; perStart: number }>;
+        fdrRankByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number>;
+        upcoming: ReturnType<typeof nextFixtures>;
+      }
     | undefined;
   let squadRows:
     | Array<{
@@ -354,6 +363,9 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     };
 
     const playedGameweeks = Array.from(new Set(fixturesForTeamPlayed.map((fixture) => fixture.gameweek)));
+
+    let fdrRankByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = { GK: 10, DEF: 10, MID: 10, FWD: 10 };
+
     if (playedGameweeks.length > 0) {
       const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
         .from("player_gameweeks")
@@ -428,10 +440,55 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           perStart: startedCountByPosition.FWD > 0 ? startedTotalsByPosition.FWD / startedCountByPosition.FWD : 0,
         },
       };
+
+      // FDR: rank this team 1–20 per position using the same pts/starts methodology
+      const playedGwSet = new Set(playedGameweeks);
+      const allOpponentsByGwAndTeam = new Map<string, string[]>();
+      for (const fixture of (fixtures ?? []) as FixtureRow[]) {
+        if (!playedGwSet.has(fixture.gameweek)) continue;
+        const homeKey = `${fixture.gameweek}:${fixture.home_team}`;
+        const awayKey = `${fixture.gameweek}:${fixture.away_team}`;
+        if (!allOpponentsByGwAndTeam.has(homeKey)) allOpponentsByGwAndTeam.set(homeKey, []);
+        allOpponentsByGwAndTeam.get(homeKey)!.push(fixture.away_team);
+        if (!allOpponentsByGwAndTeam.has(awayKey)) allOpponentsByGwAndTeam.set(awayKey, []);
+        allOpponentsByGwAndTeam.get(awayKey)!.push(fixture.home_team);
+      }
+
+      type PositionTotals = Record<"GK" | "DEF" | "MID" | "FWD", { pts: number; starts: number }>;
+      const allTeamTotals = new Map<string, PositionTotals>();
+      for (const t of (teams ?? []) as TeamRow[]) {
+        allTeamTotals.set(t.abbrev, {
+          GK: { pts: 0, starts: 0 },
+          DEF: { pts: 0, starts: 0 },
+          MID: { pts: 0, starts: 0 },
+          FWD: { pts: 0, starts: 0 },
+        });
+      }
+      for (const row of (opponentGameweeks ?? []) as OpponentGameweekJoinedRow[]) {
+        const rowPlayer = Array.isArray(row.players) ? row.players[0] : row.players;
+        if (!rowPlayer || Number(row.games_started ?? 0) < 1) continue;
+        const pts = Number(row.raw_fantrax_pts ?? 0);
+        const pos = mapPosition(rowPlayer.position);
+        for (const opp of allOpponentsByGwAndTeam.get(`${row.gameweek}:${rowPlayer.team}`) ?? []) {
+          const teamStats = allTeamTotals.get(opp);
+          if (!teamStats) continue;
+          teamStats[pos].pts += pts;
+          teamStats[pos].starts += 1;
+        }
+      }
+
+      for (const pos of ["GK", "DEF", "MID", "FWD"] as const) {
+        const ranked = [...allTeamTotals.entries()]
+          .filter(([, s]) => s[pos].starts > 0)
+          .map(([t, s]) => ({ team: t, avg: s[pos].pts / s[pos].starts }))
+          .sort((a, b) => a.avg - b.avg);
+        const idx = ranked.findIndex((item) => item.team === teamAbbrev);
+        if (idx >= 0) fdrRankByPosition[pos] = idx + 1;
+      }
     }
 
     const upcoming = nextFixtures(teamAbbrev, (fixtures ?? []) as FixtureRow[], currentGameweek, teamNames, 5);
-    overviewData = { totalTeamPoints, topScorers, concededByPosition, upcoming };
+    overviewData = { totalTeamPoints, topScorers, concededByPosition, fdrRankByPosition, upcoming };
   }
 
   if (activeTab === "squad") {
@@ -780,15 +837,23 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
               <div className="space-y-3">
                 <h2 className="text-2xl font-black">Points Conceded by Position</h2>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {(["GK", "DEF", "MID", "FWD"] as const).map((position) => (
-                    <article key={position} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
-                      <p className="text-xs uppercase tracking-wider text-brand-creamDark">{position}</p>
-                      <p className="mt-2 text-2xl font-black">{(overviewData?.concededByPosition[position].perGame ?? 0).toFixed(2)}</p>
-                      <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / game</p>
-                      <p className="mt-3 text-xl font-black">{(overviewData?.concededByPosition[position].perStart ?? 0).toFixed(2)}</p>
-                      <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / start</p>
-                    </article>
-                  ))}
+                  {(["GK", "DEF", "MID", "FWD"] as const).map((position) => {
+                    const fdrRank = overviewData?.fdrRankByPosition[position] ?? 10;
+                    return (
+                      <article key={position} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs uppercase tracking-wider text-brand-creamDark">{position}</p>
+                          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold ${fdrBadgeClass(fdrRank)}`}>
+                            FDR #{fdrRank}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-2xl font-black">{(overviewData?.concededByPosition[position].perGame ?? 0).toFixed(2)}</p>
+                        <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / game</p>
+                        <p className="mt-3 text-xl font-black">{(overviewData?.concededByPosition[position].perStart ?? 0).toFixed(2)}</p>
+                        <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / start</p>
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
 

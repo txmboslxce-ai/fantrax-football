@@ -145,32 +145,50 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
 
   const playerRow = player as PlayerDetailRow;
 
-  // Fetch FDR data now that we have the player's position
-  const { data: opponentAdjustments } = await supabase
-    .from("player_prediction_opponent_adjustments")
-    .select("opponent, sample_matches, ghost_pts_multiplier")
+  // FDR: fetch all started rows for this season (position filtered in JS below)
+  type FdrGameweekRow = {
+    gameweek: number;
+    raw_fantrax_pts: number | string | null;
+    players: { team: string; position: string } | Array<{ team: string; position: string }> | null;
+  };
+  const { data: fdrGameweeks } = await supabase
+    .from("player_gameweeks")
+    .select("gameweek, raw_fantrax_pts, players!inner(team, position)")
     .eq("season", SEASON)
-    .eq("position", playerRow.position);
+    .gte("games_started", 1)
+    .gt("games_played", 0);
 
-  // Compute FDR rank per team (1 = hardest, 20 = easiest) using ghost_pts_multiplier
-  const teamMultiplierMap = new Map<string, { totalWeight: number; weightedSum: number }>();
-  for (const row of opponentAdjustments ?? []) {
-    if (!row.opponent) continue;
-    const mult = Number(row.ghost_pts_multiplier);
-    const weight = Number(row.sample_matches ?? 1);
-    if (!Number.isFinite(mult) || mult <= 0) continue;
-    const entry = teamMultiplierMap.get(row.opponent) ?? { totalWeight: 0, weightedSum: 0 };
-    entry.totalWeight += weight;
-    entry.weightedSum += mult * weight;
-    teamMultiplierMap.set(row.opponent, entry);
+  // Build gameweek:team → opponents[] map from all season fixtures
+  const opponentsByGwAndTeam = new Map<string, string[]>();
+  for (const fixture of (teamFixtures ?? []) as FixtureRow[]) {
+    const homeKey = `${fixture.gameweek}:${fixture.home_team}`;
+    const awayKey = `${fixture.gameweek}:${fixture.away_team}`;
+    if (!opponentsByGwAndTeam.has(homeKey)) opponentsByGwAndTeam.set(homeKey, []);
+    opponentsByGwAndTeam.get(homeKey)!.push(fixture.away_team);
+    if (!opponentsByGwAndTeam.has(awayKey)) opponentsByGwAndTeam.set(awayKey, []);
+    opponentsByGwAndTeam.get(awayKey)!.push(fixture.home_team);
   }
-  const teamsWithAvg = [...teamMultiplierMap.entries()]
-    .map(([team, { totalWeight, weightedSum }]) => ({ team, avg: totalWeight > 0 ? weightedSum / totalWeight : 0 }))
-    .sort((a, b) => a.avg - b.avg); // ascending = rank 1 is hardest (lowest multiplier)
+
+  // Accumulate raw_fantrax_pts per opponent for this player's position only
+  const opponentTotals = new Map<string, { pts: number; starts: number }>();
+  for (const row of (fdrGameweeks ?? []) as FdrGameweekRow[]) {
+    const rowPlayer = Array.isArray(row.players) ? row.players[0] : row.players;
+    if (!rowPlayer || rowPlayer.position !== playerRow.position) continue;
+    const pts = Number(row.raw_fantrax_pts ?? 0);
+    for (const opp of opponentsByGwAndTeam.get(`${row.gameweek}:${rowPlayer.team}`) ?? []) {
+      const entry = opponentTotals.get(opp) ?? { pts: 0, starts: 0 };
+      entry.pts += pts;
+      entry.starts += 1;
+      opponentTotals.set(opp, entry);
+    }
+  }
+
+  // Rank ascending: 1 = hardest (fewest pts conceded per start), 20 = easiest
   const fdrRankByTeam: Record<string, number> = {};
-  teamsWithAvg.forEach(({ team }, idx) => {
-    fdrRankByTeam[team] = idx + 1;
-  });
+  [...opponentTotals.entries()]
+    .map(([team, { pts, starts }]) => ({ team, avg: starts > 0 ? pts / starts : 0 }))
+    .sort((a, b) => a.avg - b.avg)
+    .forEach(({ team }, idx) => { fdrRankByTeam[team] = idx + 1; });
 
   const fplData = Array.isArray(playerRow.fpl_player_data) ? playerRow.fpl_player_data[0] : playerRow.fpl_player_data;
   const xgPer90 = toNumber(fplData?.expected_goals_per_90);
