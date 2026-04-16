@@ -279,7 +279,10 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
   const homeRows = playedRows.filter((row) => row.isHome === true);
   const awayRows = playedRows.filter((row) => row.isHome === false);
 
+  const startedRows = playedRows.filter((row) => row.games_started === 1);
+
   const seasonTotalPts = playedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
+  const startedPts = startedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const totalGhostPts = playedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
   const attackPts = rows.reduce((sum, row) => sum + row.attack_pts, 0);
   const homeTotalPts = homeRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
@@ -296,7 +299,7 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
     total_games_started: totalGamesStarted,
     avg_pts_per_gameweek: gameweeksPlayed > 0 ? seasonTotalPts / gameweeksPlayed : 0,
     avg_pts_per_game: totalGamesPlayed > 0 ? seasonTotalPts / totalGamesPlayed : 0,
-    avg_pts_per_start: totalGamesStarted > 0 ? seasonTotalPts / totalGamesStarted : 0,
+    avg_pts_per_start: totalGamesStarted > 0 ? startedPts / totalGamesStarted : 0,
     total_ghost_pts: totalGhostPts,
     avg_ghost_per_gameweek: gameweeksPlayed > 0 ? totalGhostPts / gameweeksPlayed : 0,
     avg_ghost_per_game: totalGamesPlayed > 0 ? totalGhostPts / totalGamesPlayed : 0,
