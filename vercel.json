@@ -7,6 +7,10 @@
     {
       "path": "/api/fpl/sync",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/sofascore/sync-lineups",
+      "schedule": "0 9 * * *"
     }
   ]
 }

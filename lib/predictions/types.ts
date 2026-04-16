@@ -125,4 +125,5 @@ export type PlayerPredictionComponents = {
   floor_pts: number;
   ceiling_pts: number;
   confidence_score: number;
+  sofascore_source: string | null;
 };

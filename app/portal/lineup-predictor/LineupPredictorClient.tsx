@@ -247,12 +247,24 @@ export default function LineupPredictorClient({ lineups, isAdmin, season, gamewe
               <span className="text-xs text-brand-creamDark">%</span>
             </div>
           ) : (
-            <span
-              className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-              style={{ backgroundColor: spColor(sp) }}
-            >
-              {Math.round(sp * 100)}%
-            </span>
+            <div className="inline-flex items-center gap-1">
+              <span
+                className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
+                style={{ backgroundColor: spColor(sp) }}
+              >
+                {Math.round(sp * 100)}%
+              </span>
+              {player.sofascoreSource ? (
+                <span
+                  title={player.sofascoreSource === "confirmed" ? "SofaScore confirmed lineup" : "SofaScore predicted lineup"}
+                  className={`inline-flex cursor-default rounded px-1 py-0.5 text-[10px] font-bold leading-none ${
+                    sp >= 0.5 ? "bg-green-700/80 text-green-100" : "bg-brand-dark/80 text-brand-creamDark"
+                  }`}
+                >
+                  SS
+                </span>
+              ) : null}
+            </div>
           )}
         </td>
       </tr>

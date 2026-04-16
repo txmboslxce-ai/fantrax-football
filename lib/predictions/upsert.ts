@@ -20,6 +20,7 @@ type PlayerPredictionUpsertRow = {
   floor_pts: number;
   ceiling_pts: number;
   confidence_score: number;
+  sofascore_source: string | null;
   generated_at: string;
 };
 
@@ -52,6 +53,7 @@ function normalizePredictionRow(row: PlayerPredictionComponents, generatedAt: st
     floor_pts: floorPts,
     ceiling_pts: ceilingPts,
     confidence_score: row.confidence_score,
+    sofascore_source: row.sofascore_source ?? null,
     generated_at: generatedAt,
   };
 }

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import PredictionRefreshCard from "./PredictionRefreshCard";
+import SofascoreLineupsCard from "./SofascoreLineupsCard";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { SEASON } from "@/lib/portal/playerMetrics";
 
 const adminLinks = [
   {
@@ -43,11 +45,20 @@ export default async function AdminPage() {
     );
   }
 
-  const [{ count: playersCount }, { count: gameweeksCount }, { count: fixturesCount }] = await Promise.all([
+  const [{ count: playersCount }, { count: gameweeksCount }, { count: fixturesCount }, { data: latestGwData }] = await Promise.all([
     supabase.from("players").select("id", { count: "exact", head: true }),
     supabase.from("player_gameweeks").select("id", { count: "exact", head: true }),
     supabase.from("fixtures").select("id", { count: "exact", head: true }),
+    supabase
+      .from("player_gameweeks")
+      .select("gameweek")
+      .eq("season", SEASON)
+      .order("gameweek", { ascending: false })
+      .limit(1),
   ]);
+
+  const latestGw: number = ((latestGwData ?? []) as { gameweek: number }[])[0]?.gameweek ?? 1;
+  const defaultSofaGw = latestGw + 1;
 
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
@@ -82,6 +93,7 @@ export default async function AdminPage() {
             </Link>
           ))}
           <PredictionRefreshCard />
+          <SofascoreLineupsCard defaultGameweek={defaultSofaGw} />
         </div>
       </div>
     </div>

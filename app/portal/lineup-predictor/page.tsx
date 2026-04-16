@@ -16,6 +16,7 @@ export type LineupPlayer = {
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
+  sofascoreSource: string | null;
 };
 
 export type TeamLineup = {
@@ -27,6 +28,7 @@ export type TeamLineup = {
 type PredictionRow = {
   player_id: string;
   start_probability: number | string | null;
+  sofascore_source: string | null;
   players:
     | {
         name: string;
@@ -99,7 +101,7 @@ export default async function LineupPredictorPage() {
     supabase
       .from("player_predictions")
       .select(
-        "player_id, start_probability, players!inner(name, team, position, fpl_player_data(chance_of_playing_next_round, status, news))",
+        "player_id, start_probability, sofascore_source, players!inner(name, team, position, fpl_player_data(chance_of_playing_next_round, status, news))",
       )
       .eq("season", SEASON)
       .eq("gameweek", nextGw)
@@ -164,6 +166,7 @@ export default async function LineupPredictorPage() {
       chanceOfPlaying: cop,
       availabilityStatus: availRaw?.status ?? null,
       availabilityNews: availRaw?.news ?? null,
+      sofascoreSource: raw.sofascore_source ?? null,
     };
 
     const existing = teamMap.get(player.team);
