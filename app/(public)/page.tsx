@@ -6,9 +6,8 @@ export default function HomePage() {
       <section className="bg-brand-green px-4 py-20 text-brand-cream sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-8">
           <div>
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-brand-creamDark">Fantasy Premier League Podcast</p>
             <h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">Fantrax and Football</h1>
-            <p className="mt-5 max-w-2xl text-lg text-brand-creamDark">The Fantrax Premier League fantasy podcast</p>
+            <p className="mt-5 max-w-2xl text-lg text-brand-creamDark">Home of the Fantrax and Football podcast — and the tools, stats, and analysis that go with it.</p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row">
             <a
