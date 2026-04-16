@@ -1,42 +1,12 @@
 import Link from "next/link";
 
 const portalCards = [
-  {
-    href: "/portal/players",
-    title: "Players",
-    description: "Search and filter all 900+ players by position and form. Click any player for an in-depth profile including full stat history and gameweek breakdown.",
-    premium: false,
-  },
-  {
-    href: "/portal/my-league",
-    title: "My League",
-    description: "Connect your Fantrax league to see which players are available in your waiver pool.",
-    premium: true,
-  },
-  {
-    href: "/portal/stats",
-    title: "Stats",
-    description: "Search and sort players by any stat used in Fantrax scoring. Filter by position, team, and time window to find the edge.",
-    premium: true,
-  },
-  {
-    href: "/portal/fixtures",
-    title: "Fixtures",
-    description: "Upcoming fixture difficulty plus a full match-by-match breakdown of Fantrax scores across every gameweek.",
-    premium: false,
-  },
-  {
-    href: "/portal/compare",
-    title: "Compare",
-    description: "Head-to-head player comparisons across key metrics.",
-    premium: true,
-  },
-  {
-    href: "/portal/teams",
-    title: "Teams",
-    description: "Team pages with set piece takers, points conceded by position, and form data.",
-    premium: true,
-  },
+  { href: "/portal/players", title: "Players", description: "Search and filter all 900+ players by position and form. Click any player for an in-depth profile including full stat history and gameweek breakdown." },
+  { href: "/portal/my-league", title: "My League", description: "Connect your Fantrax league to see which players are available in your waiver pool." },
+  { href: "/portal/stats", title: "Stats", description: "Search and sort players by any stat used in Fantrax scoring. Filter by position, team, and time window to find the edge." },
+  { href: "/portal/fixtures", title: "Fixtures", description: "Upcoming fixture difficulty plus a full match-by-match breakdown of Fantrax scores across every gameweek." },
+  { href: "/portal/compare", title: "Compare", description: "Head-to-head player comparisons across key metrics." },
+  { href: "/portal/teams", title: "Teams", description: "Team pages with set piece takers, points conceded by position, and form data." },
 ];
 
 export default function PortalPage() {
@@ -52,16 +22,9 @@ export default function PortalPage() {
           <Link
             key={card.title}
             href={card.href}
-            className={`rounded-xl border p-6 transition-colors ${
-              card.premium
-                ? "border-brand-cream/25 bg-brand-dark hover:bg-brand-dark/80"
-                : "border-brand-greenLight/50 bg-brand-green hover:bg-brand-greenLight"
-            }`}
+            className="rounded-xl border border-brand-cream/25 bg-brand-dark p-6 transition-colors hover:bg-brand-dark/80"
           >
-            <h2 className="text-2xl font-bold text-brand-cream">
-              {card.title}
-              {card.premium ? <span className="ml-2 align-middle text-base">🔒</span> : null}
-            </h2>
+            <h2 className="text-2xl font-bold text-brand-cream">{card.title}</h2>
             <p className="mt-2 text-sm text-brand-creamDark">{card.description}</p>
           </Link>
         ))}
