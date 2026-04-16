@@ -396,7 +396,31 @@ async function main() {
 
   console.log(`Fuzzy matches (for review): ${fuzzyMatches.length}`);
 
-  // ── Step 5: Write matches to Supabase ────────────────────────────────────
+  // ── Step 4c: Write fuzzy matches to Supabase ─────────────────────────────
+  if (fuzzyMatches.length > 0) {
+    console.log("Writing fuzzy matches to players table...");
+    const FUZZY_BATCH = 50;
+    let fuzzyWritten = 0;
+    for (let i = 0; i < fuzzyMatches.length; i += FUZZY_BATCH) {
+      const batch = fuzzyMatches.slice(i, i + FUZZY_BATCH);
+      const results = await Promise.all(
+        batch.map(({ ourPlayerId, sofascoreId }) =>
+          supabase.from("players").update({ sofascore_id: sofascoreId }).eq("id", ourPlayerId)
+        )
+      );
+      for (const { error } of results) {
+        if (error) {
+          console.error(`Fuzzy update error:`, error.message);
+        } else {
+          fuzzyWritten++;
+        }
+      }
+      process.stdout.write(`  Written ${fuzzyWritten}/${fuzzyMatches.length}\r`);
+    }
+    console.log(`\nWritten ${fuzzyWritten} fuzzy matches.`);
+  }
+
+  // ── Step 5: Write exact matches to Supabase ──────────────────────────────
   if (updates.length > 0) {
     console.log("Writing sofascore_id values to players table...");
     const BATCH = 50;
@@ -466,15 +490,14 @@ async function main() {
 
   console.log(`\n── Results ─────────────────────────────────────────────`);
   console.log(`  Exact matches written:   ${updates.length}`);
-  console.log(`  Fuzzy matches (review):  ${fuzzyMatches.length}  → ${fuzzyPath}`);
+  console.log(`  Fuzzy matches written:   ${fuzzyMatches.length}  → ${fuzzyPath} (for review)`);
   console.log(`  Unmatched (SofaScore):   ${unmatchedSofa.length}  → ${sofaCsvPath}`);
   console.log(`  Unmatched (ours):        ${unmatchedOurs.length}  → ${oursCsvPath}`);
   console.log(`  Manual mapping template: ${manualPath}`);
   console.log(`────────────────────────────────────────────────────────\n`);
   console.log(
     `Next steps:\n` +
-    `  1. Review scripts/output/fuzzy-matches.csv — approve rows by running apply-sofascore-mappings.ts\n` +
-    `     (copy approved rows into manual-mapping.csv)\n` +
+    `  1. Review scripts/output/fuzzy-matches.csv to verify auto-applied fuzzy matches\n` +
     `  2. Fill in sofascore_id + sofascore_name in manual-mapping.csv for remaining unmatched rows\n` +
     `  3. Run: npx tsx scripts/apply-sofascore-mappings.ts`
   );
