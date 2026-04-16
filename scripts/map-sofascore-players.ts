@@ -270,13 +270,19 @@ async function main() {
     let written = 0;
     for (let i = 0; i < updates.length; i += BATCH) {
       const batch = updates.slice(i, i + BATCH);
-      const { error: upsertErr } = await supabase.from("players").upsert(batch, { onConflict: "id" });
-      if (upsertErr) {
-        console.error(`Batch upsert error at offset ${i}:`, upsertErr.message);
-      } else {
-        written += batch.length;
-        process.stdout.write(`  Written ${written}/${updates.length}\r`);
+      const results = await Promise.all(
+        batch.map(({ id, sofascore_id }) =>
+          supabase.from("players").update({ sofascore_id }).eq("id", id)
+        )
+      );
+      for (const { error } of results) {
+        if (error) {
+          console.error(`Update error:`, error.message);
+        } else {
+          written++;
+        }
       }
+      process.stdout.write(`  Written ${written}/${updates.length}\r`);
     }
     console.log(`\nWrote ${written} rows.`);
   }
