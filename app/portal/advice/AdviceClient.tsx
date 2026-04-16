@@ -110,6 +110,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [maxOwnership, setMaxOwnership] = useState(100);
   const deferredSearch = useDeferredValue(search);
 
   const meta = STAT_META[selectedStat];
@@ -138,6 +139,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
       if (venueFilter === "Home" && row.nextFixtureIsHome !== true) return false;
       if (venueFilter === "Away" && row.nextFixtureIsHome !== false) return false;
       if (norm && !row.playerName.toLowerCase().includes(norm)) return false;
+      if (maxOwnership < 100 && (row.ownershipPct ?? 100) > maxOwnership) return false;
       if (leagueRoster && availabilityFilter !== "All") {
         const taken = Boolean(leagueRoster.teamByPlayerId[row.playerId]);
         if (availabilityFilter === "Available" && taken) return false;
@@ -182,6 +184,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
     oppStatMin,
     sortKey,
     sortDir,
+    maxOwnership,
   ]);
 
   // Ranges for colour coding — always derived from the full unfiltered dataset
@@ -229,7 +232,8 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
     search !== "" ||
     minStarts !== "0" ||
     playerStatMin > 0 ||
-    oppStatMin > 0;
+    oppStatMin > 0 ||
+    maxOwnership < 100;
 
   // ── filter panel (shared between drawer and desktop) ─────────────────────
 
@@ -371,12 +375,13 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
         </div>
 
         {/* Sliders */}
-        <div className="grid grid-cols-1 gap-3 border-t border-brand-cream/10 pt-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 border-t border-brand-cream/10 pt-3 md:grid-cols-3">
           <SliderFilter
             label={`Min player ${meta.label}`}
             value={playerStatMin}
             max={playerStatMax}
             step={meta.step}
+            digits={2}
             onChange={setPlayerStatMin}
           />
           <SliderFilter
@@ -384,7 +389,16 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
             value={oppStatMin}
             max={oppStatMax}
             step={meta.step}
+            digits={2}
             onChange={setOppStatMin}
+          />
+          <SliderFilter
+            label="Max ownership %"
+            value={maxOwnership}
+            max={100}
+            step={1}
+            digits={0}
+            onChange={setMaxOwnership}
           />
         </div>
       </div>
@@ -565,12 +579,14 @@ function SliderFilter({
   value,
   max,
   step,
+  digits = 2,
   onChange,
 }: {
   label: string;
   value: number;
   max: number;
   step: number;
+  digits?: number;
   onChange: (v: number) => void;
 }) {
   const displayMax = max > 0 ? max : 1;
@@ -578,7 +594,7 @@ function SliderFilter({
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">{label}</span>
-        <span className="text-xs font-bold text-brand-cream">{value.toFixed(2)}</span>
+        <span className="text-xs font-bold text-brand-cream">{value.toFixed(digits)}</span>
       </div>
       <input
         type="range"
@@ -591,7 +607,7 @@ function SliderFilter({
       />
       <div className="flex justify-between text-[10px] text-brand-creamDark/60">
         <span>0</span>
-        <span>{displayMax.toFixed(2)}</span>
+        <span>{displayMax.toFixed(digits)}</span>
       </div>
     </div>
   );

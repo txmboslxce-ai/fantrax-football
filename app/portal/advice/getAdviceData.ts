@@ -24,6 +24,7 @@ export type AdvicePlayerRow = {
   playerName: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  ownershipPct: number | null;
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
@@ -68,6 +69,7 @@ type PlayerDbRow = {
   name: string;
   team: string;
   position: string;
+  ownership_pct: string | null;
   fpl_player_data:
     | { chance_of_playing_next_round: number | null; status: string | null; news: string | null }
     | Array<{ chance_of_playing_next_round: number | null; status: string | null; news: string | null }>
@@ -131,7 +133,7 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   ] = await Promise.all([
     supabase
       .from("players")
-      .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
+      .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
       .order("name"),
     supabase
       .from("player_gameweeks")
@@ -308,11 +310,14 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
 
     const availRaw = Array.isArray(p.fpl_player_data) ? p.fpl_player_data[0] : p.fpl_player_data;
 
+    const ownershipRaw = p.ownership_pct != null ? parseFloat(p.ownership_pct) : null;
+
     return {
       playerId: p.id,
       playerName: p.name,
       team: p.team,
       position,
+      ownershipPct: ownershipRaw != null && Number.isFinite(ownershipRaw) ? ownershipRaw : null,
       chanceOfPlaying: availRaw?.chance_of_playing_next_round ?? null,
       availabilityStatus: availRaw?.status ?? null,
       availabilityNews: availRaw?.news ?? null,
