@@ -1,6 +1,7 @@
 "use client";
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { LineupPlayer, TeamLineup } from "./page";
@@ -192,7 +193,9 @@ export default function LineupPredictorClient({ lineups, isAdmin, season, gamewe
         {/* Player */}
         <td className={`border-b border-r border-brand-cream/10 px-2 py-1.5 ${shade}`}>
           <div className="flex flex-wrap items-center gap-1 text-sm font-semibold leading-tight">
-            <span>{player.playerName}</span>
+            <Link href={`/portal/players/${player.playerId}`} className="hover:underline">
+              {player.playerName}
+            </Link>
             <AvailabilityIcon
               chanceOfPlaying={player.chanceOfPlaying}
               status={player.availabilityStatus}
