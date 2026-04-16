@@ -507,7 +507,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                       </span>
                     </div>
                     <div className="mt-0.5 truncate text-xs text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
-                      {row.team} / {row.gamesStarted} starts
+                      {row.team} / {row.gamesStarted} starts{row.ownershipPct != null ? ` / ${row.ownershipPct.toFixed(1)}%` : ""}
                     </div>
                   </td>
 
