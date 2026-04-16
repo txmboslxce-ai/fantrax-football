@@ -18,10 +18,11 @@ async function sofaFetch<T>(path: string): Promise<T> {
   console.log(`[sync-lineups] GET ${url}`);
   const res = await fetch(url, {
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Accept: "application/json",
-      Referer: "https://www.sofascore.com/",
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Referer": "https://www.sofascore.com",
+      "Origin": "https://www.sofascore.com",
     },
     next: { revalidate: 0 },
   });
