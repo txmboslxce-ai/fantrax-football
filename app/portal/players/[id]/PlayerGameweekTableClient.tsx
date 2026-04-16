@@ -174,6 +174,20 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
     });
   }, [rows, homeAwayFilter, fdrLow, fdrHigh, fdrRankByTeam, appearanceFilter]);
 
+  const tally = useMemo(() => {
+    const n = filteredRows.length;
+    if (n === 0) return null;
+    const avgs: Record<GameweekColumnKey, number> = {} as Record<GameweekColumnKey, number>;
+    for (const col of visibleColumns) {
+      const sum = filteredRows.reduce((acc, row) => {
+        const raw = (row as Record<string, unknown>)[col.key];
+        return acc + (typeof raw === "number" ? raw : Number(raw ?? 0));
+      }, 0);
+      avgs[col.key] = sum / n;
+    }
+    return { avgs, n };
+  }, [filteredRows, visibleColumns]);
+
   const sortedRows = useMemo(() => {
     return [...filteredRows].sort((a, b) => {
       let comparison = 0;
@@ -520,6 +534,23 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               </tr>
             ) : null}
           </tbody>
+          {tally ? (
+            <tfoot>
+              <tr className="border-t-2 border-brand-cream/30 bg-[#1a3a22] font-semibold text-brand-cream">
+                <td className="px-3 py-3 text-xs uppercase tracking-wide text-brand-creamDark">
+                  Avg ({tally.n})
+                </td>
+                <td className="px-3 py-3" />
+                <td className="px-3 py-3" />
+                <td className="px-3 py-3" />
+                {visibleColumns.map((col) => (
+                  <td key={col.key} className="px-3 py-3">
+                    {tally.avgs[col.key].toFixed(col.digits ?? 2)}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          ) : null}
         </table>
       </div>
     </div>
