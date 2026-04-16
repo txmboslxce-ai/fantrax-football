@@ -50,8 +50,18 @@ async function sofaFetch<T>(path: string): Promise<T> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+const EPL_TEAMS = new Set([
+  "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton & Hove Albion",
+  "Chelsea", "Crystal Palace", "Everton", "Fulham", "Ipswich Town", "Leeds United",
+  "Leicester City", "Liverpool", "Manchester City", "Manchester United", "Newcastle United",
+  "Nottingham Forest", "Southampton", "Sunderland", "Tottenham Hotspur",
+  "West Ham United", "Wolverhampton", "Wolverhampton Wanderers",
+]);
+
 type ScheduledEvent = {
   id: number;
+  homeTeam?: { name: string };
+  awayTeam?: { name: string };
   tournament: {
     name: string;
     uniqueTournament?: { id: number; name: string };
@@ -155,10 +165,9 @@ async function main() {
       const data = await sofaFetch<ScheduledEventsResponse>(`/sport/football/scheduled-events/${date}`);
       let plCount = 0;
       for (const event of data.events ?? []) {
-        const tName = event.tournament?.name ?? "";
-        const utName = event.tournament?.uniqueTournament?.name ?? "";
-        const utId = event.tournament?.uniqueTournament?.id;
-        const isPL = tName === "Premier League" || utName === "Premier League" || utId === 17;
+        const isPL =
+          EPL_TEAMS.has(event.homeTeam?.name ?? "") &&
+          EPL_TEAMS.has(event.awayTeam?.name ?? "");
         if (isPL) {
           eplEventIds.push(event.id);
           plCount++;
@@ -222,11 +231,15 @@ async function main() {
     }
   }
 
-  // 6 — upsert
-  if (upsertRows.length === 0) {
+  // 6 — deduplicate by player_id (keep last occurrence) then upsert
+  const deduped = new Map<string, UpsertRow>();
+  for (const row of upsertRows) deduped.set(row.player_id, row);
+  const rowsToUpsert = Array.from(deduped.values());
+
+  if (rowsToUpsert.length === 0) {
     console.log("No rows to upsert.");
   } else {
-    const { error: upsertError } = await db.from("sofascore_lineups").upsert(upsertRows, {
+    const { error: upsertError } = await db.from("sofascore_lineups").upsert(rowsToUpsert, {
       onConflict: "player_id,season,gameweek",
     });
     if (upsertError) {
@@ -239,7 +252,7 @@ async function main() {
   console.log("\n─── Summary ─────────────────────────────────────────────");
   console.log(`  Season:   ${SEASON}`);
   console.log(`  Gameweek: GW${gameweek}`);
-  console.log(`  Synced:   ${upsertRows.length} players`);
+  console.log(`  Synced:   ${rowsToUpsert.length} players`);
   if (unmatched.length > 0) {
     console.log(`  Unmatched (${unmatched.length}):`);
     for (const name of unmatched) console.log(`    - ${name}`);
