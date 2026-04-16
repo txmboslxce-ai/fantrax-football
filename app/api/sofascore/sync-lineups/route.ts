@@ -32,7 +32,10 @@ async function sofaFetch<T>(path: string): Promise<T> {
 
 type ScheduledEvent = {
   id: number;
-  tournament: { name: string };
+  tournament: {
+    name: string;
+    uniqueTournament?: { id: number; name: string };
+  };
   homeTeam: { name: string };
   awayTeam: { name: string };
 };
@@ -169,12 +172,23 @@ export async function POST(request: Request) {
 
   // ── 3. Fetch scheduled events for each date, filter to Premier League ───────
   const eplEventIds: number[] = [];
+  const tournamentNamesSeen = new Set<string>();
 
   for (const date of kickoffDates) {
     try {
       const data = await sofaFetch<ScheduledEventsResponse>(`/sport/football/scheduled-events/${date}`);
       for (const event of data.events ?? []) {
-        if (event.tournament?.name === "Premier League") {
+        const tName = event.tournament?.name ?? "";
+        const utName = event.tournament?.uniqueTournament?.name ?? "";
+        const utId = event.tournament?.uniqueTournament?.id;
+        tournamentNamesSeen.add(`${tName} / ${utName} (id:${utId})`);
+
+        const isPL =
+          tName === "Premier League" ||
+          utName === "Premier League" ||
+          utId === 17;
+
+        if (isPL) {
           eplEventIds.push(event.id);
         }
       }
@@ -185,7 +199,11 @@ export async function POST(request: Request) {
 
   if (eplEventIds.length === 0) {
     return NextResponse.json(
-      { success: false, message: `No Premier League events found for GW${gameweek} on dates: ${kickoffDates.join(", ")}` },
+      {
+        success: false,
+        message: `No Premier League events found for GW${gameweek} on dates: ${kickoffDates.join(", ")}`,
+        debug_tournaments_seen: [...tournamentNamesSeen].slice(0, 30),
+      },
       { status: 404 }
     );
   }
