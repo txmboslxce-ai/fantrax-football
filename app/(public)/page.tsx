@@ -32,16 +32,16 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-brand-dark">What we cover</h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             <article className="rounded-xl border border-brand-green/20 border-l-4 border-brand-green bg-white p-6 pl-4 shadow-sm">
-              <h3 className="text-xl font-semibold text-brand-greenDark">Fantasy Tactics</h3>
-              <p className="mt-3 text-sm leading-6 text-brand-dark/80">Captain picks, chip strategy, fixture swings, and weekly decision frameworks that help you stay ahead.</p>
+              <h3 className="text-xl font-semibold text-brand-greenDark">My League</h3>
+              <p className="mt-3 text-sm leading-6 text-brand-dark/80">Connect your Fantrax league and see exactly which players are available in your waiver pool. The same data the podcast uses to identify the best pickups, surfaced for your specific league.</p>
             </article>
             <article className="rounded-xl border border-brand-green/20 border-l-4 border-brand-green bg-brand-creamDark/40 p-6 pl-4 shadow-sm">
-              <h3 className="text-xl font-semibold text-brand-greenDark">Waiver Wire</h3>
-              <p className="mt-3 text-sm leading-6 text-brand-dark/80">Target priority adds, under-the-radar assets, and streamers to win your Fantrax matchups.</p>
+              <h3 className="text-xl font-semibold text-brand-greenDark">Waiver Wire Intel</h3>
+              <p className="mt-3 text-sm leading-6 text-brand-dark/80">In-depth form and stat analysis to help you identify under-the-radar assets before your league catches on. No guesswork — just the numbers.</p>
             </article>
             <article className="rounded-xl border border-brand-green/20 border-l-4 border-brand-green bg-white p-6 pl-4 shadow-sm">
-              <h3 className="text-xl font-semibold text-brand-greenDark">Player Analysis</h3>
-              <p className="mt-3 text-sm leading-6 text-brand-dark/80">Data-driven breakdowns mixed with football context so you can trust your picks with confidence.</p>
+              <h3 className="text-xl font-semibold text-brand-greenDark">Player & Team Stats</h3>
+              <p className="mt-3 text-sm leading-6 text-brand-dark/80">Full per-90 stat breakdowns, gameweek history, and points conceded by opponent. Everything you need to analyse any player or fixture in the league.</p>
             </article>
           </div>
         </div>
