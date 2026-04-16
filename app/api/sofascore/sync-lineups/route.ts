@@ -15,6 +15,7 @@ function delay(ms: number) {
 async function sofaFetch<T>(path: string): Promise<T> {
   await delay(DELAY_MS);
   const url = `${SOFASCORE_BASE}${path}`;
+  console.log(`[sync-lineups] GET ${url}`);
   const res = await fetch(url, {
     headers: {
       "User-Agent":
@@ -24,21 +25,24 @@ async function sofaFetch<T>(path: string): Promise<T> {
     },
     next: { revalidate: 0 },
   });
-  if (!res.ok) throw new Error(`SofaScore ${res.status} for ${url}`);
+  if (!res.ok) {
+    console.error(`[sync-lineups] SofaScore ${res.status} for ${url}`);
+    throw new Error(`SofaScore ${res.status} for ${url}`);
+  }
   return res.json() as T;
 }
 
 // ─── SofaScore types ──────────────────────────────────────────────────────────
 
-const EPL_TOURNAMENT_ID = 17;
-const EPL_SEASON_ID = 61627;
-
-type RoundEvent = {
+type ScheduledEvent = {
   id: number;
-  status?: { type: string };
+  tournament: {
+    name: string;
+    uniqueTournament?: { id: number; name: string };
+  };
 };
 
-type RoundEventsResponse = { events?: RoundEvent[] };
+type ScheduledEventsResponse = { events?: ScheduledEvent[] };
 
 type LineupsResponse = {
   confirmed?: boolean;
@@ -53,6 +57,7 @@ type LineupsPlayer = {
 
 // ─── DB types ────────────────────────────────────────────────────────────────
 
+type FixtureRow = { kickoff_at: string | null };
 type PlayerRow = { id: string; sofascore_id: number | null };
 
 type LineupUpsertRow = {
@@ -68,7 +73,10 @@ type LineupUpsertRow = {
 // ─── route ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  console.log("[sync-lineups] POST started");
   const isCronInvocation = request.headers.get("x-vercel-cron") === "1";
+  console.log(`[sync-lineups] isCronInvocation=${isCronInvocation}`);
+
   const supabase = await createServerSupabaseClient();
 
   if (!isCronInvocation) {
@@ -76,6 +84,7 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user || !isAdminEmail(user.email)) {
+      console.error("[sync-lineups] Unauthorized");
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
   }
@@ -86,18 +95,23 @@ export async function POST(request: Request) {
   let gameweek: number;
 
   if (isCronInvocation) {
-    // Auto-determine: next GW after the latest uploaded GW
     season = "2025-26";
 
-    const { data: latestGwData } = await db
+    const { data: latestGwData, error: latestGwError } = await db
       .from("player_gameweeks")
       .select("gameweek")
       .eq("season", season)
       .order("gameweek", { ascending: false })
       .limit(1);
 
+    if (latestGwError) {
+      console.error("[sync-lineups] latestGw query error:", latestGwError.message);
+      return NextResponse.json({ success: false, message: latestGwError.message }, { status: 500 });
+    }
+
     const latestGw: number = ((latestGwData ?? []) as { gameweek: number }[])[0]?.gameweek ?? 0;
     gameweek = latestGw + 1;
+    console.log(`[sync-lineups] cron auto-detected: season=${season} latestGw=${latestGw} targetGw=${gameweek}`);
   } else {
     let body: { season?: string; gameweek?: number } = {};
     try {
@@ -111,15 +125,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Invalid gameweek." }, { status: 400 });
     }
     gameweek = gwRaw;
+    console.log(`[sync-lineups] manual: season=${season} gameweek=${gameweek}`);
   }
 
-  // ── 1. Build sofascore_id → player_id lookup ──────────────────────────────
+  // ── 1. Get fixture dates for the target GW ─────────────────────────────────
+  console.log(`[sync-lineups] querying fixtures for season=${season} gameweek=${gameweek}`);
+  const { data: fixtureRows, error: fixturesError } = await db
+    .from("fixtures")
+    .select("kickoff_at")
+    .eq("season", season)
+    .eq("gameweek", gameweek);
+
+  if (fixturesError) {
+    console.error("[sync-lineups] fixtures query error:", fixturesError.message);
+    return NextResponse.json({ success: false, message: fixturesError.message }, { status: 500 });
+  }
+
+  console.log(`[sync-lineups] fixture rows returned: ${(fixtureRows ?? []).length}`);
+
+  const kickoffDates = [
+    ...new Set(
+      ((fixtureRows ?? []) as FixtureRow[])
+        .map((r) => r.kickoff_at?.slice(0, 10))
+        .filter((d): d is string => Boolean(d))
+    ),
+  ];
+
+  console.log(`[sync-lineups] unique kickoff dates: ${kickoffDates.join(", ") || "(none)"}`);
+
+  if (kickoffDates.length === 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: `No fixture dates found for GW${gameweek} (season ${season}). Ensure kickoff_at is populated.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  // ── 2. Build sofascore_id → player_id lookup ───────────────────────────────
   const { data: playersRaw, error: playersError } = await db
     .from("players")
     .select("id, sofascore_id")
     .not("sofascore_id", "is", null);
 
   if (playersError) {
+    console.error("[sync-lineups] players query error:", playersError.message);
     return NextResponse.json({ success: false, message: playersError.message }, { status: 500 });
   }
 
@@ -127,30 +178,48 @@ export async function POST(request: Request) {
   for (const p of (playersRaw ?? []) as PlayerRow[]) {
     if (p.sofascore_id != null) playerBySofaId.set(p.sofascore_id, p.id);
   }
+  console.log(`[sync-lineups] players with sofascore_id: ${playerBySofaId.size}`);
 
-  // ── 2. Fetch EPL events for the target round directly ─────────────────────
-  // Uses the tournament/season/round endpoint (avoids scheduled-events which blocks server-side)
-  let eplEventIds: number[];
-  try {
-    const data = await sofaFetch<RoundEventsResponse>(
-      `/unique-tournament/${EPL_TOURNAMENT_ID}/season/${EPL_SEASON_ID}/events/round/${gameweek}`
-    );
-    eplEventIds = (data.events ?? []).map((e) => e.id);
-  } catch (err) {
-    return NextResponse.json(
-      { success: false, message: `Failed to fetch EPL events for GW${gameweek}: ${(err as Error).message}` },
-      { status: 502 }
-    );
+  // ── 3. Fetch scheduled events for each date, filter to Premier League ───────
+  const eplEventIds: number[] = [];
+
+  for (const date of kickoffDates) {
+    try {
+      console.log(`[sync-lineups] fetching scheduled-events for ${date}`);
+      const data = await sofaFetch<ScheduledEventsResponse>(`/sport/football/scheduled-events/${date}`);
+      const total = data.events?.length ?? 0;
+      console.log(`[sync-lineups] ${date}: ${total} events total`);
+
+      for (const event of data.events ?? []) {
+        const tName = event.tournament?.name ?? "";
+        const utName = event.tournament?.uniqueTournament?.name ?? "";
+        const utId = event.tournament?.uniqueTournament?.id;
+
+        const isPL = tName === "Premier League" || utName === "Premier League" || utId === 17;
+        if (isPL) {
+          eplEventIds.push(event.id);
+        }
+      }
+
+      console.log(`[sync-lineups] ${date}: ${eplEventIds.length} PL events so far`);
+    } catch (err) {
+      console.error(`[sync-lineups] scheduled-events error for ${date}:`, (err as Error).message);
+    }
   }
 
   if (eplEventIds.length === 0) {
     return NextResponse.json(
-      { success: false, message: `No EPL events found for GW${gameweek} (round ${gameweek}).` },
+      {
+        success: false,
+        message: `No Premier League events found for GW${gameweek} on dates: ${kickoffDates.join(", ")}`,
+      },
       { status: 404 }
     );
   }
 
-  // ── 3. Fetch lineups for each event ───────────────────────────────────────
+  console.log(`[sync-lineups] fetching lineups for ${eplEventIds.length} PL events`);
+
+  // ── 4. Fetch lineups for each event ───────────────────────────────────────
   const upsertRows: LineupUpsertRow[] = [];
   const unmatched: string[] = [];
   const fetchedAt = new Date().toISOString();
@@ -159,6 +228,7 @@ export async function POST(request: Request) {
     try {
       const data = await sofaFetch<LineupsResponse>(`/event/${eventId}/lineups`);
       const status: "confirmed" | "predicted" = data.confirmed ? "confirmed" : "predicted";
+      console.log(`[sync-lineups] event ${eventId}: status=${status} home=${data.home?.players?.length ?? 0} away=${data.away?.players?.length ?? 0}`);
 
       for (const side of [data.home, data.away]) {
         for (const entry of side?.players ?? []) {
@@ -183,21 +253,26 @@ export async function POST(request: Request) {
         }
       }
     } catch (err) {
-      console.warn(`Lineups error for event ${eventId}:`, (err as Error).message);
+      console.error(`[sync-lineups] lineups error for event ${eventId}:`, (err as Error).message);
     }
   }
 
-  // ── 4. Upsert into sofascore_lineups ──────────────────────────────────────
+  console.log(`[sync-lineups] upsert rows: ${upsertRows.length} matched, ${unmatched.length} unmatched`);
+
+  // ── 5. Upsert into sofascore_lineups ──────────────────────────────────────
   let synced = 0;
   if (upsertRows.length > 0) {
     const { error: upsertError } = await db.from("sofascore_lineups").upsert(upsertRows, {
       onConflict: "player_id,season,gameweek",
     });
     if (upsertError) {
+      console.error("[sync-lineups] upsert error:", upsertError.message);
       return NextResponse.json({ success: false, message: upsertError.message }, { status: 500 });
     }
     synced = upsertRows.length;
   }
+
+  console.log(`[sync-lineups] done. synced=${synced}`);
 
   return NextResponse.json({
     success: true,
