@@ -95,7 +95,7 @@ function writeCsv(filePath: string, header: string[], rows: (string | number | n
 // ─── SofaScore data fetching ──────────────────────────────────────────────────
 
 type RoundsResponse = {
-  rounds: Array<{ id: number; slug: string; name: string }>;
+  rounds: Array<{ round: number; name: string; slug?: string }>;
 };
 
 type EventsResponse = {
@@ -124,6 +124,9 @@ async function fetchAllEventIds(): Promise<number[]> {
 
   const rounds = roundsData.rounds ?? [];
   console.log(`Found ${rounds.length} rounds.`);
+  if (rounds.length > 0) {
+    console.log("Raw rounds sample:", JSON.stringify(rounds[0], null, 2));
+  }
 
   const eventIds: number[] = [];
 
@@ -131,7 +134,7 @@ async function fetchAllEventIds(): Promise<number[]> {
     process.stdout.write(`  Round ${round.name}: fetching events... `);
     try {
       const eventsData = await sofaFetch<EventsResponse>(
-        `/unique-tournament/${EPL_TOURNAMENT_ID}/season/${SEASON_ID}/events/round/${round.id}`
+        `/unique-tournament/${EPL_TOURNAMENT_ID}/season/${SEASON_ID}/events/round/${round.round}`
       );
       const events = eventsData.events ?? [];
       // Only collect events that have been played (lineups exist for finished events)
