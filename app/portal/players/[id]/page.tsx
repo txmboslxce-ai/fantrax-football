@@ -15,6 +15,7 @@ import {
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { notFound } from "next/navigation";
+import PlayerGameweekTableClient from "./PlayerGameweekTableClient";
 
 type PlayerDetailPageProps = {
   params: Promise<{
@@ -41,6 +42,7 @@ type PlayerDetailRow = {
   name: string;
   team: string;
   position: string;
+  ownership_pct: string | null;
   fpl_player_data: FplPlayerData | FplPlayerData[] | null;
 };
 
@@ -105,14 +107,14 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
     supabase
       .from("players")
       .select(
-        "id, name, team, position, fpl_player_data(expected_goals_per_90, expected_assists_per_90, penalties_order, corners_order, direct_freekicks_order, status, chance_of_playing_next_round, news, news_added, last_synced_at, synced_at)"
+        "id, name, team, position, ownership_pct, fpl_player_data(expected_goals_per_90, expected_assists_per_90, penalties_order, corners_order, direct_freekicks_order, status, chance_of_playing_next_round, news, news_added, last_synced_at, synced_at)"
       )
       .eq("id", id)
       .maybeSingle(),
     supabase
       .from("player_gameweeks")
       .select(
-        "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
+        "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, goals_against_outfield, saves, key_passes, shots_on_target, tackles_won, interceptions, clearances, aerials_won, accurate_crosses, blocked_shots, dribbles_succeeded, dispossessed, penalties_drawn, penalties_missed, yellow_cards, red_cards, own_goals, subbed_on, subbed_off, penalty_saves, high_claims, smothers"
       )
       .eq("player_id", id)
       .eq("season", SEASON)
@@ -142,6 +144,34 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   }
 
   const playerRow = player as PlayerDetailRow;
+
+  // Fetch FDR data now that we have the player's position
+  const { data: opponentAdjustments } = await supabase
+    .from("player_prediction_opponent_adjustments")
+    .select("opponent, sample_matches, ghost_pts_multiplier")
+    .eq("season", SEASON)
+    .eq("position", playerRow.position);
+
+  // Compute FDR rank per team (1 = hardest, 20 = easiest) using ghost_pts_multiplier
+  const teamMultiplierMap = new Map<string, { totalWeight: number; weightedSum: number }>();
+  for (const row of opponentAdjustments ?? []) {
+    if (!row.opponent) continue;
+    const mult = Number(row.ghost_pts_multiplier);
+    const weight = Number(row.sample_matches ?? 1);
+    if (!Number.isFinite(mult) || mult <= 0) continue;
+    const entry = teamMultiplierMap.get(row.opponent) ?? { totalWeight: 0, weightedSum: 0 };
+    entry.totalWeight += weight;
+    entry.weightedSum += mult * weight;
+    teamMultiplierMap.set(row.opponent, entry);
+  }
+  const teamsWithAvg = [...teamMultiplierMap.entries()]
+    .map(([team, { totalWeight, weightedSum }]) => ({ team, avg: totalWeight > 0 ? weightedSum / totalWeight : 0 }))
+    .sort((a, b) => a.avg - b.avg); // ascending = rank 1 is hardest (lowest multiplier)
+  const fdrRankByTeam: Record<string, number> = {};
+  teamsWithAvg.forEach(({ team }, idx) => {
+    fdrRankByTeam[team] = idx + 1;
+  });
+
   const fplData = Array.isArray(playerRow.fpl_player_data) ? playerRow.fpl_player_data[0] : playerRow.fpl_player_data;
   const xgPer90 = toNumber(fplData?.expected_goals_per_90);
   const xaPer90 = toNumber(fplData?.expected_assists_per_90);
@@ -168,20 +198,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const pointsByGw = playedRows.map((row) => ({ gameweek: row.gameweek, points: row.raw_fantrax_pts }));
   const last5 = pointsByGw.slice(-5);
 
-  const primaryColumns =
-    mapPosition(playerRow.position) === "GK"
-      ? [
-          { key: "saves", label: "Saves" },
-          { key: "goals_against", label: "GA" },
-          { key: "key_passes", label: "KP" },
-        ]
-      : [
-          { key: "tackles_won", label: "Tackles" },
-          { key: "interceptions", label: "Interceptions" },
-          { key: "clearances", label: "Clearances" },
-          { key: "aerials_won", label: "Aerials" },
-          { key: "key_passes", label: "Key Passes" },
-        ];
+  const teamNamesRecord = Object.fromEntries(teamNames.entries());
 
   return (
     <PremiumGate isPremium={isPremium}>
@@ -241,6 +258,14 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
             <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
               Games Played: <strong>{summary.total_games_played}</strong>
             </div>
+            <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
+              Starts: <strong>{summary.total_games_started}</strong>
+            </div>
+            {playerRow.ownership_pct != null ? (
+              <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
+                Ownership: <strong>{playerRow.ownership_pct}</strong>
+              </div>
+            ) : null}
             {hasXgXa ? (
               <>
                 <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
@@ -307,62 +332,11 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
 
         <section className="space-y-3">
           <h2 className="text-2xl font-black text-brand-cream">Full Gameweek Stats</h2>
-          <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-            <table className="min-w-full text-left text-sm text-brand-cream">
-              <thead className="bg-brand-dark text-brand-creamDark">
-                <tr>
-                  <th className="px-3 py-3">GW</th>
-                  <th className="px-3 py-3">Opponent</th>
-                  <th className="px-3 py-3">H/A</th>
-                  <th className="px-3 py-3">Min</th>
-                  <th className="px-3 py-3">Pts</th>
-                  <th className="px-3 py-3">Goals</th>
-                  <th className="px-3 py-3">Assists</th>
-                  <th className="px-3 py-3">CS</th>
-                  <th className="px-3 py-3">Ghost Pts</th>
-                  {primaryColumns.map((column) => (
-                    <th key={column.key} className="px-3 py-3">
-                      {column.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {decorated.slice().reverse().map((row, index) => (
-                  <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/70" : "bg-brand-dark/90"}>
-                    <td className="px-3 py-3">{row.gameweek}</td>
-                    <td className="px-3 py-3">
-                      {row.opponents.length === 2
-                        ? row.opponents.map((opponent) => teamNames.get(opponent) ?? opponent).join(" / ")
-                        : row.opponent
-                          ? teamNames.get(row.opponent) ?? row.opponent
-                          : "-"}
-                    </td>
-                    <td className="px-3 py-3">
-                      {row.isHomeAll.length === 2
-                        ? row.isHomeAll.map((isHome) => (isHome ? "H" : "A")).join(" / ")
-                        : row.isHome == null
-                          ? "-"
-                          : row.isHome
-                            ? "H"
-                            : "A"}
-                    </td>
-                    <td className="px-3 py-3">{row.minutes_played}</td>
-                    <td className="px-3 py-3">{formatFixed(row.raw_fantrax_pts, 2)}</td>
-                    <td className="px-3 py-3">{row.goals}</td>
-                    <td className="px-3 py-3">{row.assists}</td>
-                    <td className="px-3 py-3">{row.clean_sheet}</td>
-                    <td className="px-3 py-3">{formatFixed(row.ghost_pts, 2)}</td>
-                    {primaryColumns.map((column) => (
-                      <td key={`${row.id}-${column.key}`} className="px-3 py-3">
-                        {String((row as Record<string, unknown>)[column.key] ?? "-")}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PlayerGameweekTableClient
+            rows={decorated}
+            teamNames={teamNamesRecord}
+            fdrRankByTeam={fdrRankByTeam}
+          />
         </section>
       </div>
     </PremiumGate>

@@ -35,12 +35,28 @@ export type PlayerGameweekRow = {
   assists: number;
   clean_sheet: number;
   goals_against: number;
+  goals_against_outfield?: number;
   saves: number;
   key_passes: number;
+  shots_on_target?: number;
   tackles_won: number;
   interceptions: number;
   clearances: number;
   aerials_won: number;
+  accurate_crosses?: number;
+  blocked_shots?: number;
+  dribbles_succeeded?: number;
+  dispossessed?: number;
+  penalties_drawn?: number;
+  penalties_missed?: number;
+  yellow_cards?: number;
+  red_cards?: number;
+  own_goals?: number;
+  subbed_on?: number;
+  subbed_off?: number;
+  penalty_saves?: number;
+  high_claims?: number;
+  smothers?: number;
 };
 
 export type DecoratedGameweek = {
@@ -55,12 +71,28 @@ export type DecoratedGameweek = {
   assists: number;
   clean_sheet: number;
   goals_against: number;
+  goals_against_outfield: number;
   saves: number;
   key_passes: number;
+  shots_on_target: number;
   tackles_won: number;
   interceptions: number;
   clearances: number;
   aerials_won: number;
+  accurate_crosses: number;
+  blocked_shots: number;
+  dribbles_succeeded: number;
+  dispossessed: number;
+  penalties_drawn: number;
+  penalties_missed: number;
+  yellow_cards: number;
+  red_cards: number;
+  own_goals: number;
+  subbed_on: number;
+  subbed_off: number;
+  penalty_saves: number;
+  high_claims: number;
+  smothers: number;
   isHome: boolean | null;
   opponent: string | null;
   isHomeAll: boolean[];
@@ -259,12 +291,28 @@ export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtu
       assists: Number(row.assists ?? 0),
       clean_sheet: Number(row.clean_sheet ?? 0),
       goals_against: Number(row.goals_against ?? 0),
+      goals_against_outfield: Number(row.goals_against_outfield ?? 0),
       saves: Number(row.saves ?? 0),
       key_passes: Number(row.key_passes ?? 0),
+      shots_on_target: Number(row.shots_on_target ?? 0),
       tackles_won: Number(row.tackles_won ?? 0),
       interceptions: Number(row.interceptions ?? 0),
       clearances: Number(row.clearances ?? 0),
       aerials_won: Number(row.aerials_won ?? 0),
+      accurate_crosses: Number(row.accurate_crosses ?? 0),
+      blocked_shots: Number(row.blocked_shots ?? 0),
+      dribbles_succeeded: Number(row.dribbles_succeeded ?? 0),
+      dispossessed: Number(row.dispossessed ?? 0),
+      penalties_drawn: Number(row.penalties_drawn ?? 0),
+      penalties_missed: Number(row.penalties_missed ?? 0),
+      yellow_cards: Number(row.yellow_cards ?? 0),
+      red_cards: Number(row.red_cards ?? 0),
+      own_goals: Number(row.own_goals ?? 0),
+      subbed_on: Number(row.subbed_on ?? 0),
+      subbed_off: Number(row.subbed_off ?? 0),
+      penalty_saves: Number(row.penalty_saves ?? 0),
+      high_claims: Number(row.high_claims ?? 0),
+      smothers: Number(row.smothers ?? 0),
       isHome,
       opponent,
       isHomeAll,
