@@ -126,7 +126,6 @@ const FEATURE_SELECT = [
 
 type BuildPredictionOptions = {
   useLineupAdjustments?: boolean;
-  sofascoreLineups?: Map<string, { is_starter: boolean; status: "predicted" | "confirmed" }>;
 };
 
 type FixtureProjectionContext = {
@@ -390,8 +389,7 @@ function confidenceScore(params: {
 function predictForRow(
   row: PlayerPredictionFeatureRow,
   lineupByPlayerId: Map<string, ReturnType<typeof predictLineups>[number]>,
-  context: FixtureProjectionContext = { fixtureIndex: 0, totalFixtures: 1 },
-  sofascoreLineups?: Map<string, { is_starter: boolean; status: "predicted" | "confirmed" }>
+  context: FixtureProjectionContext = { fixtureIndex: 0, totalFixtures: 1 }
 ): PlayerPredictionComponents {
   const lineup = lineupByPlayerId.get(row.player_id);
   const featureStartProbability = clamp(
@@ -402,28 +400,11 @@ function predictForRow(
     0,
     1
   );
-  let startProbability = clamp(
+  const startProbability = clamp(
     lineup?.adjusted_start_probability ?? featureStartProbability,
     0,
     1
   );
-
-  // SofaScore lineup override — applied before minutes calculation so that
-  // expectedMinutes naturally reflects the overridden start probability.
-  const sofascoreEntry = sofascoreLineups?.get(row.player_id) ?? null;
-  const sofascoreSource: string | null = sofascoreEntry ? sofascoreEntry.status : null;
-  if (sofascoreEntry) {
-    if (sofascoreEntry.is_starter && sofascoreEntry.status === "predicted") {
-      startProbability = 0.85;
-    } else if (sofascoreEntry.is_starter && sofascoreEntry.status === "confirmed") {
-      startProbability = 0.97;
-    } else if (!sofascoreEntry.is_starter && sofascoreEntry.status === "predicted") {
-      startProbability = 0.15;
-    } else {
-      // is_starter = false, status = confirmed
-      startProbability = 0.02;
-    }
-  }
 
   const expectedMinutesIfStart = clamp(
     toFiniteNumber(
@@ -552,7 +533,6 @@ function predictForRow(
     floor_pts: roundTo2(floorPts),
     ceiling_pts: roundTo2(ceilingPts),
     confidence_score: roundTo2(confidence),
-    sofascore_source: sofascoreSource,
   };
 }
 
@@ -636,7 +616,6 @@ export function buildPredictions(
   options: BuildPredictionOptions = {}
 ): PlayerPredictionComponents[] {
   const useLineupAdjustments = options.useLineupAdjustments ?? true;
-  const sofascoreLineups = options.sofascoreLineups;
   const lineupPredictions = useLineupAdjustments ? predictLineups(rows) : [];
   const lineupByPlayerId = new Map(lineupPredictions.map((row) => [row.player_id, row]));
   const playerWeekGroups = groupRowsByPlayerWeek(rows);
@@ -647,7 +626,7 @@ export function buildPredictions(
       predictForRow(row, lineupByPlayerId, {
         fixtureIndex: index,
         totalFixtures: group.length,
-      }, sofascoreLineups)
+      })
     );
 
     // Final stored row remains one prediction per player-week, summing fixture-level components.
@@ -661,26 +640,6 @@ export async function generatePredictionsForGameweek(
   gameweek: number,
   options: BuildPredictionOptions = {}
 ): Promise<PlayerPredictionComponents[]> {
-  const [rows, sofascoreResult] = await Promise.all([
-    loadPlayerPredictionFeatures(supabase, season, gameweek),
-    supabase
-      .from("sofascore_lineups")
-      .select("player_id, is_starter, status")
-      .eq("season", season)
-      .eq("gameweek", gameweek),
-  ]);
-
-  const sofascoreLineups = new Map<string, { is_starter: boolean; status: "predicted" | "confirmed" }>();
-  for (const entry of (sofascoreResult.data ?? []) as {
-    player_id: string;
-    is_starter: boolean;
-    status: "predicted" | "confirmed";
-  }[]) {
-    sofascoreLineups.set(entry.player_id, {
-      is_starter: entry.is_starter,
-      status: entry.status,
-    });
-  }
-
-  return buildPredictions(rows, { ...options, sofascoreLineups });
+  const rows = await loadPlayerPredictionFeatures(supabase, season, gameweek);
+  return buildPredictions(rows, options);
 }
