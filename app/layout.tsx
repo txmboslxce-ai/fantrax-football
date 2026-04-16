@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import "./globals.css";
 
@@ -23,7 +24,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className="bg-brand-cream text-brand-dark antialiased">
         <div className="flex min-h-screen flex-col">
-          <Navbar isLoggedIn={Boolean(user)} />
+          <Navbar isLoggedIn={Boolean(user)} isAdmin={isAdminEmail(user?.email)} />
           <main className="flex-1">{children}</main>
           <Footer />
         </div>

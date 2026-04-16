@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type NavbarProps = {
   isLoggedIn: boolean;
+  isAdmin?: boolean;
 };
 
 type PlayerSearchRow = {
@@ -191,7 +192,7 @@ function PortalSearch({ onNavigate, compact = false }: { onNavigate?: () => void
   );
 }
 
-export default function Navbar({ isLoggedIn }: NavbarProps) {
+export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -224,6 +225,14 @@ export default function Navbar({ isLoggedIn }: NavbarProps) {
               >
                 Portal
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-500/20"
+                >
+                  Admin
+                </Link>
+              )}
             </>
           ) : (
             <Link
@@ -271,6 +280,15 @@ export default function Navbar({ isLoggedIn }: NavbarProps) {
                 >
                   Portal
                 </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="w-fit rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-semibold text-amber-200"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                )}
               </>
             ) : (
               <Link
