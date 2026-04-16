@@ -75,6 +75,39 @@ function normalizeName(name: string): string {
   return name.trim().toLowerCase().normalize("NFC");
 }
 
+// Fuzzy normalisation: strip accents, collapse hyphens to spaces
+function fuzzyNorm(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/-/g, " ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function lastName(norm: string): string {
+  const parts = norm.split(" ");
+  return parts[parts.length - 1];
+}
+
+function firstLastWord(norm: string): string {
+  const parts = norm.split(" ");
+  if (parts.length <= 1) return norm;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
+// Map SofaScore position codes to our GK/DEF/MID/FWD
+function mapSofaPosition(pos: string | null): string | null {
+  if (!pos) return null;
+  const p = pos.toLowerCase();
+  if (p === "g" || p.startsWith("goal")) return "GK";
+  if (p === "d" || p.startsWith("def")) return "DEF";
+  if (p === "m" || p.startsWith("mid")) return "MID";
+  if (p === "f" || p === "a" || p.startsWith("for") || p.startsWith("att") || p.startsWith("str")) return "FWD";
+  return null;
+}
+
 function toCsvRow(fields: (string | number | null)[]): string {
   return fields
     .map((f) => {
@@ -263,6 +296,106 @@ async function main() {
 
   console.log(`Exact matches to write: ${updates.length}`);
 
+  // ── Step 4b: Fuzzy matching ───────────────────────────────────────────────
+  // Build lookup structures over still-unmatched sofa players, keyed by
+  // fuzzy-normalised name variants and position.
+  const unmatchedSofaForFuzzy = sofaArray.filter((sp) => !matchedSofaIds.has(sp.id));
+  const unmatchedOursForFuzzy = ourPlayers.filter(
+    (op) => !matchedOurIds.has(op.id) && op.sofascore_id == null
+  );
+
+  type FuzzyMatch = {
+    ourPlayerId: string;
+    ourName: string;
+    ourPosition: string;
+    ourTeam: string;
+    sofascoreId: number;
+    sofascoreName: string;
+    sofascorePosition: string | null;
+    sofascoreTeam: string;
+    matchRule: string;
+  };
+
+  const fuzzyMatches: FuzzyMatch[] = [];
+  const fuzzyMatchedSofaIds = new Set<number>();
+  const fuzzyMatchedOurIds = new Set<string>();
+
+  // Index sofa players by position → array so we can find candidates
+  const sofaByPosition = new Map<string, SofaPlayer[]>();
+  for (const sp of unmatchedSofaForFuzzy) {
+    const mappedPos = mapSofaPosition(sp.position) ?? "UNKNOWN";
+    if (!sofaByPosition.has(mappedPos)) sofaByPosition.set(mappedPos, []);
+    sofaByPosition.get(mappedPos)!.push(sp);
+  }
+
+  // Also build a flat fuzzy-norm → sofa player map for rule 1 (normalised exact)
+  const sofaByFuzzyNorm = new Map<string, SofaPlayer[]>();
+  for (const sp of unmatchedSofaForFuzzy) {
+    const key = fuzzyNorm(sp.name);
+    if (!sofaByFuzzyNorm.has(key)) sofaByFuzzyNorm.set(key, []);
+    sofaByFuzzyNorm.get(key)!.push(sp);
+  }
+
+  for (const op of unmatchedOursForFuzzy) {
+    if (fuzzyMatchedOurIds.has(op.id)) continue;
+
+    const ourNorm = fuzzyNorm(op.name);
+    let candidates: Array<{ sp: SofaPlayer; rule: string }> = [];
+
+    // Rule 1: normalised exact match (handles accents / hyphens)
+    const rule1 = (sofaByFuzzyNorm.get(ourNorm) ?? []).filter(
+      (sp) => !fuzzyMatchedSofaIds.has(sp.id)
+    );
+    if (rule1.length === 1) {
+      candidates = [{ sp: rule1[0], rule: "fuzzy-norm-exact" }];
+    } else if (rule1.length > 1) {
+      // Ambiguous — skip rule 1
+    }
+
+    // Rule 2: last-name match scoped to same position
+    if (candidates.length === 0) {
+      const ourLast = lastName(ourNorm);
+      const posPool = (sofaByPosition.get(op.position) ?? []).filter(
+        (sp) => !fuzzyMatchedSofaIds.has(sp.id)
+      );
+      const rule2 = posPool.filter((sp) => lastName(fuzzyNorm(sp.name)) === ourLast);
+      if (rule2.length === 1) {
+        candidates = [{ sp: rule2[0], rule: "last-name+position" }];
+      }
+    }
+
+    // Rule 3: first-word + last-word match
+    if (candidates.length === 0) {
+      const ourFL = firstLastWord(ourNorm);
+      const rule3 = unmatchedSofaForFuzzy.filter((sp) => {
+        if (fuzzyMatchedSofaIds.has(sp.id)) return false;
+        return firstLastWord(fuzzyNorm(sp.name)) === ourFL;
+      });
+      if (rule3.length === 1) {
+        candidates = [{ sp: rule3[0], rule: "first+last-word" }];
+      }
+    }
+
+    if (candidates.length === 1) {
+      const { sp, rule } = candidates[0];
+      fuzzyMatches.push({
+        ourPlayerId: op.id,
+        ourName: op.name,
+        ourPosition: op.position,
+        ourTeam: op.team,
+        sofascoreId: sp.id,
+        sofascoreName: sp.name,
+        sofascorePosition: sp.position,
+        sofascoreTeam: sp.team,
+        matchRule: rule,
+      });
+      fuzzyMatchedSofaIds.add(sp.id);
+      fuzzyMatchedOurIds.add(op.id);
+    }
+  }
+
+  console.log(`Fuzzy matches (for review): ${fuzzyMatches.length}`);
+
   // ── Step 5: Write matches to Supabase ────────────────────────────────────
   if (updates.length > 0) {
     console.log("Writing sofascore_id values to players table...");
@@ -288,9 +421,13 @@ async function main() {
   }
 
   // ── Step 6: Output unmatched CSVs ─────────────────────────────────────────
-  const unmatchedSofa = sofaArray.filter((sp) => !matchedSofaIds.has(sp.id));
+  // Exclude both exact-matched and fuzzy-matched players from unmatched lists
+  const allMatchedSofaIds = new Set([...matchedSofaIds, ...fuzzyMatchedSofaIds]);
+  const allMatchedOurIds = new Set([...matchedOurIds, ...fuzzyMatchedOurIds]);
+
+  const unmatchedSofa = sofaArray.filter((sp) => !allMatchedSofaIds.has(sp.id));
   const unmatchedOurs = ourPlayers.filter(
-    (op) => !matchedOurIds.has(op.id) && op.sofascore_id == null
+    (op) => !allMatchedOurIds.has(op.id) && op.sofascore_id == null
   );
 
   const sofaCsvPath = path.join(OUTPUT_DIR, "unmatched-sofascore.csv");
@@ -307,8 +444,19 @@ async function main() {
     unmatchedOurs.map((op) => [op.id, op.name, op.position, op.team])
   );
 
-  // ── Step 7: Produce manual-mapping.csv template ──────────────────────────
-  // Pairs unmatched ours rows with empty sofascore fields for manual fill-in
+  // ── Step 7: Output fuzzy-matches.csv for review ───────────────────────────
+  const fuzzyPath = path.join(OUTPUT_DIR, "fuzzy-matches.csv");
+  writeCsv(
+    fuzzyPath,
+    ["our_player_id", "our_name", "our_position", "our_team", "sofascore_id", "sofascore_name", "sofascore_position", "sofascore_team", "match_rule"],
+    fuzzyMatches.map((m) => [
+      m.ourPlayerId, m.ourName, m.ourPosition, m.ourTeam,
+      m.sofascoreId, m.sofascoreName, m.sofascorePosition, m.sofascoreTeam,
+      m.matchRule,
+    ])
+  );
+
+  // ── Step 8: Produce manual-mapping.csv template ───────────────────────────
   const manualPath = path.join(OUTPUT_DIR, "manual-mapping.csv");
   writeCsv(
     manualPath,
@@ -318,13 +466,17 @@ async function main() {
 
   console.log(`\n── Results ─────────────────────────────────────────────`);
   console.log(`  Exact matches written:   ${updates.length}`);
+  console.log(`  Fuzzy matches (review):  ${fuzzyMatches.length}  → ${fuzzyPath}`);
   console.log(`  Unmatched (SofaScore):   ${unmatchedSofa.length}  → ${sofaCsvPath}`);
   console.log(`  Unmatched (ours):        ${unmatchedOurs.length}  → ${oursCsvPath}`);
   console.log(`  Manual mapping template: ${manualPath}`);
   console.log(`────────────────────────────────────────────────────────\n`);
   console.log(
-    `Next: open scripts/output/manual-mapping.csv, fill in sofascore_id + sofascore_name for each row,\n` +
-    `then run: npx tsx scripts/apply-sofascore-mappings.ts`
+    `Next steps:\n` +
+    `  1. Review scripts/output/fuzzy-matches.csv — approve rows by running apply-sofascore-mappings.ts\n` +
+    `     (copy approved rows into manual-mapping.csv)\n` +
+    `  2. Fill in sofascore_id + sofascore_name in manual-mapping.csv for remaining unmatched rows\n` +
+    `  3. Run: npx tsx scripts/apply-sofascore-mappings.ts`
   );
 }
 
