@@ -30,17 +30,15 @@ async function sofaFetch<T>(path: string): Promise<T> {
 
 // ─── SofaScore types ──────────────────────────────────────────────────────────
 
-type ScheduledEvent = {
+const EPL_TOURNAMENT_ID = 17;
+const EPL_SEASON_ID = 61627;
+
+type RoundEvent = {
   id: number;
-  tournament: {
-    name: string;
-    uniqueTournament?: { id: number; name: string };
-  };
-  homeTeam: { name: string };
-  awayTeam: { name: string };
+  status?: { type: string };
 };
 
-type ScheduledEventsResponse = { events?: ScheduledEvent[] };
+type RoundEventsResponse = { events?: RoundEvent[] };
 
 type LineupsResponse = {
   confirmed?: boolean;
@@ -55,7 +53,6 @@ type LineupsPlayer = {
 
 // ─── DB types ────────────────────────────────────────────────────────────────
 
-type FixtureRow = { kickoff_at: string | null };
 type PlayerRow = { id: string; sofascore_id: number | null };
 
 type LineupUpsertRow = {
@@ -100,20 +97,7 @@ export async function POST(request: Request) {
       .limit(1);
 
     const latestGw: number = ((latestGwData ?? []) as { gameweek: number }[])[0]?.gameweek ?? 0;
-
-    const { data: nextGwData } = await db
-      .from("fixtures")
-      .select("gameweek")
-      .eq("season", season)
-      .gt("gameweek", latestGw)
-      .order("gameweek", { ascending: true })
-      .limit(1);
-
-    const nextGw = ((nextGwData ?? []) as { gameweek: number }[])[0]?.gameweek ?? null;
-    if (!nextGw) {
-      return NextResponse.json({ success: false, message: "No upcoming gameweek found." }, { status: 400 });
-    }
-    gameweek = nextGw;
+    gameweek = latestGw + 1;
   } else {
     let body: { season?: string; gameweek?: number } = {};
     try {
@@ -129,33 +113,7 @@ export async function POST(request: Request) {
     gameweek = gwRaw;
   }
 
-  // ── 1. Get fixture dates for the target GW ─────────────────────────────────
-  const { data: fixtureRows, error: fixturesError } = await db
-    .from("fixtures")
-    .select("kickoff_at")
-    .eq("season", season)
-    .eq("gameweek", gameweek);
-
-  if (fixturesError) {
-    return NextResponse.json({ success: false, message: fixturesError.message }, { status: 500 });
-  }
-
-  const kickoffDates = [
-    ...new Set(
-      ((fixtureRows ?? []) as FixtureRow[])
-        .map((r) => r.kickoff_at?.slice(0, 10))
-        .filter((d): d is string => Boolean(d))
-    ),
-  ];
-
-  if (kickoffDates.length === 0) {
-    return NextResponse.json(
-      { success: false, message: `No fixture dates found for GW${gameweek}. Ensure kickoff_at is populated.` },
-      { status: 400 }
-    );
-  }
-
-  // ── 2. Build sofascore_id → player_id lookup ───────────────────────────────
+  // ── 1. Build sofascore_id → player_id lookup ──────────────────────────────
   const { data: playersRaw, error: playersError } = await db
     .from("players")
     .select("id, sofascore_id")
@@ -170,45 +128,29 @@ export async function POST(request: Request) {
     if (p.sofascore_id != null) playerBySofaId.set(p.sofascore_id, p.id);
   }
 
-  // ── 3. Fetch scheduled events for each date, filter to Premier League ───────
-  const eplEventIds: number[] = [];
-  const tournamentNamesSeen = new Set<string>();
-
-  for (const date of kickoffDates) {
-    try {
-      const data = await sofaFetch<ScheduledEventsResponse>(`/sport/football/scheduled-events/${date}`);
-      for (const event of data.events ?? []) {
-        const tName = event.tournament?.name ?? "";
-        const utName = event.tournament?.uniqueTournament?.name ?? "";
-        const utId = event.tournament?.uniqueTournament?.id;
-        tournamentNamesSeen.add(`${tName} / ${utName} (id:${utId})`);
-
-        const isPL =
-          tName === "Premier League" ||
-          utName === "Premier League" ||
-          utId === 17;
-
-        if (isPL) {
-          eplEventIds.push(event.id);
-        }
-      }
-    } catch (err) {
-      console.warn(`SofaScore scheduled-events error for ${date}:`, (err as Error).message);
-    }
+  // ── 2. Fetch EPL events for the target round directly ─────────────────────
+  // Uses the tournament/season/round endpoint (avoids scheduled-events which blocks server-side)
+  let eplEventIds: number[];
+  try {
+    const data = await sofaFetch<RoundEventsResponse>(
+      `/unique-tournament/${EPL_TOURNAMENT_ID}/season/${EPL_SEASON_ID}/events/round/${gameweek}`
+    );
+    eplEventIds = (data.events ?? []).map((e) => e.id);
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, message: `Failed to fetch EPL events for GW${gameweek}: ${(err as Error).message}` },
+      { status: 502 }
+    );
   }
 
   if (eplEventIds.length === 0) {
     return NextResponse.json(
-      {
-        success: false,
-        message: `No Premier League events found for GW${gameweek} on dates: ${kickoffDates.join(", ")}`,
-        debug_tournaments_seen: [...tournamentNamesSeen].slice(0, 30),
-      },
+      { success: false, message: `No EPL events found for GW${gameweek} (round ${gameweek}).` },
       { status: 404 }
     );
   }
 
-  // ── 4. Fetch lineups for each event ───────────────────────────────────────
+  // ── 3. Fetch lineups for each event ───────────────────────────────────────
   const upsertRows: LineupUpsertRow[] = [];
   const unmatched: string[] = [];
   const fetchedAt = new Date().toISOString();
@@ -245,7 +187,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 5. Upsert into sofascore_lineups ──────────────────────────────────────
+  // ── 4. Upsert into sofascore_lineups ──────────────────────────────────────
   let synced = 0;
   if (upsertRows.length > 0) {
     const { error: upsertError } = await db.from("sofascore_lineups").upsert(upsertRows, {
