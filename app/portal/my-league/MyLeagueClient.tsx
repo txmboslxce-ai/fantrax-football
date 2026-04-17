@@ -455,23 +455,30 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
           {analyticsData && (
             <div className="space-y-8">
               {/* Power Rankings */}
-              <AnalyticsTable
-                title="Power Rankings"
-                description="0–100 score based on simulated wins if every team played every other team's schedule each week. 100 = best, 0 = worst."
-                headers={["Rank", "Team", "Power Score (0-100)", "Actual W", "Points For", "Luck"]}
-                rows={analyticsData.powerRankings.map((r) => ({
-                  teamId: r.teamId,
-                  cells: [
-                    r.rank,
-                    r.teamName,
-                    safeFixed(r.powerScore, 1),
-                    r.actualW,
-                    safeFixed(r.pf, 2),
-                    <LuckBadge key="luck" value={r.luckScore ?? 0} />,
-                  ],
-                }))}
-                myTeamId={myTeamId}
-              />
+              {(() => {
+                const leaguePosMap = new Map(
+                  [...analyticsData.powerRankings]
+                    .sort((a, b) => b.actualW - a.actualW)
+                    .map((r, i) => [r.teamId, i + 1])
+                );
+                return (
+                  <AnalyticsTable
+                    title="Power Rankings"
+                    description="0–100 score based on simulated wins if every team played every other team's schedule each week. 100 = best, 0 = worst."
+                    headers={["Rank", "Team", "Power Score (0-100)", "League Position"]}
+                    rows={analyticsData.powerRankings.map((r) => ({
+                      teamId: r.teamId,
+                      cells: [
+                        r.rank,
+                        r.teamName,
+                        safeFixed(r.powerScore, 1),
+                        leaguePosMap.get(r.teamId) ?? "—",
+                      ],
+                    }))}
+                    myTeamId={myTeamId}
+                  />
+                );
+              })()}
 
               {/* Luck Index */}
               <AnalyticsTable
