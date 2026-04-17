@@ -2,7 +2,7 @@ export type PowerRankingEntry = {
   rank: number;
   teamId: string;
   teamName: string;
-  expectedW: number;
+  powerScore: number;
   actualW: number;
   pf: number;
   luckScore: number;

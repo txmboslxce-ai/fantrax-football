@@ -86,18 +86,27 @@ function computeAnalytics(
   });
 
   // ── Power Rankings ────────────────────────────────────────────────────────
+  // simulatedWins = expectedW × (numTeams - 1), i.e. total hypothetical wins
+  // across all opponents and all played weeks. Then min-max scale to 0-100.
+  const simulatedWins = luckRaw.map((e) => e.expectedW * (numTeams - 1));
+  const minSW = Math.min(...simulatedWins);
+  const maxSW = Math.max(...simulatedWins);
+  const swRange = maxSW - minSW;
+
   const powerRankings: PowerRankingEntry[] = luckRaw
-    .slice()
-    .sort((a, b) => b.expectedW - a.expectedW)
-    .map((entry, i) => ({
-      rank: i + 1,
-      teamId: entry.teamId,
-      teamName: entry.teamName,
-      expectedW: entry.expectedW,
-      actualW: entry.actualW,
-      pf: standingsMap.get(entry.teamId)?.pf ?? 0,
-      luckScore: entry.luckScore,
-    }));
+    .map((entry, i) => {
+      const rawScore = swRange > 0 ? ((simulatedWins[i]! - minSW) / swRange) * 100 : 50;
+      return {
+        teamId: entry.teamId,
+        teamName: entry.teamName,
+        powerScore: Math.round(rawScore * 10) / 10,
+        actualW: entry.actualW,
+        pf: standingsMap.get(entry.teamId)?.pf ?? 0,
+        luckScore: entry.luckScore,
+      };
+    })
+    .sort((a, b) => b.powerScore - a.powerScore)
+    .map((entry, i) => ({ rank: i + 1, ...entry }));
 
   // ── Luck Index ───────────────────────────────────────────────────────────
   const luckIndex: LuckEntry[] = luckRaw

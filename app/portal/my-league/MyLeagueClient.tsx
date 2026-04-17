@@ -415,14 +415,14 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               {/* Power Rankings */}
               <AnalyticsTable
                 title="Power Rankings"
-                description="Teams ranked by expected wins — how many wins you'd have accumulated playing every other team's schedule each week."
-                headers={["Rank", "Team", "Expected W", "Actual W", "Points For", "Luck"]}
+                description="0–100 score based on simulated wins if every team played every other team's schedule each week. 100 = best, 0 = worst."
+                headers={["Rank", "Team", "Power Score (0-100)", "Actual W", "Points For", "Luck"]}
                 rows={analyticsData.powerRankings.map((r) => ({
                   teamId: r.teamId,
                   cells: [
                     r.rank,
                     r.teamName,
-                    safeFixed(r.expectedW, 2),
+                    safeFixed(r.powerScore, 1),
                     r.actualW,
                     safeFixed(r.pf, 2),
                     <LuckBadge key="luck" value={r.luckScore ?? 0} />,
