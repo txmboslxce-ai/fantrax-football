@@ -54,7 +54,13 @@ function formatSyncDate(iso: string | null): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   });
+}
+
+function safeFixed(value: number | null | undefined, decimals: number): string {
+  const n = value ?? 0;
+  return (typeof n === "number" && isFinite(n) ? n : 0).toFixed(decimals);
 }
 
 export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, savedTeamName }: MyLeagueClientProps) {
@@ -337,16 +343,16 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         </div>
                       </td>
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                        {player.seasonPts.toFixed(2)}
+                        {safeFixed(player.seasonPts, 2)}
                       </td>
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                        {player.avgPtsPerGw.toFixed(2)}
+                        {safeFixed(player.avgPtsPerGw, 2)}
                       </td>
                       <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                        {player.ghostPtsPerGw.toFixed(2)}
+                        {safeFixed(player.ghostPtsPerGw, 2)}
                       </td>
                       <td className="border-b border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                        {player.ownershipPct.toFixed(1)}%
+                        {safeFixed(player.ownershipPct, 1)}%
                       </td>
                     </tr>
                   );
@@ -372,16 +378,16 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         Team Total
                       </td>
                       <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                        {totalSeasonPts.toFixed(2)}
+                        {safeFixed(totalSeasonPts, 2)}
                       </td>
                       <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                        {avgPtsPerGw.toFixed(2)}
+                        {safeFixed(avgPtsPerGw, 2)}
                       </td>
                       <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                        {avgGhostPtsPerGw.toFixed(2)}
+                        {safeFixed(avgGhostPtsPerGw, 2)}
                       </td>
                       <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                        {avgOwnership.toFixed(1)}%
+                        {safeFixed(avgOwnership, 1)}%
                       </td>
                     </tr>
                   </tfoot>
@@ -416,10 +422,10 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   cells: [
                     r.rank,
                     r.teamName,
-                    r.expectedW.toFixed(2),
+                    safeFixed(r.expectedW, 2),
                     r.actualW,
-                    r.pf.toFixed(2),
-                    <LuckBadge key="luck" value={r.luckScore} />,
+                    safeFixed(r.pf, 2),
+                    <LuckBadge key="luck" value={r.luckScore ?? 0} />,
                   ],
                 }))}
                 myTeamId={savedTeamId}
@@ -436,8 +442,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     r.rank,
                     r.teamName,
                     r.actualW,
-                    r.expectedW.toFixed(2),
-                    <LuckBadge key="luck" value={r.luckScore} />,
+                    safeFixed(r.expectedW, 2),
+                    <LuckBadge key="luck" value={r.luckScore ?? 0} />,
                   ],
                 }))}
                 myTeamId={savedTeamId}
@@ -450,7 +456,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 headers={["Rank", "Team", "Avg Score", "Std Dev"]}
                 rows={analyticsData.consistency.map((r) => ({
                   teamId: r.teamId,
-                  cells: [r.consistencyRank, r.teamName, r.avgScore.toFixed(2), r.stdDev.toFixed(2)],
+                  cells: [r.consistencyRank, r.teamName, safeFixed(r.avgScore, 2), safeFixed(r.stdDev, 2)],
                 }))}
                 myTeamId={savedTeamId}
               />
@@ -464,9 +470,9 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   teamId: r.teamId,
                   cells: [
                     r.teamName,
-                    r.last4Avg.toFixed(2),
-                    r.leagueLast4Avg.toFixed(2),
-                    <DeltaBadge key="delta" value={r.trajectoryDelta} />,
+                    safeFixed(r.last4Avg, 2),
+                    safeFixed(r.leagueLast4Avg, 2),
+                    <DeltaBadge key="delta" value={r.trajectoryDelta ?? 0} />,
                   ],
                 }))}
                 myTeamId={savedTeamId}
