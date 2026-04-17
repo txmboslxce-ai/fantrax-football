@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase";
 
 export type LeagueTeam = {
   id: string;
@@ -27,7 +28,18 @@ type MyLeagueClientProps = {
   lastSyncedAt: string | null;
   teams: LeagueTeam[];
   players: LeaguePlayerData[];
+  savedTeamId: string | null;
+  savedTeamName: string | null;
 };
+
+type Tab = "roster" | "standings" | "analytics" | "trade-values";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "roster", label: "Roster" },
+  { id: "standings", label: "Standings" },
+  { id: "analytics", label: "Analytics" },
+  { id: "trade-values", label: "Trade Values" },
+];
 
 const POSITION_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 
@@ -43,20 +55,38 @@ function formatSyncDate(iso: string | null): string {
   });
 }
 
-export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players }: MyLeagueClientProps) {
+export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, savedTeamName }: MyLeagueClientProps) {
   const router = useRouter();
   const [inputLeagueId, setInputLeagueId] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ teams: number; playersRostered: number; unmatchedPlayers: string[] } | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>(teams[0]?.id ?? "");
+  const [activeTab, setActiveTab] = useState<Tab>("roster");
 
-  // Keep selectedTeamId valid when the teams prop changes (e.g. after a re-sync)
+  // Initialise selectedTeamId from saved profile value, falling back to first team
+  const initialTeamId = (() => {
+    if (savedTeamId && teams.some((t) => t.id === savedTeamId)) return savedTeamId;
+    return teams[0]?.id ?? "";
+  })();
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(initialTeamId);
+
+  // Keep selectedTeamId valid when teams change (e.g. after re-sync)
   useEffect(() => {
     if (teams.length > 0 && !teams.some((t) => t.id === selectedTeamId)) {
       setSelectedTeamId(teams[0].id);
     }
   }, [teams, selectedTeamId]);
+
+  async function handleTeamChange(teamId: string) {
+    setSelectedTeamId(teamId);
+    const team = teams.find((t) => t.id === teamId);
+    if (!team) return;
+    const supabase = createClient();
+    await supabase
+      .from("profiles")
+      .update({ fantrax_team_id: teamId, fantrax_team_name: team.name })
+      .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "");
+  }
 
   async function handleSync(idToSync: string) {
     if (!idToSync.trim()) return;
@@ -172,6 +202,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">My League</h1>
@@ -202,115 +233,146 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players 
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <label className="space-y-1">
-          <span className="block text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
-          <select
-            value={selectedTeamId}
-            onChange={(e) => setSelectedTeamId(e.target.value)}
-            className="rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
-          >
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="pb-2 text-xs text-brand-creamDark">{selectedTeamPlayers.length} players</p>
+      {/* Tab bar */}
+      <div className="border-b border-brand-cream/20">
+        <nav className="-mb-px flex gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-sm font-semibold transition-colors ${
+                activeTab === tab.id
+                  ? "border-b-2 border-brand-green text-brand-green"
+                  : "text-brand-creamDark hover:text-brand-cream"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead>
-            <tr>
-              <th className="sticky left-0 border-b border-r border-brand-cream/20 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
-                Player
-              </th>
-              <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
-                Season Pts
-              </th>
-              <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
-                Avg Pts/GW
-              </th>
-              <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
-                Ghost Pts/GW
-              </th>
-              <th className="border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
-                Ownership %
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {selectedTeamPlayers.map((player, index) => {
-              const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
-              return (
-                <tr key={player.playerId} className={rowShade}>
-                  <td className={`sticky left-0 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <Link
-                      href={`/portal/players/${player.playerId}`}
-                      className="font-semibold text-brand-cream hover:text-brand-green hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {player.playerName}
-                    </Link>
-                    <div className="mt-0.5 text-xs text-brand-creamDark/70">
-                      {player.team} / {player.position}
-                    </div>
-                  </td>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                    {player.seasonPts.toFixed(2)}
-                  </td>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                    {player.avgPtsPerGw.toFixed(2)}
-                  </td>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                    {player.ghostPtsPerGw.toFixed(2)}
-                  </td>
-                  <td className="border-b border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
-                    {player.ownershipPct.toFixed(1)}%
-                  </td>
+      {/* Tab content */}
+      {activeTab === "roster" && (
+        <>
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+              <select
+                value={selectedTeamId}
+                onChange={(e) => void handleTeamChange(e.target.value)}
+                className="rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+              >
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="pb-2 text-xs text-brand-creamDark">{selectedTeamPlayers.length} players</p>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+            <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 border-b border-r border-brand-cream/20 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+                    Player
+                  </th>
+                  <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                    Season Pts
+                  </th>
+                  <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                    Avg Pts/GW
+                  </th>
+                  <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                    Ghost Pts/GW
+                  </th>
+                  <th className="border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                    Ownership %
+                  </th>
                 </tr>
-              );
-            })}
-            {selectedTeamPlayers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="border-b border-brand-cream/10 px-4 py-8 text-center text-brand-creamDark">
-                  No players found for this team.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-          {selectedTeamPlayers.length > 0 ? (() => {
-            const n = selectedTeamPlayers.length;
-            const totalSeasonPts = selectedTeamPlayers.reduce((sum, p) => sum + p.seasonPts, 0);
-            const avgPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.avgPtsPerGw, 0) / n;
-            const avgGhostPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.ghostPtsPerGw, 0) / n;
-            const avgOwnership = selectedTeamPlayers.reduce((sum, p) => sum + p.ownershipPct, 0) / n;
-            return (
-              <tfoot>
-                <tr className="bg-[#1a3a22]">
-                  <td className="sticky left-0 border-t border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-xs font-bold uppercase tracking-wide text-brand-cream">
-                    Team Total
-                  </td>
-                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                    {totalSeasonPts.toFixed(2)}
-                  </td>
-                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                    {avgPtsPerGw.toFixed(2)}
-                  </td>
-                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                    {avgGhostPtsPerGw.toFixed(2)}
-                  </td>
-                  <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
-                    {avgOwnership.toFixed(1)}%
-                  </td>
-                </tr>
-              </tfoot>
-            );
-          })() : null}
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {selectedTeamPlayers.map((player, index) => {
+                  const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+                  return (
+                    <tr key={player.playerId} className={rowShade}>
+                      <td className={`sticky left-0 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
+                        <Link
+                          href={`/portal/players/${player.playerId}`}
+                          className="font-semibold text-brand-cream hover:text-brand-green hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {player.playerName}
+                        </Link>
+                        <div className="mt-0.5 text-xs text-brand-creamDark/70">
+                          {player.team} / {player.position}
+                        </div>
+                      </td>
+                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                        {player.seasonPts.toFixed(2)}
+                      </td>
+                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                        {player.avgPtsPerGw.toFixed(2)}
+                      </td>
+                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                        {player.ghostPtsPerGw.toFixed(2)}
+                      </td>
+                      <td className="border-b border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                        {player.ownershipPct.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+                {selectedTeamPlayers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="border-b border-brand-cream/10 px-4 py-8 text-center text-brand-creamDark">
+                      No players found for this team.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+              {selectedTeamPlayers.length > 0 ? (() => {
+                const n = selectedTeamPlayers.length;
+                const totalSeasonPts = selectedTeamPlayers.reduce((sum, p) => sum + p.seasonPts, 0);
+                const avgPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.avgPtsPerGw, 0) / n;
+                const avgGhostPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.ghostPtsPerGw, 0) / n;
+                const avgOwnership = selectedTeamPlayers.reduce((sum, p) => sum + p.ownershipPct, 0) / n;
+                return (
+                  <tfoot>
+                    <tr className="bg-[#1a3a22]">
+                      <td className="sticky left-0 border-t border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-xs font-bold uppercase tracking-wide text-brand-cream">
+                        Team Total
+                      </td>
+                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                        {totalSeasonPts.toFixed(2)}
+                      </td>
+                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                        {avgPtsPerGw.toFixed(2)}
+                      </td>
+                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                        {avgGhostPtsPerGw.toFixed(2)}
+                      </td>
+                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                        {avgOwnership.toFixed(1)}%
+                      </td>
+                    </tr>
+                  </tfoot>
+                );
+              })() : null}
+            </table>
+          </div>
+        </>
+      )}
+
+      {activeTab !== "roster" && (
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-brand-cream/20 bg-brand-dark/40">
+          <p className="text-sm text-brand-creamDark">Coming soon</p>
+        </div>
+      )}
     </div>
   );
 }

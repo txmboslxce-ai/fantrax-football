@@ -6,6 +6,8 @@ import MyLeagueClient, { type LeaguePlayerData, type LeagueTeam } from "./MyLeag
 type ProfileRow = {
   fantrax_league_id: string | null;
   fantrax_league_last_synced_at: string | null;
+  fantrax_team_id: string | null;
+  fantrax_team_name: string | null;
 };
 
 type RosterRow = {
@@ -57,16 +59,18 @@ export default async function MyLeaguePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("fantrax_league_id, fantrax_league_last_synced_at")
+    .select("fantrax_league_id, fantrax_league_last_synced_at, fantrax_team_id, fantrax_team_name")
     .eq("id", user.id)
     .maybeSingle();
 
   const profileRow = profile as ProfileRow | null;
   const leagueId = profileRow?.fantrax_league_id ?? null;
   const lastSyncedAt = profileRow?.fantrax_league_last_synced_at ?? null;
+  const savedTeamId = profileRow?.fantrax_team_id ?? null;
+  const savedTeamName = profileRow?.fantrax_team_name ?? null;
 
   if (!leagueId) {
-    return <MyLeagueClient leagueId={null} lastSyncedAt={null} teams={[]} players={[]} />;
+    return <MyLeagueClient leagueId={null} lastSyncedAt={null} teams={[]} players={[]} savedTeamId={null} savedTeamName={null} />;
   }
 
   // Load full roster data for the league view
@@ -79,7 +83,7 @@ export default async function MyLeaguePage() {
   const playerIds = roster.map((r) => r.player_id);
 
   if (playerIds.length === 0) {
-    return <MyLeagueClient leagueId={leagueId} lastSyncedAt={lastSyncedAt} teams={[]} players={[]} />;
+    return <MyLeagueClient leagueId={leagueId} lastSyncedAt={lastSyncedAt} teams={[]} players={[]} savedTeamId={savedTeamId} savedTeamName={savedTeamName} />;
   }
 
   const [{ data: playerRows }, { data: gwRows }] = await Promise.all([
@@ -151,6 +155,8 @@ export default async function MyLeaguePage() {
       lastSyncedAt={lastSyncedAt}
       teams={teams}
       players={players}
+      savedTeamId={savedTeamId}
+      savedTeamName={savedTeamName}
     />
   );
 }
