@@ -1,9 +1,11 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
+import type { AnalyticsPayload } from "@/app/api/league-analytics/summary/route";
 
 export type LeagueTeam = {
   id: string;
@@ -62,6 +64,10 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ teams: number; playersRostered: number; unmatchedPlayers: string[] } | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("roster");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsPayload | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const analyticsFetchedRef = useRef(false);
 
   // Initialise selectedTeamId from saved profile value, falling back to first team
   const initialTeamId = (() => {
@@ -76,6 +82,24 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       setSelectedTeamId(teams[0].id);
     }
   }, [teams, selectedTeamId]);
+
+  useEffect(() => {
+    if (activeTab !== "standings" || !leagueId || analyticsFetchedRef.current) return;
+    analyticsFetchedRef.current = true;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+
+    fetch(`/api/league-analytics/summary?leagueId=${encodeURIComponent(leagueId)}`)
+      .then(async (res) => {
+        const data = (await res.json()) as AnalyticsPayload & { message?: string };
+        if (!res.ok) throw new Error(data.message ?? "Failed to load analytics");
+        setAnalyticsData(data);
+      })
+      .catch((err: unknown) => {
+        setAnalyticsError(err instanceof Error ? err.message : "Failed to load analytics");
+      })
+      .finally(() => setAnalyticsLoading(false));
+  }, [activeTab, leagueId]);
 
   async function handleTeamChange(teamId: string) {
     setSelectedTeamId(teamId);
@@ -368,11 +392,192 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         </>
       )}
 
-      {activeTab !== "roster" && (
+      {activeTab === "standings" && (
+        <>
+          {analyticsLoading && (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <p className="text-sm text-brand-creamDark">Loading analytics…</p>
+            </div>
+          )}
+          {analyticsError && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">{analyticsError}</p>
+            </div>
+          )}
+          {analyticsData && (
+            <div className="space-y-8">
+              {/* Power Rankings */}
+              <AnalyticsTable
+                title="Power Rankings"
+                description="Teams ranked by total fantasy points scored this season."
+                headers={["Rank", "Team", "Points For", "W", "D", "L"]}
+                rows={analyticsData.powerRankings.map((r) => ({
+                  teamId: r.teamId,
+                  cells: [r.rank, r.teamName, r.pf.toFixed(2), r.w, r.d, r.l],
+                }))}
+                myTeamId={savedTeamId}
+              />
+
+              {/* Luck Index */}
+              <AnalyticsTable
+                title="Luck Index"
+                description="Compares actual wins to expected wins if you played every opponent each week. Positive = luckier than average."
+                headers={["Rank", "Team", "Actual W", "Expected W", "Luck Score"]}
+                rows={analyticsData.luckIndex.map((r) => ({
+                  teamId: r.teamId,
+                  cells: [
+                    r.rank,
+                    r.teamName,
+                    r.actualW,
+                    r.expectedW.toFixed(2),
+                    <LuckBadge key="luck" value={r.luckScore} />,
+                  ],
+                }))}
+                myTeamId={savedTeamId}
+              />
+
+              {/* Consistency */}
+              <AnalyticsTable
+                title="Consistency"
+                description="Standard deviation of weekly scores. Lower = more consistent week-to-week output."
+                headers={["Rank", "Team", "Avg Score", "Std Dev"]}
+                rows={analyticsData.consistency.map((r) => ({
+                  teamId: r.teamId,
+                  cells: [r.consistencyRank, r.teamName, r.avgScore.toFixed(2), r.stdDev.toFixed(2)],
+                }))}
+                myTeamId={savedTeamId}
+              />
+
+              {/* Trajectory */}
+              <AnalyticsTable
+                title="Trajectory"
+                description="Average score over the last 4 gameweeks vs the league average. Positive delta = trending above the pack."
+                headers={["Team", "Last 4 Avg", "League Avg", "Delta"]}
+                rows={analyticsData.trajectory.map((r) => ({
+                  teamId: r.teamId,
+                  cells: [
+                    r.teamName,
+                    r.last4Avg.toFixed(2),
+                    r.leagueLast4Avg.toFixed(2),
+                    <DeltaBadge key="delta" value={r.trajectoryDelta} />,
+                  ],
+                }))}
+                myTeamId={savedTeamId}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {(activeTab === "analytics" || activeTab === "trade-values") && (
         <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-brand-cream/20 bg-brand-dark/40">
           <p className="text-sm text-brand-creamDark">Coming soon</p>
         </div>
       )}
     </div>
+  );
+}
+
+// ── Analytics sub-components ─────────────────────────────────────────────────
+
+type AnalyticsRow = {
+  teamId: string;
+  cells: (string | number | React.ReactNode)[];
+};
+
+function AnalyticsTable({
+  title,
+  description,
+  headers,
+  rows,
+  myTeamId,
+}: {
+  title: string;
+  description: string;
+  headers: string[];
+  rows: AnalyticsRow[];
+  myTeamId: string | null;
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-base font-bold text-brand-cream">{title}</h3>
+        <p className="text-xs text-brand-creamDark">{description}</p>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr>
+              {headers.map((h, i) => (
+                <th
+                  key={h}
+                  className={`border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream ${i === 0 ? "" : "text-center"}`}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => {
+              const isMyTeam = myTeamId && row.teamId === myTeamId;
+              const rowShade = isMyTeam
+                ? "bg-brand-green/10"
+                : index % 2 === 0
+                ? "bg-brand-dark/60"
+                : "bg-brand-dark/90";
+              return (
+                <tr key={row.teamId} className={rowShade}>
+                  {row.cells.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      className={`border-b border-brand-cream/10 px-4 py-2.5 ${ci === 0 ? "" : "text-center"} ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function LuckBadge({ value }: { value: number }) {
+  const positive = value > 0;
+  const neutral = value === 0;
+  return (
+    <span
+      className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+        neutral
+          ? "bg-brand-cream/10 text-brand-creamDark"
+          : positive
+          ? "bg-green-500/20 text-green-400"
+          : "bg-red-500/20 text-red-400"
+      }`}
+    >
+      {positive ? "+" : ""}{value.toFixed(2)}
+    </span>
+  );
+}
+
+function DeltaBadge({ value }: { value: number }) {
+  const positive = value > 0;
+  const neutral = value === 0;
+  return (
+    <span
+      className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+        neutral
+          ? "bg-brand-cream/10 text-brand-creamDark"
+          : positive
+          ? "bg-green-500/20 text-green-400"
+          : "bg-red-500/20 text-red-400"
+      }`}
+    >
+      {positive ? "+" : ""}{value.toFixed(2)}
+    </span>
   );
 }
