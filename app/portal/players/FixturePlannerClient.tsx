@@ -180,7 +180,7 @@ export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: L
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const [loading, setLoading] = useState(true);
@@ -388,10 +388,12 @@ export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: L
       const matchesSearch = !normalizedSearch || row.name.toLowerCase().includes(normalizedSearch);
       const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
       const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[row.id]) : false;
+      const isMyTeam = leagueRoster ? leagueRoster.myTeamPlayerIds.includes(row.id) : false;
       const matchesAvailability =
         availabilityFilter === "All" ||
         (availabilityFilter === "Available" && !isTaken) ||
-        (availabilityFilter === "Taken" && isTaken);
+        (availabilityFilter === "Taken" && isTaken) ||
+        (availabilityFilter === "My Team" && isMyTeam);
       return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesAvailability;
     });
 
@@ -510,6 +512,19 @@ export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: L
                       {option}
                     </button>
                   ))}
+                  {leagueRoster.myTeamPlayerIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityFilter("My Team")}
+                      className={`rounded-md border px-3 py-1 text-xs font-semibold ${
+                        availabilityFilter === "My Team"
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      My Team
+                    </button>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -554,6 +569,7 @@ export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: L
                     <Link href={`/portal/players/${row.id}`} className="block hover:text-brand-greenLight">
                       <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
                         <span>{row.name}</span>
+                        {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                         <AvailabilityIcon
                           chanceOfPlaying={row.chanceOfPlaying}
                           status={row.availabilityStatus}

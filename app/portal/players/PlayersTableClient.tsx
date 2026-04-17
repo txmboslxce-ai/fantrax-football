@@ -141,7 +141,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
   const [teamFilter, setTeamFilter] = useState("All");
   const [minGames, setMinGames] = useState("0");
   const [ownershipMin, setOwnershipMin] = useState("0");
@@ -205,10 +205,12 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       const matchesOwnership = player.ownershipPct >= lowerOwnershipBound && player.ownershipPct <= upperOwnershipBound;
       const matchesGames = player.windows[selectedWindow].games_started >= safeMinGames;
       const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[player.id]) : false;
+      const isMyTeam = leagueRoster ? leagueRoster.myTeamPlayerIds.includes(player.id) : false;
       const matchesAvailability =
         availabilityFilter === "All" ||
         (availabilityFilter === "Available" && !isTaken) ||
-        (availabilityFilter === "Taken" && isTaken);
+        (availabilityFilter === "Taken" && isTaken) ||
+        (availabilityFilter === "My Team" && isMyTeam);
       return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesGames && matchesAvailability;
     });
 
@@ -393,6 +395,19 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     </button>
                   );
                 })}
+                {leagueRoster.myTeamPlayerIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAvailabilityFilter("My Team")}
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                      availabilityFilter === "My Team"
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    My Team
+                  </button>
+                )}
               </div>
             </div>
           ) : null}
@@ -676,6 +691,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           <span>{player.name}</span>
+                          {leagueRoster?.myTeamPlayerIds.includes(player.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                           <AvailabilityIcon
                             chanceOfPlaying={player.chanceOfPlaying}
                             status={player.availabilityStatus}

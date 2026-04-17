@@ -160,7 +160,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
   const [minGames, setMinGames] = useState("0");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
   const [selectedColumns, setSelectedColumns] = useState<StatColumnKey[]>(DEFAULT_SELECTED_COLUMN_KEYS);
   const [sortKey, setSortKey] = useState<SortKey>("goals");
@@ -219,10 +219,12 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
       const matchesGames = row.windows[selectedWindow].games_played >= safeMinGames;
       const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
       const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[row.id]) : false;
+      const isMyTeam = leagueRoster ? leagueRoster.myTeamPlayerIds.includes(row.id) : false;
       const matchesAvailability =
         availabilityFilter === "All" ||
         (availabilityFilter === "Available" && !isTaken) ||
-        (availabilityFilter === "Taken" && isTaken);
+        (availabilityFilter === "Taken" && isTaken) ||
+        (availabilityFilter === "My Team" && isMyTeam);
       return matchesSearch && matchesPosition && matchesTeam && matchesGames && matchesOwnership && matchesAvailability;
     });
 
@@ -394,6 +396,19 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                     </button>
                   );
                 })}
+                {leagueRoster.myTeamPlayerIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAvailabilityFilter("My Team")}
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                      availabilityFilter === "My Team"
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    }`}
+                  >
+                    My Team
+                  </button>
+                )}
               </div>
             </div>
           ) : null}
@@ -677,6 +692,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           <span>{row.player}</span>
+                          {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                           <AvailabilityIcon
                             chanceOfPlaying={row.chanceOfPlaying}
                             status={row.availabilityStatus}

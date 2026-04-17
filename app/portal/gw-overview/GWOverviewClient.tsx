@@ -409,7 +409,7 @@ export default function GWOverviewClient({
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("All");
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("All");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken">("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [selectedGameweeks, setSelectedGameweeks] = useState<number[]>(() => [...selectedGws].sort((a, b) => a - b));
@@ -714,6 +714,7 @@ export default function GWOverviewClient({
         const isTaken = Boolean(leagueRoster.teamByPlayerId[player.id]);
         if (availabilityFilter === "Available" && isTaken) return false;
         if (availabilityFilter === "Taken" && !isTaken) return false;
+        if (availabilityFilter === "My Team" && !leagueRoster.myTeamPlayerIds.includes(player.id)) return false;
       }
 
       for (const gw of displayedGws) {
@@ -973,6 +974,19 @@ export default function GWOverviewClient({
                       </button>
                     );
                   })}
+                  {leagueRoster.myTeamPlayerIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityFilter("My Team")}
+                      className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                        availabilityFilter === "My Team"
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                      }`}
+                    >
+                      My Team
+                    </button>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -1228,6 +1242,7 @@ export default function GWOverviewClient({
                     >
                       <span className="inline-flex flex-wrap items-center gap-1">
                         <span>{player.name}</span>
+                        {leagueRoster?.myTeamPlayerIds.includes(player.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                         <AvailabilityIcon
                           chanceOfPlaying={player.chanceOfPlaying}
                           status={player.availabilityStatus}
