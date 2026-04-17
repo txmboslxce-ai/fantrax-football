@@ -188,6 +188,7 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const leagueId = searchParams.get("leagueId");
+  const force = searchParams.get("force") === "true";
 
   if (!leagueId) {
     return NextResponse.json({ message: "Missing leagueId" }, { status: 400 });
@@ -210,17 +211,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  // Check cache
-  const { data: cached } = await supabase
-    .from("league_analytics_cache")
-    .select("computed_at, payload")
-    .eq("league_id", leagueId)
-    .maybeSingle();
+  // Check cache (skip when force=true)
+  if (!force) {
+    const { data: cached } = await supabase
+      .from("league_analytics_cache")
+      .select("computed_at, payload")
+      .eq("league_id", leagueId)
+      .maybeSingle();
 
-  if (cached) {
-    const age = Date.now() - new Date(cached.computed_at as string).getTime();
-    if (age < CACHE_TTL_MS) {
-      return NextResponse.json(cached.payload);
+    if (cached) {
+      const age = Date.now() - new Date(cached.computed_at as string).getTime();
+      if (age < CACHE_TTL_MS) {
+        return NextResponse.json(cached.payload);
+      }
     }
   }
 
