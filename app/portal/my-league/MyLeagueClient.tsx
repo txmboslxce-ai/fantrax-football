@@ -75,12 +75,15 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const analyticsFetchedRef = useRef(false);
 
-  // Initialise selectedTeamId from saved profile value, falling back to first team
-  const initialTeamId = (() => {
-    if (savedTeamId && teams.some((t) => t.id === savedTeamId)) return savedTeamId;
-    return teams[0]?.id ?? "";
-  })();
-  const [selectedTeamId, setSelectedTeamId] = useState<string>(initialTeamId);
+  // Roster tab: which team is being viewed (independent of profile)
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(teams[0]?.id ?? "");
+
+  // My Team: the profile-saved team used for Standings highlights
+  const [myTeamId, setMyTeamId] = useState<string>(savedTeamId ?? "");
+  const [myTeamDraft, setMyTeamDraft] = useState<string>(savedTeamId ?? "");
+  const [myTeamSaving, setMyTeamSaving] = useState(false);
+  const [myTeamSaved, setMyTeamSaved] = useState(false);
+  const savedToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep selectedTeamId valid when teams change (e.g. after re-sync)
   useEffect(() => {
@@ -107,15 +110,28 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       .finally(() => setAnalyticsLoading(false));
   }, [activeTab, leagueId]);
 
-  async function handleTeamChange(teamId: string) {
-    setSelectedTeamId(teamId);
-    const team = teams.find((t) => t.id === teamId);
+  async function saveMyTeam() {
+    const team = teams.find((t) => t.id === myTeamDraft);
     if (!team) return;
-    const supabase = createClient();
-    await supabase
-      .from("profiles")
-      .update({ fantrax_team_id: teamId, fantrax_team_name: team.name })
-      .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "");
+    setMyTeamSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase
+        .from("profiles")
+        .update({ fantrax_team_id: team.id, fantrax_team_name: team.name })
+        .eq("id", user?.id ?? "");
+      setMyTeamId(team.id);
+      setMyTeamSaved(true);
+      if (savedToastRef.current) clearTimeout(savedToastRef.current);
+      savedToastRef.current = setTimeout(() => setMyTeamSaved(false), 2000);
+    } finally {
+      setMyTeamSaving(false);
+    }
+  }
+
+  function handleTeamChange(teamId: string) {
+    setSelectedTeamId(teamId);
   }
 
   async function handleSync(idToSync: string) {
@@ -240,6 +256,32 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             League ID: <span className="font-mono text-brand-cream">{leagueId}</span>
           </p>
           <p className="mt-0.5 text-xs text-brand-creamDark">Last synced: {formatSyncDate(lastSyncedAt)}</p>
+          {/* My Team selector */}
+          {teams.length > 0 && (
+            <div className="mt-3 flex items-center gap-2">
+              <label className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">My Team</span>
+                <select
+                  value={myTeamDraft}
+                  onChange={(e) => setMyTeamDraft(e.target.value)}
+                  className="rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-1.5 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+                >
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>{team.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => void saveMyTeam()}
+                disabled={myTeamSaving}
+                className="rounded-lg border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {myTeamSaving ? "Saving…" : "Save"}
+              </button>
+              {myTeamSaved && <span className="text-xs text-green-400">Saved</span>}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-2">
@@ -291,7 +333,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <span className="block text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
               <select
                 value={selectedTeamId}
-                onChange={(e) => void handleTeamChange(e.target.value)}
+                onChange={(e) => handleTeamChange(e.target.value)}
                 className="rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
               >
                 {teams.map((team) => (
@@ -428,7 +470,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     <LuckBadge key="luck" value={r.luckScore ?? 0} />,
                   ],
                 }))}
-                myTeamId={savedTeamId}
+                myTeamId={myTeamId}
               />
 
               {/* Luck Index */}
@@ -446,7 +488,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     <LuckBadge key="luck" value={r.luckScore ?? 0} />,
                   ],
                 }))}
-                myTeamId={savedTeamId}
+                myTeamId={myTeamId}
               />
 
               {/* Consistency */}
@@ -458,7 +500,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   teamId: r.teamId,
                   cells: [r.consistencyRank, r.teamName, safeFixed(r.avgScore, 2), safeFixed(r.stdDev, 2)],
                 }))}
-                myTeamId={savedTeamId}
+                myTeamId={myTeamId}
               />
 
               {/* Trajectory */}
@@ -475,7 +517,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     <DeltaBadge key="delta" value={r.trajectoryDelta ?? 0} />,
                   ],
                 }))}
-                myTeamId={savedTeamId}
+                myTeamId={myTeamId}
               />
             </div>
           )}
