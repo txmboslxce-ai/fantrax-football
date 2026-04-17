@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import type { AnalyticsPayload } from "@/app/api/league-analytics/types";
+import type { AnalyticsPayload, TradeValueEntry } from "@/app/api/league-analytics/types";
 
 export type LeagueTeam = {
   id: string;
@@ -75,6 +75,11 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const analyticsFetchedRef = useRef(false);
 
+  // Trade Values tab state
+  const [tradePositionFilter, setTradePositionFilter] = useState<"All" | "GK" | "DEF" | "MID" | "FWD">("All");
+  type TradeSortKey = keyof Pick<TradeValueEntry, "tradeValue" | "last5Avg" | "seasonAvg" | "playerName" | "teamName" | "position">;
+  const [tradeSort, setTradeSort] = useState<{ key: TradeSortKey; dir: "asc" | "desc" }>({ key: "tradeValue", dir: "desc" });
+
   // Roster tab: which team is being viewed (independent of profile)
   const [selectedTeamId, setSelectedTeamId] = useState<string>(teams[0]?.id ?? "");
 
@@ -93,7 +98,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   }, [teams, selectedTeamId]);
 
   useEffect(() => {
-    if (activeTab !== "standings" || !leagueId || analyticsFetchedRef.current) return;
+    if (!["standings", "analytics", "trade-values"].includes(activeTab) || !leagueId || analyticsFetchedRef.current) return;
     analyticsFetchedRef.current = true;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
@@ -498,14 +503,39 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 myTeamId={myTeamId}
               />
 
-              {/* Consistency */}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === "analytics" && (
+        <>
+          {analyticsLoading && (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <p className="text-sm text-brand-creamDark">Loading analytics…</p>
+            </div>
+          )}
+          {analyticsError && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">{analyticsError}</p>
+            </div>
+          )}
+          {analyticsData && (
+            <div className="space-y-8">
+              {/* Consistency Rankings */}
               <AnalyticsTable
-                title="Consistency"
-                description="Standard deviation of weekly scores. Lower = more consistent week-to-week output."
-                headers={["Rank", "Team", "Avg Score", "Std Dev"]}
+                title="Consistency Rankings"
+                description="Standard deviation of weekly scores. Lower std dev = more reliable week-to-week output."
+                headers={["Consistency Rank", "Team", "Avg Score (per GW)", "Std Dev", "Profile"]}
                 rows={analyticsData.consistency.map((r) => ({
                   teamId: r.teamId,
-                  cells: [r.consistencyRank, r.teamName, safeFixed(r.avgScore, 2), safeFixed(r.stdDev, 2)],
+                  cells: [
+                    r.consistencyRank,
+                    r.teamName,
+                    safeFixed(r.avgScore, 2),
+                    safeFixed(r.stdDev, 2),
+                    <ConsistencyProfileBadge key="profile" stdDev={r.stdDev ?? 0} />,
+                  ],
                 }))}
                 myTeamId={myTeamId}
               />
@@ -513,11 +543,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               {/* Trajectory */}
               <AnalyticsTable
                 title="Trajectory"
-                description="Average score over the last 4 gameweeks vs the league average. Positive delta = trending above the pack."
-                headers={["Team", "Last 4 Avg", "League Avg", "Delta"]}
-                rows={analyticsData.trajectory.map((r) => ({
+                description="Ranks teams by their last 4 gameweek average vs the league average over the same period. Positive = trending above the league."
+                headers={["Rank", "Team", "Last 4 GW Avg", "League Avg", "Delta"]}
+                rows={analyticsData.trajectory.map((r, i) => ({
                   teamId: r.teamId,
                   cells: [
+                    i + 1,
                     r.teamName,
                     safeFixed(r.last4Avg, 2),
                     safeFixed(r.leagueLast4Avg, 2),
@@ -531,10 +562,142 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         </>
       )}
 
-      {(activeTab === "analytics" || activeTab === "trade-values") && (
-        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-brand-cream/20 bg-brand-dark/40">
-          <p className="text-sm text-brand-creamDark">Coming soon</p>
-        </div>
+      {activeTab === "trade-values" && (
+        <>
+          {analyticsLoading && (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <p className="text-sm text-brand-creamDark">Loading trade values…</p>
+            </div>
+          )}
+          {analyticsError && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">{analyticsError}</p>
+            </div>
+          )}
+          {analyticsData && (() => {
+            const myTeamName = teams.find((t) => t.id === myTeamId)?.name ?? savedTeamName ?? "";
+
+            const handleTradeSort = (key: TradeSortKey) => {
+              setTradeSort((prev) =>
+                prev.key === key
+                  ? { key, dir: prev.dir === "desc" ? "asc" : "desc" }
+                  : { key, dir: "desc" }
+              );
+            };
+
+            const filtered = (analyticsData.tradeValues ?? [])
+              .filter((tv) => tradePositionFilter === "All" || tv.position === tradePositionFilter)
+              .slice()
+              .sort((a, b) => {
+                const dir = tradeSort.dir === "asc" ? 1 : -1;
+                const aVal = a[tradeSort.key];
+                const bVal = b[tradeSort.key];
+                if (typeof aVal === "number" && typeof bVal === "number") return (aVal - bVal) * dir;
+                return String(aVal).localeCompare(String(bVal)) * dir;
+              });
+
+            const SortHeader = ({ col, label }: { col: TradeSortKey; label: string }) => (
+              <th
+                onClick={() => handleTradeSort(col)}
+                className="cursor-pointer select-none border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream hover:text-brand-green"
+              >
+                {label}
+                {tradeSort.key === col ? (tradeSort.dir === "desc" ? " ↓" : " ↑") : ""}
+              </th>
+            );
+
+            return (
+              <div className="space-y-4">
+                {/* Position filter */}
+                <div className="flex flex-wrap gap-2">
+                  {(["All", "GK", "DEF", "MID", "FWD"] as const).map((pos) => (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => setTradePositionFilter(pos)}
+                      className={`rounded border px-3 py-1 text-xs font-semibold ${
+                        tradePositionFilter === pos
+                          ? "border-brand-green bg-brand-green text-brand-cream"
+                          : "border-brand-cream/35 bg-brand-dark text-brand-cream hover:bg-brand-cream/10"
+                      }`}
+                    >
+                      {pos}
+                    </button>
+                  ))}
+                  <span className="ml-2 self-center text-xs text-brand-creamDark">{filtered.length} players</span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+                  <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                          Rank
+                        </th>
+                        <SortHeader col="playerName" label="Player" />
+                        <SortHeader col="teamName" label="Team" />
+                        <SortHeader col="position" label="Position" />
+                        <SortHeader col="tradeValue" label="Trade Value (0-100)" />
+                        <SortHeader col="last5Avg" label="Last 5 Avg" />
+                        <SortHeader col="seasonAvg" label="Season Avg" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((tv, index) => {
+                        const isMyTeam = myTeamName && tv.teamName === myTeamName;
+                        const rowShade = isMyTeam
+                          ? "bg-brand-green/10"
+                          : index % 2 === 0
+                          ? "bg-brand-dark/60"
+                          : "bg-brand-dark/90";
+                        return (
+                          <tr key={`${tv.playerName}-${tv.teamName}`} className={rowShade}>
+                            <td className={`border-b border-brand-cream/10 px-4 py-2.5 ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}>
+                              {index + 1}
+                            </td>
+                            <td className={`border-b border-brand-cream/10 px-4 py-2.5 font-semibold ${isMyTeam ? "text-brand-cream" : "text-brand-creamDark"}`}>
+                              {tv.playerName}
+                            </td>
+                            <td className={`border-b border-brand-cream/10 px-4 py-2.5 text-center ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}>
+                              {tv.teamName}
+                            </td>
+                            <td className={`border-b border-brand-cream/10 px-4 py-2.5 text-center ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}>
+                              {tv.position}
+                            </td>
+                            <td className="border-b border-brand-cream/10 px-4 py-2.5 text-center">
+                              <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                                tv.tradeValue >= 70
+                                  ? "bg-green-500/20 text-green-400"
+                                  : tv.tradeValue >= 40
+                                  ? "bg-brand-cream/10 text-brand-cream"
+                                  : "bg-red-500/10 text-brand-creamDark"
+                              }`}>
+                                {safeFixed(tv.tradeValue, 1)}
+                              </span>
+                            </td>
+                            <td className={`border-b border-brand-cream/10 px-4 py-2.5 text-center ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}>
+                              {safeFixed(tv.last5Avg, 2)}
+                            </td>
+                            <td className={`border-b border-brand-cream/10 px-4 py-2.5 text-center ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}>
+                              {safeFixed(tv.seasonAvg, 2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {filtered.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="border-b border-brand-cream/10 px-4 py-8 text-center text-brand-creamDark">
+                            No players found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+        </>
       )}
     </div>
   );
@@ -643,3 +806,26 @@ function DeltaBadge({ value }: { value: number }) {
     </span>
   );
 }
+
+function ConsistencyProfileBadge({ stdDev }: { stdDev: number }) {
+  if (stdDev < 18) {
+    return (
+      <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-green-500/20 text-green-400">
+        Reliable
+      </span>
+    );
+  }
+  if (stdDev <= 24) {
+    return (
+      <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-amber-500/20 text-amber-400">
+        Mixed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-red-500/20 text-red-400">
+      Boom/Bust
+    </span>
+  );
+}
+

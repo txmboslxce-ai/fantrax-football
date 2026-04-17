@@ -8,8 +8,10 @@ import type {
   LuckEntry,
   ConsistencyEntry,
   TrajectoryEntry,
+  TradeValueEntry,
   AnalyticsPayload,
 } from "../types";
+import { SEASON } from "@/lib/portal/playerMetrics";
 
 export type { AnalyticsPayload } from "../types";
 
@@ -177,6 +179,7 @@ function computeAnalytics(
     luckIndex,
     consistency,
     trajectory,
+    tradeValues: [] as TradeValueEntry[],
     computedAt: new Date().toISOString(),
   };
 }
@@ -248,16 +251,89 @@ export async function GET(request: Request) {
 
   const payload = computeAnalytics(standings, scheduleMatches);
 
+  // ── Trade Values ──────────────────────────────────────────────────────────
+  const { data: rosters } = await supabase
+    .from("league_rosters")
+    .select("player_id, team_name")
+    .eq("league_id", leagueId);
+
+  let tradeValues: TradeValueEntry[] = [];
+
+  if (rosters && rosters.length > 0) {
+    const playerIds = rosters.map((r) => r.player_id as string);
+
+    const [{ data: pgData }, { data: playerData }] = await Promise.all([
+      supabase
+        .from("player_gameweeks")
+        .select("player_id, gameweek, raw_fantrax_pts")
+        .in("player_id", playerIds)
+        .eq("season", SEASON),
+      supabase
+        .from("players")
+        .select("id, name, position")
+        .in("id", playerIds),
+    ]);
+
+    if (pgData && playerData) {
+      const gwsByPlayer = new Map<string, { gameweek: number; pts: number }[]>();
+      for (const row of pgData) {
+        const pid = row.player_id as string;
+        if (!gwsByPlayer.has(pid)) gwsByPlayer.set(pid, []);
+        gwsByPlayer.get(pid)!.push({ gameweek: row.gameweek as number, pts: row.raw_fantrax_pts as number });
+      }
+
+      const playerMap = new Map(playerData.map((p) => [p.id as string, p]));
+      const rosterMap = new Map(rosters.map((r) => [r.player_id as string, r.team_name as string]));
+
+      const rawValues = playerIds.map((pid) => {
+        const gws = gwsByPlayer.get(pid) ?? [];
+        const sorted = gws.slice().sort((a, b) => b.gameweek - a.gameweek);
+        const last5 = sorted.slice(0, 5);
+        const last5Avg = last5.length > 0 ? last5.reduce((s, g) => s + g.pts, 0) / last5.length : 0;
+        const seasonAvg = gws.length > 0 ? gws.reduce((s, g) => s + g.pts, 0) / gws.length : 0;
+        const rawTV = last5Avg * 0.6 + seasonAvg * 0.4;
+        const player = playerMap.get(pid);
+        return {
+          pid,
+          playerName: (player?.name as string | undefined) ?? "Unknown",
+          teamName: rosterMap.get(pid) ?? "Unknown",
+          position: (player?.position as string | undefined) ?? "UNK",
+          rawTV: Math.round(rawTV * 100) / 100,
+          last5Avg: Math.round(last5Avg * 100) / 100,
+          seasonAvg: Math.round(seasonAvg * 100) / 100,
+        };
+      });
+
+      const rawTVValues = rawValues.map((v) => v.rawTV);
+      const minTV = Math.min(...rawTVValues);
+      const maxTV = Math.max(...rawTVValues);
+      const tvRange = maxTV - minTV;
+
+      tradeValues = rawValues
+        .map((v) => ({
+          playerName: v.playerName,
+          teamName: v.teamName,
+          position: v.position,
+          tradeValue: tvRange > 0 ? Math.round(((v.rawTV - minTV) / tvRange) * 1000) / 10 : 50,
+          last5Avg: v.last5Avg,
+          seasonAvg: v.seasonAvg,
+        }))
+        .sort((a, b) => b.tradeValue - a.tradeValue);
+    }
+  }
+
+  const fullPayload: AnalyticsPayload = { ...payload, tradeValues };
+
   // Write to cache (fire-and-forget, don't block response on failure)
   const admin = createAdminSupabaseClient();
   if (admin) {
     admin
       .from("league_analytics_cache")
-      .upsert({ league_id: leagueId, computed_at: payload.computedAt, payload })
+      .upsert({ league_id: leagueId, computed_at: fullPayload.computedAt, payload: fullPayload })
       .then(({ error }) => {
         if (error) console.error("[league-analytics/summary] cache write error:", error.message);
       });
   }
 
-  return NextResponse.json(payload);
+  return NextResponse.json(fullPayload);
 }

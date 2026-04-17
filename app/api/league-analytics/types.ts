@@ -33,10 +33,20 @@ export type TrajectoryEntry = {
   trajectoryDelta: number;
 };
 
+export type TradeValueEntry = {
+  playerName: string;
+  teamName: string;
+  position: string;
+  tradeValue: number;
+  last5Avg: number;
+  seasonAvg: number;
+};
+
 export type AnalyticsPayload = {
   powerRankings: PowerRankingEntry[];
   luckIndex: LuckEntry[];
   consistency: ConsistencyEntry[];
   trajectory: TrajectoryEntry[];
+  tradeValues: TradeValueEntry[];
   computedAt: string;
 };
