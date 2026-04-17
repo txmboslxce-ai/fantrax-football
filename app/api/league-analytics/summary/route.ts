@@ -10,10 +10,10 @@ export type PowerRankingEntry = {
   rank: number;
   teamId: string;
   teamName: string;
+  expectedW: number;
+  actualW: number;
   pf: number;
-  w: number;
-  d: number;
-  l: number;
+  luckScore: number;
 };
 
 export type LuckEntry = {
@@ -84,21 +84,7 @@ function computeAnalytics(
   const playedGws = Array.from(scoresByGw.keys()).sort((a, b) => a - b);
   const numTeams = standings.length;
 
-  // ── Power Rankings ────────────────────────────────────────────────────────
-  const powerRankings: PowerRankingEntry[] = standings
-    .slice()
-    .sort((a, b) => b.pf - a.pf)
-    .map((team, i) => ({
-      rank: i + 1,
-      teamId: team.teamId,
-      teamName: team.teamName,
-      pf: team.pf,
-      w: team.w,
-      d: team.d,
-      l: team.l,
-    }));
-
-  // ── Luck Index ───────────────────────────────────────────────────────────
+  // ── Luck raw (shared by power rankings and luck index) ───────────────────
   const standingsMap = new Map<string, StandingsEntry>(standings.map((s) => [s.teamId, s]));
 
   const luckRaw = standings.map((team) => {
@@ -135,6 +121,21 @@ function computeAnalytics(
     };
   });
 
+  // ── Power Rankings ────────────────────────────────────────────────────────
+  const powerRankings: PowerRankingEntry[] = luckRaw
+    .slice()
+    .sort((a, b) => b.expectedW - a.expectedW)
+    .map((entry, i) => ({
+      rank: i + 1,
+      teamId: entry.teamId,
+      teamName: entry.teamName,
+      expectedW: entry.expectedW,
+      actualW: entry.actualW,
+      pf: standingsMap.get(entry.teamId)?.pf ?? 0,
+      luckScore: entry.luckScore,
+    }));
+
+  // ── Luck Index ───────────────────────────────────────────────────────────
   const luckIndex: LuckEntry[] = luckRaw
     .slice()
     .sort((a, b) => b.luckScore - a.luckScore)
