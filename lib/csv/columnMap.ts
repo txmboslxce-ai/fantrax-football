@@ -31,6 +31,8 @@ export const PLAYER_COLUMN_MAP = {
   OG: "own_goals",
   GAO: "goals_against_outfield",
   CS: "clean_sheet",
+  CK: "corner_kicks",
+  FKS: "free_kick_shots",
 } as const;
 
 export const KEEPER_COLUMN_MAP = {

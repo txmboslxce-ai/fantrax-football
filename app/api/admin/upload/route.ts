@@ -58,6 +58,8 @@ type NormalizedRow = {
   penalty_saves: number;
   high_claims: number;
   smothers: number;
+  corner_kicks: number;
+  free_kick_shots: number;
   opponent: string | null;
   is_home: boolean | null;
 };
@@ -93,6 +95,8 @@ const ALL_STATS_KEYS: Array<keyof NormalizedRow> = [
   "penalty_saves",
   "high_claims",
   "smothers",
+  "corner_kicks",
+  "free_kick_shots",
 ];
 
 function mapCsvRow(row: CsvRow, type: UploadType, fallbackGameweek: number): NormalizedRow {
@@ -135,6 +139,8 @@ function mapCsvRow(row: CsvRow, type: UploadType, fallbackGameweek: number): Nor
     penalty_saves: 0,
     high_claims: 0,
     smothers: 0,
+    corner_kicks: 0,
+    free_kick_shots: 0,
     opponent: null,
     is_home: null,
   };
@@ -362,6 +368,8 @@ export async function POST(request: Request) {
         penalty_saves: row.penalty_saves,
         high_claims: row.high_claims,
         smothers: row.smothers,
+        corner_kicks: row.corner_kicks,
+        free_kick_shots: row.free_kick_shots,
       };
 
       if (!resolved.opponent) {

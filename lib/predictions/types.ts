@@ -72,6 +72,12 @@ export type PlayerPredictionFeatureRow = {
   season_dispossessed_per90: number | null;
   last10_dispossessed_per90: number | null;
   last5_dispossessed_per90: number | null;
+  season_corner_kicks_per90: number | null;
+  last10_corner_kicks_per90: number | null;
+  last5_corner_kicks_per90: number | null;
+  season_free_kick_shots_per90: number | null;
+  last10_free_kick_shots_per90: number | null;
+  last5_free_kick_shots_per90: number | null;
   opponent_ghost_pts_multiplier: number | null;
   opponent_goals_multiplier: number | null;
   opponent_assists_multiplier: number | null;

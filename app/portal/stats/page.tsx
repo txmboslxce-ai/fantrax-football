@@ -34,6 +34,8 @@ type StatsWindowRow = {
   games_played: number;
   games_started: number;
   minutes_played: number;
+  corner_kicks_per90: number;
+  free_kick_shots_per90: number;
 };
 
 type StatsPlayerRecord = {
@@ -78,6 +80,8 @@ type StatsPlayerGameweekRow = {
   own_goals: number | null;
   penalties_missed: number | null;
   penalties_drawn: number | null;
+  corner_kicks: number | null;
+  free_kick_shots: number | null;
 };
 
 function toNumber(value: number | string | null | undefined): number {
@@ -104,11 +108,19 @@ function parseOwnership(value: string | null): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function per90OrNull(total: number, minutes: number): number {
+  if (minutes < 90) return 0;
+  return roundTo2(minutes > 0 ? (total / minutes) * 90 : 0);
+}
+
 function summarizeStatsWindow(rows: StatsPlayerGameweekRow[]): StatsWindowRow {
   const playedRows = rows.filter((row) => Number(row.games_played ?? 0) > 0);
   const totalSeasonPts = playedRows.reduce((sum, row) => sum + toNumber(row.raw_fantrax_pts), 0);
   const totalGhostPts = playedRows.reduce((sum, row) => sum + toNumber(row.ghost_pts), 0);
   const playedGameweeks = playedRows.length;
+  const totalMinutes = playedRows.reduce((sum, row) => sum + Number(row.minutes_played ?? 0), 0);
+  const totalCornerKicks = playedRows.reduce((sum, row) => sum + Number(row.corner_kicks ?? 0), 0);
+  const totalFreeKickShots = playedRows.reduce((sum, row) => sum + Number(row.free_kick_shots ?? 0), 0);
 
   return {
     season_pts: roundTo2(totalSeasonPts),
@@ -138,7 +150,9 @@ function summarizeStatsWindow(rows: StatsPlayerGameweekRow[]): StatsWindowRow {
     penalties_drawn: playedRows.reduce((sum, row) => sum + Number(row.penalties_drawn ?? 0), 0),
     games_played: playedRows.reduce((sum, row) => sum + Number(row.games_played ?? 0), 0),
     games_started: playedRows.reduce((sum, row) => sum + Number(row.games_started ?? 0), 0),
-    minutes_played: playedRows.reduce((sum, row) => sum + Number(row.minutes_played ?? 0), 0),
+    minutes_played: totalMinutes,
+    corner_kicks_per90: per90OrNull(totalCornerKicks, totalMinutes),
+    free_kick_shots_per90: per90OrNull(totalFreeKickShots, totalMinutes),
   };
 }
 
@@ -160,7 +174,7 @@ export default async function StatsPage() {
     supabase
       .from("player_gameweeks")
       .select(
-        "player_id, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, clean_sheet, saves, penalty_saves, goals_against, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn"
+        "player_id, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, clean_sheet, saves, penalty_saves, goals_against, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn, corner_kicks, free_kick_shots"
       )
       .eq("season", SEASON),
   ]);
