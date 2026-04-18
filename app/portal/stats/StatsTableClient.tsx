@@ -36,8 +36,8 @@ type StatsWindowRow = {
   games_played: number;
   games_started: number;
   minutes_played: number;
-  corner_kicks_per90: number;
-  free_kick_shots_per90: number;
+  corner_kicks: number;
+  free_kick_shots: number;
 };
 
 type StatsRow = {
@@ -77,8 +77,8 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "assists", label: "Assists", category: "Attacking", digits: 0 },
   { key: "key_passes", label: "Key Passes", category: "Attacking", digits: 0 },
   { key: "shots_on_target", label: "Shots on Target", category: "Attacking", digits: 0 },
-  { key: "corner_kicks_per90", label: "Corners / 90", category: "Attacking" },
-  { key: "free_kick_shots_per90", label: "FK Shots / 90", category: "Attacking" },
+  { key: "corner_kicks", label: "Corners", category: "Attacking", digits: 0 },
+  { key: "free_kick_shots", label: "FK Shots", category: "Attacking", digits: 0 },
   { key: "dribbles_succeeded", label: "Dribbles Succeeded", category: "Attacking", digits: 0 },
   { key: "dispossessed", label: "Dispossessed", category: "Attacking", digits: 0 },
   { key: "tackles_won", label: "Tackles Won", category: "Defensive", digits: 0 },

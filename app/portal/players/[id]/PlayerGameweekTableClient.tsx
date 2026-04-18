@@ -32,7 +32,9 @@ type GameweekColumnKey =
   | "penalty_saves"
   | "high_claims"
   | "smothers"
-  | "penalties_drawn";
+  | "penalties_drawn"
+  | "corner_kicks"
+  | "free_kick_shots";
 
 type SortKey = "gameweek" | "opponent" | "fdr" | GameweekColumnKey;
 
@@ -57,6 +59,8 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "assists", label: "Assists", category: "Attacking", digits: 0 },
   { key: "key_passes", label: "Key Passes", category: "Attacking", digits: 0 },
   { key: "shots_on_target", label: "Shots on Target", category: "Attacking", digits: 0 },
+  { key: "corner_kicks", label: "CK", category: "Attacking", digits: 0 },
+  { key: "free_kick_shots", label: "FKS", category: "Attacking", digits: 0 },
   { key: "dribbles_succeeded", label: "Dribbles", category: "Attacking", digits: 0 },
   { key: "accurate_crosses", label: "Crosses", category: "Attacking", digits: 0 },
   { key: "penalties_drawn", label: "Pens Drawn", category: "Attacking", digits: 0 },

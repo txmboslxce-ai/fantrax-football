@@ -34,8 +34,8 @@ type StatsWindowRow = {
   games_played: number;
   games_started: number;
   minutes_played: number;
-  corner_kicks_per90: number;
-  free_kick_shots_per90: number;
+  corner_kicks: number;
+  free_kick_shots: number;
 };
 
 type StatsPlayerRecord = {
@@ -108,19 +108,11 @@ function parseOwnership(value: string | null): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function per90OrNull(total: number, minutes: number): number {
-  if (minutes < 90) return 0;
-  return roundTo2(minutes > 0 ? (total / minutes) * 90 : 0);
-}
-
 function summarizeStatsWindow(rows: StatsPlayerGameweekRow[]): StatsWindowRow {
   const playedRows = rows.filter((row) => Number(row.games_played ?? 0) > 0);
   const totalSeasonPts = playedRows.reduce((sum, row) => sum + toNumber(row.raw_fantrax_pts), 0);
   const totalGhostPts = playedRows.reduce((sum, row) => sum + toNumber(row.ghost_pts), 0);
   const playedGameweeks = playedRows.length;
-  const totalMinutes = playedRows.reduce((sum, row) => sum + Number(row.minutes_played ?? 0), 0);
-  const totalCornerKicks = playedRows.reduce((sum, row) => sum + Number(row.corner_kicks ?? 0), 0);
-  const totalFreeKickShots = playedRows.reduce((sum, row) => sum + Number(row.free_kick_shots ?? 0), 0);
 
   return {
     season_pts: roundTo2(totalSeasonPts),
@@ -150,9 +142,9 @@ function summarizeStatsWindow(rows: StatsPlayerGameweekRow[]): StatsWindowRow {
     penalties_drawn: playedRows.reduce((sum, row) => sum + Number(row.penalties_drawn ?? 0), 0),
     games_played: playedRows.reduce((sum, row) => sum + Number(row.games_played ?? 0), 0),
     games_started: playedRows.reduce((sum, row) => sum + Number(row.games_started ?? 0), 0),
-    minutes_played: totalMinutes,
-    corner_kicks_per90: per90OrNull(totalCornerKicks, totalMinutes),
-    free_kick_shots_per90: per90OrNull(totalFreeKickShots, totalMinutes),
+    minutes_played: playedRows.reduce((sum, row) => sum + Number(row.minutes_played ?? 0), 0),
+    corner_kicks: playedRows.reduce((sum, row) => sum + Number(row.corner_kicks ?? 0), 0),
+    free_kick_shots: playedRows.reduce((sum, row) => sum + Number(row.free_kick_shots ?? 0), 0),
   };
 }
 

@@ -20,6 +20,8 @@ type FixturePlayerRow = {
   assists: number;
   keyPasses: number;
   accurateCrosses: number;
+  cornerKicks: number;
+  freeKickShots: number;
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
@@ -92,9 +94,9 @@ function TeamTable({
                     <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">G</th>
                     <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">A</th>
                     <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">KP</th>
-                    <th className="border-b border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">
-                      Crosses
-                    </th>
+                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">Crosses</th>
+                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">CK</th>
+                    <th className="border-b border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">FKS</th>
                   </>
                 )}
               </tr>
@@ -133,7 +135,9 @@ function TeamTable({
                       <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.goals}</td>
                       <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.assists}</td>
                       <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.keyPasses}</td>
-                      <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
+                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
+                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.cornerKicks}</td>
+                      <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.freeKickShots}</td>
                     </>
                   )}
                 </tr>

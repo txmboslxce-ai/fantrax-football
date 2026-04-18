@@ -59,6 +59,8 @@ type PlayerGameweekRow = {
   assists: number;
   key_passes: number;
   accurate_crosses: number;
+  corner_kicks: number;
+  free_kick_shots: number;
 };
 
 async function loadFixture(
@@ -198,7 +200,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       ? { data: [], error: null }
       : await supabase
           .from("player_gameweeks")
-          .select("player_id, games_played, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, accurate_crosses")
+          .select("player_id, games_played, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, accurate_crosses, corner_kicks, free_kick_shots")
           .eq("season", SEASON)
           .eq("gameweek", fixture.gameweek)
           .in("player_id", playerIds)
@@ -231,6 +233,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         assists: Number(row.assists ?? 0),
         keyPasses: Number(row.key_passes ?? 0),
         accurateCrosses: Number(row.accurate_crosses ?? 0),
+        cornerKicks: Number(row.corner_kicks ?? 0),
+        freeKickShots: Number(row.free_kick_shots ?? 0),
         chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
         availabilityStatus: availabilityRaw?.status ?? null,
         availabilityNews: availabilityRaw?.news ?? null,

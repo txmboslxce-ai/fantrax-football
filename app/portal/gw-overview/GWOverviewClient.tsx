@@ -57,6 +57,8 @@ export type GWOverviewGameweekRow = {
   yellow_cards: number;
   red_cards: number;
   own_goals: number;
+  corner_kicks: number;
+  free_kick_shots: number;
   is_home: boolean | null;
 };
 
@@ -148,7 +150,9 @@ type StatKey =
   | "smothers"
   | "yellow_cards"
   | "red_cards"
-  | "own_goals";
+  | "own_goals"
+  | "corner_kicks"
+  | "free_kick_shots";
 
 const positionFilters: PositionFilter[] = ["All", "GK", "DEF", "MID", "FWD"];
 const gpStatusFilters: GPStatus[] = ["Started", "Sub", "DNP"];
@@ -169,6 +173,8 @@ const statSections: StatSection[] = [
       { label: "Assists", value: "assists" },
       { label: "Key Passes", value: "key_passes" },
       { label: "Shots on Target", value: "shots_on_target" },
+      { label: "Corners", value: "corner_kicks" },
+      { label: "FK Shots", value: "free_kick_shots" },
       { label: "Penalties Drawn", value: "penalties_drawn" },
       { label: "Penalties Missed", value: "penalties_missed" },
     ],

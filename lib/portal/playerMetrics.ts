@@ -57,6 +57,8 @@ export type PlayerGameweekRow = {
   penalty_saves?: number;
   high_claims?: number;
   smothers?: number;
+  corner_kicks?: number;
+  free_kick_shots?: number;
 };
 
 export type DecoratedGameweek = {
@@ -93,6 +95,8 @@ export type DecoratedGameweek = {
   penalty_saves: number;
   high_claims: number;
   smothers: number;
+  corner_kicks: number;
+  free_kick_shots: number;
   isHome: boolean | null;
   opponent: string | null;
   isHomeAll: boolean[];
@@ -313,6 +317,8 @@ export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtu
       penalty_saves: Number(row.penalty_saves ?? 0),
       high_claims: Number(row.high_claims ?? 0),
       smothers: Number(row.smothers ?? 0),
+      corner_kicks: Number(row.corner_kicks ?? 0),
+      free_kick_shots: Number(row.free_kick_shots ?? 0),
       isHome,
       opponent,
       isHomeAll,

@@ -33,6 +33,8 @@ type FormTableApiRow = {
   yellow_cards: number | null;
   red_cards: number | null;
   own_goals: number | null;
+  corner_kicks: number | null;
+  free_kick_shots: number | null;
 };
 
 function parseGameweeks(raw: string | null): number[] {
@@ -67,7 +69,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from("player_gameweeks")
     .select(
-      "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, penalties_drawn, penalties_missed, clean_sheet, tackles_won, interceptions, clearances, aerials_won, blocked_shots, dribbles_succeeded, goals_against_outfield, saves, goals_against, penalty_saves, high_claims, smothers, yellow_cards, red_cards, own_goals"
+      "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, penalties_drawn, penalties_missed, clean_sheet, tackles_won, interceptions, clearances, aerials_won, blocked_shots, dribbles_succeeded, goals_against_outfield, saves, goals_against, penalty_saves, high_claims, smothers, yellow_cards, red_cards, own_goals, corner_kicks, free_kick_shots"
     )
     .eq("season", season)
     .in("gameweek", gameweeks)
