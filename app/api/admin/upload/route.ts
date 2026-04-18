@@ -380,6 +380,7 @@ export async function POST(request: Request) {
     });
 
     if (gameweekUpserts.length > 0) {
+      console.log("sample row:", JSON.stringify(gameweekUpserts[0]));
       const { error: gameweekUpsertError } = await db
         .from("player_gameweeks")
         .upsert(gameweekUpserts, { onConflict: "player_id,season,gameweek" });
