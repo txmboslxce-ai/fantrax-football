@@ -253,8 +253,8 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
 
   function renderOpponent(row: DecoratedGameweek): string {
-    if (row.opponents.length === 2) {
-      return row.opponents.map((o) => teamNames[o] ?? o).join(" / ");
+    if (row.opponents.length > 1) {
+      return row.opponents.map((o, i) => `${teamNames[o] ?? o} (${row.isHomeAll[i] ? "H" : "A"})`).join(" / ");
     }
     return row.opponent ? (teamNames[row.opponent] ?? row.opponent) : "-";
   }

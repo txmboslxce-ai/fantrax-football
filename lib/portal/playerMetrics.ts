@@ -276,7 +276,7 @@ export function decorateGameweeks(rows: PlayerGameweekRow[], team: string, fixtu
     const fixturesInGameweek = fixtures.filter(
       (item) => item.gameweek === row.gameweek && (item.home_team === team || item.away_team === team)
     );
-    const relevantFixtures = Number(row.games_played ?? 0) === 2 ? fixturesInGameweek : fixturesInGameweek.slice(0, 1);
+    const relevantFixtures = fixturesInGameweek;
     const fixture = relevantFixtures[0];
     const isHome = fixture ? fixture.home_team === team : null;
     const opponent = fixture ? (isHome ? fixture.away_team : fixture.home_team) : null;
