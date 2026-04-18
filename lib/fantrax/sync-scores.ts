@@ -63,6 +63,8 @@ type PlayerGameweekUpsert = {
   penalty_saves: number;
   high_claims: number;
   smothers: number;
+  corner_kicks: number;
+  free_kick_shots: number;
   uploaded_at: string;
 };
 
@@ -124,6 +126,8 @@ type NormalizedRow = {
   penalty_saves: number;
   high_claims: number;
   smothers: number;
+  corner_kicks: number;
+  free_kick_shots: number;
 };
 
 const ALL_STATS_KEYS: Array<keyof NormalizedRow> = [
@@ -157,6 +161,8 @@ const ALL_STATS_KEYS: Array<keyof NormalizedRow> = [
   "penalty_saves",
   "high_claims",
   "smothers",
+  "corner_kicks",
+  "free_kick_shots",
 ];
 
 function getRequiredEnv(name: string): string {
@@ -234,6 +240,8 @@ function mapCsvRow(row: CsvRow, type: UploadType, fallbackGameweek: number): Nor
     penalty_saves: 0,
     high_claims: 0,
     smothers: 0,
+    corner_kicks: 0,
+    free_kick_shots: 0,
   };
 
   for (const [csvColumn, value] of Object.entries(row)) {
@@ -370,6 +378,8 @@ function buildUpsert(
     penalty_saves: Math.max(0, Math.trunc(Number(row.penalty_saves ?? 0))),
     high_claims: Math.max(0, Math.trunc(Number(row.high_claims ?? 0))),
     smothers: Math.max(0, Math.trunc(Number(row.smothers ?? 0))),
+    corner_kicks: Math.max(0, Math.trunc(Number(row.corner_kicks ?? 0))),
+    free_kick_shots: Math.max(0, Math.trunc(Number(row.free_kick_shots ?? 0))),
     uploaded_at: uploadedAt,
   };
 }
