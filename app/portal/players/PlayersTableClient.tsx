@@ -333,6 +333,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
 
   return (
+    <>
     <div className="space-y-3">
       {/* Search — always visible above the table */}
       <input
@@ -630,21 +631,6 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         ) : null}
       </div>
 
-      {/* Floating Filters button — mobile only, raised for iOS chrome */}
-      <button
-        type="button"
-        onClick={() => setMobileFiltersOpen(true)}
-        className="fixed bottom-[120px] right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
-      >
-        {hasActiveFilters ? (
-          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
-        ) : null}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
-        </svg>
-        Filters
-      </button>
-
       {/* Table — single overflow-auto container for both axes so sticky works */}
       <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table className="w-max border-separate border-spacing-0 text-left text-sm">
@@ -715,7 +701,16 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                           status={player.availabilityStatus}
                           news={player.availabilityNews}
                         />
-                        <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+                        {/* Mobile: compact T/A indicator */}
+                        {leagueRoster ? (
+                          Boolean(leagueRoster.teamByPlayerId[player.id])
+                            ? <span className="text-[10px] font-bold text-brand-creamDark/60 md:hidden">T</span>
+                            : <span className="text-[10px] font-bold text-brand-green md:hidden">A</span>
+                        ) : null}
+                        {/* Desktop: full badge */}
+                        <span className="hidden md:contents">
+                          <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+                        </span>
                       </span>
                     </div>
                     <div className="mt-0 truncate text-[10px] text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
@@ -779,5 +774,21 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         </div>
       ) : null}
     </div>
+
+    {/* Floating Filters button — outside positioned wrapper so fixed anchors to viewport */}
+    <button
+      type="button"
+      onClick={() => setMobileFiltersOpen(true)}
+      className="fixed bottom-[120px] right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
+    >
+      {hasActiveFilters ? (
+        <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
+      ) : null}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+        <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+      </svg>
+      Filters
+    </button>
+    </>
   );
 }
