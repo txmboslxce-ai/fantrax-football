@@ -625,7 +625,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         Filters
       </button>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
+      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-20 text-brand-creamDark">
             <tr>
@@ -681,13 +681,13 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     role="link"
                     tabIndex={0}
                   >
-                    <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-brand-cream/10 px-1.5 py-1.5 text-center ${rowShade}`}>
+                    <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-brand-cream/10 px-1.5 py-1 text-center ${rowShade}`}>
                       <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
-                      <div className="text-xs text-brand-creamDark/80">
+                      <div className="text-[10px] text-brand-creamDark/80">
                         {posKey} #{posRank}
                       </div>
                     </td>
-                    <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
+                    <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           <span>{player.name}</span>
@@ -700,7 +700,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                           <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
                         </span>
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
+                      <div className="mt-0 truncate text-[10px] text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
                         {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
                       </div>
                     </td>
@@ -709,10 +709,10 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                       const range = visibleRanges[column.key];
 
                       return (
-                        <td key={column.key} className={`border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
+                        <td key={column.key} className={`border-b border-r border-brand-cream/10 px-2 py-1 text-center ${rowShade}`}>
                           <span
-                            className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                            style={{ backgroundColor: pointsBadgeBackground(value, range.min, range.max) }}
+                            className="text-xs font-bold tabular-nums"
+                            style={{ color: pointsBadgeBackground(value, range.min, range.max) }}
                           >
                             {formatValue(value, column)}
                           </span>
