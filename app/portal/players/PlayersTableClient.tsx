@@ -5,6 +5,7 @@ import RosterPill from "@/app/components/ui/RosterPill";
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 type PlayerRow = {
@@ -704,8 +705,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                         {/* Mobile: compact T/A indicator */}
                         {leagueRoster ? (
                           Boolean(leagueRoster.teamByPlayerId[player.id])
-                            ? <span className="text-[10px] font-bold text-brand-creamDark/60 md:hidden">T</span>
-                            : <span className="text-[10px] font-bold text-brand-green md:hidden">A</span>
+                            ? <span className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-full bg-brand-creamDark/30 text-[10px] font-bold leading-none text-white md:hidden">T</span>
+                            : <span className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-full bg-brand-green text-[10px] font-bold leading-none text-white md:hidden">A</span>
                         ) : null}
                         {/* Desktop: full badge */}
                         <span className="hidden md:contents">
@@ -775,20 +776,23 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       ) : null}
     </div>
 
-    {/* Floating Filters button — outside positioned wrapper so fixed anchors to viewport */}
-    <button
-      type="button"
-      onClick={() => setMobileFiltersOpen(true)}
-      className="fixed bottom-[120px] right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
-    >
-      {hasActiveFilters ? (
-        <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
-      ) : null}
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-        <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
-      </svg>
-      Filters
-    </button>
-    </>
+    {typeof window !== "undefined" ? createPortal(
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen(true)}
+        className="fixed flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
+        style={{ bottom: "120px", right: "1rem", zIndex: 40 }}
+      >
+        {hasActiveFilters ? (
+          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
+        ) : null}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+        </svg>
+        Filters
+      </button>,
+      document.body
+    ) : null}
+</>
   );
 }
