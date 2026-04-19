@@ -13,6 +13,7 @@ type FixturePlayerRow = {
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  gamesStarted: number;
   minutesPlayed: number;
   rawFantraxPts: number;
   ghostPts: number;
@@ -53,6 +54,62 @@ function formatNumber(value: number): string {
   return value.toFixed(2);
 }
 
+function SectionDivider({ label, colSpan }: { label: string; colSpan: number }) {
+  return (
+    <tr>
+      <td
+        colSpan={colSpan}
+        className="border-b border-brand-cream/20 bg-brand-dark/40 px-2 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-brand-creamDark/60"
+      >
+        {label}
+      </td>
+    </tr>
+  );
+}
+
+function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: FixturePlayerRow; index: number; activeView: FixtureDetailView; leagueRoster: LeagueRosterData | null }) {
+  return (
+    <tr className={index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90"}>
+      <td className="border-b border-r border-brand-cream/10 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
+          <Link href={`/portal/players/${row.id}`} className="hover:text-brand-green hover:underline">
+            {row.name}
+          </Link>
+          <AvailabilityIcon
+            chanceOfPlaying={row.chanceOfPlaying}
+            status={row.availabilityStatus}
+            news={row.availabilityNews}
+          />
+          <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
+        </div>
+        <div className="mt-1">
+          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${positionBadgeClass[row.position]}`}>
+            {row.position}
+          </span>
+        </div>
+      </td>
+      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.minutesPlayed}</td>
+      {activeView === "fantasy" ? (
+        <>
+          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">
+            {formatNumber(row.rawFantraxPts)}
+          </td>
+          <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{formatNumber(row.ghostPts)}</td>
+        </>
+      ) : (
+        <>
+          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.goals}</td>
+          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.assists}</td>
+          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.keyPasses}</td>
+          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
+          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.cornerKicks}</td>
+          <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.freeKickShots}</td>
+        </>
+      )}
+    </tr>
+  );
+}
+
 function TeamTable({
   title,
   rows,
@@ -64,6 +121,10 @@ function TeamTable({
   activeView: FixtureDetailView;
   leagueRoster: LeagueRosterData | null;
 }) {
+  const starters = rows.filter((r) => r.gamesStarted === 1);
+  const substitutes = rows.filter((r) => r.gamesStarted !== 1);
+  const colSpan = activeView === "fantasy" ? 4 : 8;
+
   return (
     <div className="overflow-hidden rounded-xl border border-brand-cream/20 bg-brand-dark/80">
       <div className="border-b border-brand-cream/15 px-4 py-3">
@@ -102,46 +163,17 @@ function TeamTable({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => (
-                <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90"}>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
-                      <Link href={`/portal/players/${row.id}`} className="hover:text-brand-green hover:underline">
-                        {row.name}
-                      </Link>
-                      <AvailabilityIcon
-                        chanceOfPlaying={row.chanceOfPlaying}
-                        status={row.availabilityStatus}
-                        news={row.availabilityNews}
-                      />
-                      <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
-                    </div>
-                    <div className="mt-1">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${positionBadgeClass[row.position]}`}>
-                        {row.position}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.minutesPlayed}</td>
-                  {activeView === "fantasy" ? (
-                    <>
-                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">
-                        {formatNumber(row.rawFantraxPts)}
-                      </td>
-                      <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{formatNumber(row.ghostPts)}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.goals}</td>
-                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.assists}</td>
-                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.keyPasses}</td>
-                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
-                      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.cornerKicks}</td>
-                      <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.freeKickShots}</td>
-                    </>
-                  )}
-                </tr>
+              {starters.map((row, index) => (
+                <PlayerTableRow key={row.id} row={row} index={index} activeView={activeView} leagueRoster={leagueRoster} />
               ))}
+              {substitutes.length > 0 ? (
+                <>
+                  <SectionDivider label="Substitutes" colSpan={colSpan} />
+                  {substitutes.map((row, index) => (
+                    <PlayerTableRow key={row.id} row={row} index={starters.length + 1 + index} activeView={activeView} leagueRoster={leagueRoster} />
+                  ))}
+                </>
+              ) : null}
             </tbody>
           </table>
         </div>

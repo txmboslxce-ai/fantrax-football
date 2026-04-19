@@ -52,6 +52,7 @@ type PlayerRow = {
 type PlayerGameweekRow = {
   player_id: string;
   games_played: number;
+  games_started: number;
   minutes_played: number;
   raw_fantrax_pts: number | string | null;
   ghost_pts: number | string | null;
@@ -200,7 +201,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       ? { data: [], error: null }
       : await supabase
           .from("player_gameweeks")
-          .select("player_id, games_played, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, accurate_crosses, corner_kicks, free_kick_shots")
+          .select("player_id, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, accurate_crosses, corner_kicks, free_kick_shots")
           .eq("season", SEASON)
           .eq("gameweek", fixture.gameweek)
           .in("player_id", playerIds)
@@ -226,6 +227,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         name: player.name,
         team: player.team,
         position: mapPosition(player.position),
+        gamesStarted: Number(row.games_started ?? 0),
         minutesPlayed: Number(row.minutes_played ?? 0),
         rawFantraxPts: toNumber(row.raw_fantrax_pts),
         ghostPts: toNumber(row.ghost_pts),
