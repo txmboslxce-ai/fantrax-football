@@ -249,8 +249,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         return positionDelta;
       }
 
-      if (b.minutesPlayed !== a.minutesPlayed) {
-        return b.minutesPlayed - a.minutesPlayed;
+      if (b.rawFantraxPts !== a.rawFantraxPts) {
+        return b.rawFantraxPts - a.rawFantraxPts;
       }
 
       return a.name.localeCompare(b.name);
