@@ -634,7 +634,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       <button
         type="button"
         onClick={() => setMobileFiltersOpen(true)}
-        className="fixed bottom-[88px] right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
+        className="fixed bottom-[120px] right-6 z-40 flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
       >
         {hasActiveFilters ? (
           <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
