@@ -79,7 +79,8 @@ const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
   "ghost_pts_per_start",
   "minutes_per_start",
 ];
-const MAX_SELECTED_COLUMNS = 6;
+const maxColumns_MOBILE = 4;
+const maxColumns_DESKTOP = 8;
 const PAGE_SIZE = 150;
 
 function clamp(value: number, min: number, max: number): number {
@@ -136,6 +137,7 @@ function formatPlayerName(name: string): string {
 
 export default function PlayersTableClient({ players, leagueRoster }: PlayersTableClientProps) {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(true);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
@@ -169,8 +171,16 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   }, [selectedColumns]);
 
   const selectedColumnDefinitions = visibleColumns;
-  const hasReachedColumnLimit = selectedColumns.length >= MAX_SELECTED_COLUMNS;
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const maxColumns = isMobile ? maxColumns_MOBILE : maxColumns_DESKTOP;
+  const hasReachedColumnLimit = selectedColumns.length >= maxColumns;
 
   useEffect(() => {
     if (sortKey !== "name" && !visibleColumns.some((column) => column.key === sortKey)) {
@@ -310,7 +320,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         return current.filter((key) => key !== columnKey);
       }
 
-      if (current.length >= MAX_SELECTED_COLUMNS) {
+      if (current.length >= maxColumns) {
         return current;
       }
 
