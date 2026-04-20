@@ -393,14 +393,16 @@ export function summarizePlayerWindow(rows: DecoratedGameweek[], position: "GK" 
   const totalDefensivePts = totalCleanSheetPts + totalGhostPts;
   const startedPoints = startedRows.map((row) => row.raw_fantrax_pts);
   const startedTotalPts = startedPoints.reduce((sum, value) => sum + value, 0);
+  const startedTotalGhostPts = startedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
+  const totalStartCount = startedRows.reduce((sum, row) => sum + row.games_started, 0);
   const homeStartedTotalPts = homeStartedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const awayStartedTotalPts = awayStartedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const pointsStdDeviation = standardDeviation(startedPoints);
   const pointsMean = average(startedPoints);
 
   return {
-    fantasy_pts_per_start: roundTo2(pointsMean),
-    ghost_pts_per_start: roundTo2(average(startedRows.map((row) => row.ghost_pts))),
+    fantasy_pts_per_start: roundTo2(totalStartCount > 0 ? startedTotalPts / totalStartCount : 0),
+    ghost_pts_per_start: roundTo2(totalStartCount > 0 ? startedTotalGhostPts / totalStartCount : 0),
     games_started: startedRows.length,
     minutes_per_start: roundTo2(average(startedRows.map((row) => row.minutes_played))),
     floor_per_start: roundTo2(startedRows.length > 0 ? Math.min(...startedPoints) : 0),
