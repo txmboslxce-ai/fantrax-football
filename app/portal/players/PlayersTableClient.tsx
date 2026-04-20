@@ -700,7 +700,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                 >
                   <td className={`sticky left-0 z-20 w-[32px] min-w-[32px] border-b border-r border-brand-cream/10 px-0.5 py-1 text-center ${rowShade}`}>
                     <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
-                    <div className="text-[10px] text-brand-creamDark/80">
+                    <div className="whitespace-nowrap text-[9px] text-brand-creamDark/80">
                       {posKey} #{posRank}
                     </div>
                   </td>
@@ -715,17 +715,10 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                           status={player.availabilityStatus}
                           news={player.availabilityNews}
                         />
-                        {/* Mobile: compact T/A indicator */}
-                        {leagueRoster ? (
-                          Boolean(leagueRoster.teamByPlayerId[player.id])
-                            ? <span className="inline-flex h-[14px] w-[14px] items-center justify-center rounded-full bg-brand-creamDark/30 text-[9px] font-bold leading-none text-white md:hidden">T</span>
-                            : <span className="inline-flex h-[14px] w-[14px] items-center justify-center rounded-full bg-brand-green text-[9px] font-bold leading-none text-white md:hidden">A</span>
-                        ) : null}
-                        {/* Desktop: full badge */}
-                        <span className="hidden md:contents">
-                          <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
-                        </span>
                       </span>
+                    </div>
+                    <div className="mt-0.5">
+                      <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
                     </div>
                     <div className="mt-0 truncate text-[10px] text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
                       {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
