@@ -531,7 +531,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                     : "border-brand-cream/35 bg-brand-dark text-brand-cream"
                 }`}
               >
-                {isColumnPanelOpen ? "Hide columns" : "Add / Remove columns"}
+                {isColumnPanelOpen ? "Hide columns" : "+/- Data"}
               </button>
             </div>
           </div>
