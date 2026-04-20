@@ -333,11 +333,12 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
   const homeRows = playedRows.filter((row) => row.isHome === true);
   const awayRows = playedRows.filter((row) => row.isHome === false);
 
-  const startedRows = playedRows.filter((row) => row.games_started === 1);
+  const startedRows = playedRows.filter((row) => row.games_started >= 1);
 
   const seasonTotalPts = playedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const startedPts = startedRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const totalGhostPts = playedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
+  const startedGhostPts = startedRows.reduce((sum, row) => sum + row.ghost_pts, 0);
   const attackPts = rows.reduce((sum, row) => sum + row.attack_pts, 0);
   const homeTotalPts = homeRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
   const awayTotalPts = awayRows.reduce((sum, row) => sum + row.raw_fantrax_pts, 0);
@@ -353,11 +354,11 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
     total_games_started: totalGamesStarted,
     avg_pts_per_gameweek: gameweeksPlayed > 0 ? seasonTotalPts / gameweeksPlayed : 0,
     avg_pts_per_game: totalGamesPlayed > 0 ? seasonTotalPts / totalGamesPlayed : 0,
-    avg_pts_per_start: totalGamesStarted > 0 ? startedPts / totalGamesStarted : 0,
+    avg_pts_per_start: startedRows.length > 0 ? startedPts / startedRows.length : 0,
     total_ghost_pts: totalGhostPts,
     avg_ghost_per_gameweek: gameweeksPlayed > 0 ? totalGhostPts / gameweeksPlayed : 0,
     avg_ghost_per_game: totalGamesPlayed > 0 ? totalGhostPts / totalGamesPlayed : 0,
-    avg_ghost_per_start: totalGamesStarted > 0 ? totalGhostPts / totalGamesStarted : 0,
+    avg_ghost_per_start: startedRows.length > 0 ? startedGhostPts / startedRows.length : 0,
     home_avg: homeRows.length > 0 ? homeTotalPts / homeRows.length : 0,
     away_avg: awayRows.length > 0 ? awayTotalPts / awayRows.length : 0,
     home_pct: seasonTotalPts > 0 ? (homeTotalPts / seasonTotalPts) * 100 : 0,
@@ -379,7 +380,7 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
 
 export function summarizePlayerWindow(rows: DecoratedGameweek[], position: "GK" | "DEF" | "MID" | "FWD"): PlayerWindowStats {
   const playedRows = rows.filter((row) => row.games_played > 0);
-  const startedRows = rows.filter((row) => row.games_started === 1);
+  const startedRows = rows.filter((row) => row.games_started >= 1);
   const homeStartedRows = startedRows.filter((row) => row.isHome === true);
   const awayStartedRows = startedRows.filter((row) => row.isHome === false);
 

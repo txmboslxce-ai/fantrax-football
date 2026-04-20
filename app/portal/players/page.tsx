@@ -101,7 +101,8 @@ async function getPlayersTableData(): Promise<PlayerRecord[]> {
         .select(
           "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
         )
-        .eq("season", SEASON),
+        .eq("season", SEASON)
+        .range(0, 40000),
       supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
     ]);
 
