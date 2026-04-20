@@ -5,7 +5,6 @@ import RosterPill from "@/app/components/ui/RosterPill";
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 type PlayerRow = {
@@ -334,15 +333,29 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
 
   return (
-    <>
     <div className="space-y-3">
-      {/* Search — always visible above the table */}
-      <input
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search player…"
-        className="w-full rounded-xl border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
-      />
+      {/* Search + Filters inline row */}
+      <div className="flex items-center gap-2">
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search player…"
+          className="min-w-0 flex-1 rounded-xl border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          className="relative shrink-0 flex items-center gap-1.5 rounded-xl border border-brand-greenLight bg-brand-green px-3 py-2 text-sm font-semibold text-brand-cream md:hidden"
+        >
+          {hasActiveFilters ? (
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
+          ) : null}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0" aria-hidden="true">
+            <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+          </svg>
+          +/- Data
+        </button>
+      </div>
 
       {/* Filters — hidden on mobile until button tapped, always visible on md+ */}
       <div
@@ -775,24 +788,5 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         </div>
       ) : null}
     </div>
-
-    {typeof window !== "undefined" ? createPortal(
-      <button
-        type="button"
-        onClick={() => setMobileFiltersOpen(true)}
-        className="fixed flex items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-cream shadow-lg shadow-black/40 md:hidden"
-        style={{ bottom: "120px", right: "1rem", zIndex: 40 }}
-      >
-        {hasActiveFilters ? (
-          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
-        ) : null}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-          <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
-        </svg>
-        Filters
-      </button>,
-      document.body
-    ) : null}
-</>
   );
 }
