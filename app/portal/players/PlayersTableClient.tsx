@@ -705,8 +705,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                         {/* Mobile: compact T/A indicator */}
                         {leagueRoster ? (
                           Boolean(leagueRoster.teamByPlayerId[player.id])
-                            ? <span className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-full bg-brand-creamDark/30 text-[10px] font-bold leading-none text-white md:hidden">T</span>
-                            : <span className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-full bg-brand-green text-[10px] font-bold leading-none text-white md:hidden">A</span>
+                            ? <span className="inline-flex h-[14px] w-[14px] items-center justify-center rounded-full bg-brand-creamDark/30 text-[9px] font-bold leading-none text-white md:hidden">T</span>
+                            : <span className="inline-flex h-[14px] w-[14px] items-center justify-center rounded-full bg-brand-green text-[9px] font-bold leading-none text-white md:hidden">A</span>
                         ) : null}
                         {/* Desktop: full badge */}
                         <span className="hidden md:contents">

@@ -79,7 +79,7 @@ export default function AvailabilityIcon({ chanceOfPlaying, status, news }: Avai
   return (
     <span
       title={title}
-      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-bold leading-none ${display.className}`}
+      className={`inline-flex rounded-full border px-1 py-px text-[10px] font-bold leading-none ${display.className}`}
       aria-label={title}
     >
       {display.label}
