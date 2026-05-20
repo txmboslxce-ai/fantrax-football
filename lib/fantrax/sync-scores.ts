@@ -502,10 +502,13 @@ export async function syncFantraxScores(
   });
 
   if (ownershipUpdates.length > 0) {
-    const { error: ownershipError } = await supabase.from("players").upsert(ownershipUpdates, {
-      onConflict: "id",
-    });
+    const results = await Promise.all(
+      ownershipUpdates.map(({ id, ownership_pct, ownership_change }) =>
+        supabase.from("players").update({ ownership_pct, ownership_change }).eq("id", id)
+      )
+    );
 
+    const ownershipError = results.find((r) => r.error)?.error;
     if (ownershipError) {
       throw new Error(ownershipError.message);
     }
