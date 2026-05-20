@@ -492,6 +492,25 @@ export async function syncFantraxScores(
     }
   }
 
+  const ownershipUpdates = mappedRows.flatMap((row) => {
+    const player = playerByFantraxId.get(row.fantrax_id);
+    if (!player) {
+      return [];
+    }
+
+    return [{ id: player.id, ownership_pct: row.ownership_pct, ownership_change: row.ownership_change }];
+  });
+
+  if (ownershipUpdates.length > 0) {
+    const { error: ownershipError } = await supabase.from("players").upsert(ownershipUpdates, {
+      onConflict: "id",
+    });
+
+    if (ownershipError) {
+      throw new Error(ownershipError.message);
+    }
+  }
+
   return {
     gameweek,
     positionOrGroup,
