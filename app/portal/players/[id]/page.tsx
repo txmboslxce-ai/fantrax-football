@@ -1,6 +1,4 @@
-import PremiumGate from "@/components/PremiumGate";
 import PlayerDetailCharts from "@/components/portal/charts/PlayerDetailCharts";
-import { isPremiumUser } from "@/lib/premium";
 import {
   SEASON,
   decorateGameweeks,
@@ -203,7 +201,6 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const syncedDate = formatShortDate(fplData?.synced_at ?? null);
   const availabilityIsRed = availabilityStatus === "Injured" || availabilityStatus === "Unavailable" || availabilityStatus === "Suspended";
 
-  const isPremium = await isPremiumUser(user?.id);
   const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
   const fixturesForTeam = ((teamFixtures ?? []) as FixtureRow[]).filter(
     (fixture) => fixture.home_team === playerRow.team || fixture.away_team === playerRow.team
@@ -219,7 +216,6 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const teamNamesRecord = Object.fromEntries(teamNames.entries());
 
   return (
-    <PremiumGate isPremium={isPremium}>
       <div className="space-y-8">
         <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-6 text-brand-cream sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -357,6 +353,5 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
           />
         </section>
       </div>
-    </PremiumGate>
   );
 }

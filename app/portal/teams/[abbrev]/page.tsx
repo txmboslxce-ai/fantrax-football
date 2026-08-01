@@ -1,7 +1,5 @@
-import PremiumGate from "@/components/PremiumGate";
 import TeamSquadClient from "@/components/portal/TeamSquadClient";
 import { SEASON, mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
-import { isPremiumUser } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -193,15 +191,10 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   const requestedTab = toTabKey(resolvedSearchParams?.tab);
 
   const supabase = await createServerSupabaseClient();
-  const [
-    {
-      data: { user },
-    },
-    { data: teams, error: teamsError },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.from("teams").select("abbrev, name, full_name").order("full_name"),
-  ]);
+  const { data: teams, error: teamsError } = await supabase
+    .from("teams")
+    .select("abbrev, name, full_name")
+    .order("full_name");
 
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
@@ -732,11 +725,8 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       description: "Team-level performance metrics and splits will appear here.",
     },
   };
-  const hasPremiumAccess = await isPremiumUser(user?.id);
-
   return (
-    <PremiumGate isPremium={hasPremiumAccess}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <header className="rounded-xl border border-brand-cream/20 bg-brand-dark px-5 py-4">
           <p className="text-xs uppercase tracking-widest text-brand-creamDark">{team.abbrev}</p>
           <h1 className="mt-1 text-3xl font-black text-brand-cream sm:text-4xl">{team.full_name}</h1>
@@ -1043,8 +1033,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
               <p className="mt-2 text-sm text-brand-creamDark">{panelContent[activeTab].description}</p>
             </>
           )}
-        </section>
-      </div>
-    </PremiumGate>
+      </section>
+    </div>
   );
 }

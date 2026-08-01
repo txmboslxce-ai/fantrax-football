@@ -23,7 +23,6 @@ const navItems: NavItem[] = [
   { href: "/portal/compare", label: "Compare" },
   { href: "/portal/stats", label: "Stats" },
   { href: "/portal/advice", label: "Advice" },
-  { href: "/portal/lineup-predictor", label: "Lineup Predictor" },
   { href: "/portal/my-league", label: "My League" },
 ];
 

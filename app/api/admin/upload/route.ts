@@ -20,6 +20,9 @@ type UploadType = "player" | "keeper";
 
 type CsvRow = Record<string, string>;
 
+const MAX_CSV_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_CSV_TYPES = new Set(["text/csv", "application/vnd.ms-excel", "application/csv", "text/plain", ""]);
+
 type NormalizedRow = {
   fantrax_id: string;
   name: string;
@@ -230,6 +233,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["Missing CSV file"] }, { status: 400 });
   }
 
+  if (file.size > MAX_CSV_BYTES) {
+    return NextResponse.json(
+      { success: false, rowsProcessed: 0, errors: [`File exceeds ${MAX_CSV_BYTES / (1024 * 1024)} MB limit`] },
+      { status: 413 }
+    );
+  }
+
+  if (!ALLOWED_CSV_TYPES.has(file.type) && !file.name.toLowerCase().endsWith(".csv")) {
+    return NextResponse.json(
+      { success: false, rowsProcessed: 0, errors: [`Unsupported file type '${file.type || "unknown"}'; upload a .csv file`] },
+      { status: 415 }
+    );
+  }
+
   const type = String(typeRaw ?? "").trim() as UploadType;
   const season = String(seasonRaw ?? "").trim();
   const gameweek = Number(gameweekRaw ?? 0);
@@ -394,22 +411,6 @@ export async function POST(request: Request) {
           },
           { status: 500 }
         );
-      }
-    }
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (appUrl) {
-      try {
-        const generateUrl = `${appUrl}/api/predictions/generate`;
-        void fetch(generateUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ season, currentGw: gameweek }),
-        }).catch((triggerError: unknown) => {
-          console.error("Prediction generation trigger failed:", triggerError);
-        });
-      } catch (triggerError) {
-        console.error("Prediction generation trigger setup failed:", triggerError);
       }
     }
 

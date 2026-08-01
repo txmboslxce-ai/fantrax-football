@@ -1,6 +1,4 @@
-import PremiumGate from "@/components/PremiumGate";
 import CompareClient from "@/app/portal/compare/CompareClient";
-import { isPremiumUser } from "@/lib/premium";
 import {
   SEASON,
   decorateGameweeks,
@@ -49,15 +47,11 @@ export default async function ComparePage() {
   const supabase = await createServerSupabaseClient();
 
   const [
-    {
-      data: { user },
-    },
     { data: players, error: playersError },
     { data: gameweeks, error: gameweeksError },
     { data: fixtures, error: fixturesError },
     { data: teams, error: teamsError },
   ] = await Promise.all([
-    supabase.auth.getUser(),
     supabase
       .from("players")
       .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
@@ -165,17 +159,13 @@ export default async function ComparePage() {
       },
     };
   });
-  const hasPremiumAccess = await isPremiumUser(user?.id);
-
   return (
-    <PremiumGate isPremium={hasPremiumAccess}>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Compare Players</h1>
-          <p className="mt-2 text-sm text-brand-creamDark">Side-by-side premium comparison for season {SEASON}.</p>
-        </div>
-        <CompareClient players={snapshots} />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Compare Players</h1>
+        <p className="mt-2 text-sm text-brand-creamDark">Side-by-side comparison for season {SEASON}.</p>
       </div>
-    </PremiumGate>
+      <CompareClient players={snapshots} />
+    </div>
   );
 }

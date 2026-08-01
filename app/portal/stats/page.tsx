@@ -1,8 +1,6 @@
 import StatsTableClient from "@/app/portal/stats/StatsTableClient";
-import PremiumGate from "@/components/PremiumGate";
 import { SEASON, mapPosition, type PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
-import { isPremiumUser } from "@/lib/premium";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type StatsWindowRow = {
@@ -240,17 +238,13 @@ export default async function StatsPage() {
     })
     .sort((a, b) => b.windows.season.season_pts - a.windows.season.season_pts);
 
-  const hasPremiumAccess = await isPremiumUser(user?.id);
-
   return (
-    <PremiumGate isPremium={hasPremiumAccess}>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Player Stats</h1>
-          <p className="mt-2 text-sm text-brand-creamDark">Filterable and sortable season {SEASON} player output.</p>
-        </div>
-        <StatsTableClient rows={statsRows} leagueRoster={leagueRoster} />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Player Stats</h1>
+        <p className="mt-2 text-sm text-brand-creamDark">Filterable and sortable season {SEASON} player output.</p>
       </div>
-    </PremiumGate>
+      <StatsTableClient rows={statsRows} leagueRoster={leagueRoster} />
+    </div>
   );
 }

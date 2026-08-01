@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -227,12 +226,6 @@ export default function LoginClient() {
           </button>
         </p>
 
-        <p className="mt-4 text-center text-xs text-brand-greenDark">
-          Looking for plans?{" "}
-          <Link href="/pricing" className="font-semibold underline underline-offset-2">
-            View pricing
-          </Link>
-        </p>
       </div>
     </div>
   );

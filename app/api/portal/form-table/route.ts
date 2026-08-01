@@ -53,6 +53,15 @@ function parseGameweeks(raw: string | null): number[] {
 }
 
 export async function GET(request: Request) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const season = searchParams.get("season");
   const gameweeks = parseGameweeks(searchParams.get("gameweeks"));
@@ -65,7 +74,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Missing gameweeks parameter." }, { status: 400 });
   }
 
-  const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("player_gameweeks")
     .select(

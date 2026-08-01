@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import { syncFplPlayerData } from "@/lib/fpl/sync";
 
 function isAuthorized(request: Request) {
-  if (request.headers.get("x-vercel-cron") === "1") {
-    return true;
-  }
-
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return false;

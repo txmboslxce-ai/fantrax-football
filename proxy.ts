@@ -7,7 +7,7 @@ type CookieToSet = {
   options: CookieOptions;
 };
 
-const publicRoutes = new Set(["/", "/episodes", "/articles", "/contact", "/login", "/pricing"]);
+const publicRoutes = new Set(["/", "/episodes", "/articles", "/contact", "/login"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -62,10 +62,10 @@ export async function proxy(request: NextRequest) {
   );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);

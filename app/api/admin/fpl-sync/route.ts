@@ -129,19 +129,16 @@ function toNullableText(value: string | null | undefined): string | null {
   return normalized ? normalized : null;
 }
 
-export async function POST(request: Request) {
-  const isCronInvocation = request.headers.get("x-vercel-cron") === "1";
+export async function POST() {
   const supabase = await createServerSupabaseClient();
 
-  if (!isCronInvocation) {
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-    if (authError || !user || !isAdminEmail(user.email)) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-    }
+  if (authError || !user || !isAdminEmail(user.email)) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
   let bootstrap: FplBootstrapResponse;

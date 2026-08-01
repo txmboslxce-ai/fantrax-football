@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import PortalShell from "@/components/portal/PortalShell";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -11,8 +12,12 @@ export default async function PortalLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/login?next=/portal");
+  }
+
   return (
-    <PortalShell email={user?.email ?? null}>
+    <PortalShell email={user.email ?? null}>
       {children}
     </PortalShell>
   );

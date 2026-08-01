@@ -53,10 +53,10 @@ export default function HomePage() {
             <p className="mt-3 max-w-2xl text-brand-creamDark">The data behind the podcast, built into a tool for your Fantrax league.</p>
           </div>
           <Link
-            href="/pricing"
+            href="/login"
             className="rounded-md bg-brand-green px-6 py-3 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
           >
-            View Portal Plans
+            Sign In / Sign Up
           </Link>
         </div>
       </section>

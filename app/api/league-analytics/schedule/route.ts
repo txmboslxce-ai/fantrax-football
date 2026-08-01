@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type ScheduleCell = {
   content?: string;
@@ -102,6 +103,15 @@ export async function fetchSchedule(leagueId: string): Promise<MatchData[]> {
 }
 
 export async function GET(request: Request) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const leagueId = searchParams.get("leagueId");
 

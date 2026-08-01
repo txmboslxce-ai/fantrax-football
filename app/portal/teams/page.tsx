@@ -1,6 +1,4 @@
 import TeamsTableClient from "@/components/portal/TeamsTableClient";
-import PremiumGate from "@/components/PremiumGate";
-import { isPremiumUser } from "@/lib/premium";
 import { SEASON, mapPosition, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -71,15 +69,11 @@ export default async function TeamsPage() {
   const supabase = await createServerSupabaseClient();
 
   const [
-    {
-      data: { user },
-    },
     { data: teams, error: teamsError },
     { data: players, error: playersError },
     { data: gameweeks, error: gameweeksError },
     { data: fixtures, error: fixturesError }
   ] = await Promise.all([
-    supabase.auth.getUser(),
     supabase.from("teams").select("abbrev, name, full_name").order("full_name"),
     supabase.from("players").select("id, team, position"),
     supabase.from("player_gameweeks").select("player_id, gameweek, games_played, games_started, raw_fantrax_pts").eq("season", SEASON).gt("games_played", 0),
@@ -179,17 +173,13 @@ export default async function TeamsPage() {
       concededGk: avgPerStart(stats?.concededByPosition.GK.points ?? 0, stats?.concededByPosition.GK.starts ?? 0),
     };
   });
-  const hasPremiumAccess = await isPremiumUser(user?.id);
-
   return (
-    <PremiumGate isPremium={hasPremiumAccess}>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Team Stats</h1>
-          <p className="mt-2 text-sm text-brand-creamDark">Club-level season {SEASON} scoring and concession profile.</p>
-        </div>
-        <TeamsTableClient rows={rows} />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Team Stats</h1>
+        <p className="mt-2 text-sm text-brand-creamDark">Club-level season {SEASON} scoring and concession profile.</p>
       </div>
-    </PremiumGate>
+      <TeamsTableClient rows={rows} />
+    </div>
   );
 }

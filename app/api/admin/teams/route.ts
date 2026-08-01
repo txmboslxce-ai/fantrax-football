@@ -4,6 +4,14 @@ import { isAdminEmail } from "@/lib/admin";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+const MAX_XLSX_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_XLSX_TYPES = new Set([
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/octet-stream",
+  "",
+]);
+
 function getCellValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
     if (record[key] !== undefined && record[key] !== null) {
@@ -32,6 +40,21 @@ export async function POST(request: Request) {
 
   if (!(file instanceof File)) {
     return NextResponse.json({ success: false, rowsProcessed: 0, errors: ["No team file supplied"] }, { status: 400 });
+  }
+
+  if (file.size > MAX_XLSX_BYTES) {
+    return NextResponse.json(
+      { success: false, rowsProcessed: 0, errors: [`File exceeds ${MAX_XLSX_BYTES / (1024 * 1024)} MB limit`] },
+      { status: 413 }
+    );
+  }
+
+  const lowerName = file.name.toLowerCase();
+  if (!ALLOWED_XLSX_TYPES.has(file.type) && !lowerName.endsWith(".xlsx") && !lowerName.endsWith(".xls")) {
+    return NextResponse.json(
+      { success: false, rowsProcessed: 0, errors: [`Unsupported file type '${file.type || "unknown"}'; upload an .xlsx file`] },
+      { status: 415 }
+    );
   }
 
   const buffer = await file.arrayBuffer();

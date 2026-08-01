@@ -26,6 +26,7 @@ type CsvRow = Record<string, string>;
 type PlayerLookupRow = {
   id: string;
   fantrax_id: string;
+  name: string;
   position: string;
 };
 
@@ -461,7 +462,7 @@ export async function syncFantraxScores(
 
   const { data: playersData, error: playersError } = await supabase
     .from("players")
-    .select("id, fantrax_id, position")
+    .select("id, fantrax_id, name, position")
     .in("fantrax_id", scorerIds);
 
   if (playersError) {
@@ -492,23 +493,28 @@ export async function syncFantraxScores(
     }
   }
 
-  const ownershipUpdates = mappedRows.flatMap((row) => {
+  const ownershipUpserts = mappedRows.flatMap((row) => {
     const player = playerByFantraxId.get(row.fantrax_id);
     if (!player) {
       return [];
     }
 
-    return [{ id: player.id, ownership_pct: row.ownership_pct, ownership_change: row.ownership_change }];
+    return [
+      {
+        fantrax_id: player.fantrax_id,
+        name: player.name,
+        position: player.position,
+        ownership_pct: row.ownership_pct,
+        ownership_change: row.ownership_change,
+      },
+    ];
   });
 
-  if (ownershipUpdates.length > 0) {
-    const results = await Promise.all(
-      ownershipUpdates.map(({ id, ownership_pct, ownership_change }) =>
-        supabase.from("players").update({ ownership_pct, ownership_change }).eq("id", id)
-      )
-    );
+  if (ownershipUpserts.length > 0) {
+    const { error: ownershipError } = await supabase
+      .from("players")
+      .upsert(ownershipUpserts, { onConflict: "fantrax_id" });
 
-    const ownershipError = results.find((r) => r.error)?.error;
     if (ownershipError) {
       throw new Error(ownershipError.message);
     }

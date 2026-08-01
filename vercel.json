@@ -1,16 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/predictions/generate",
-      "schedule": "0 14 * * 2"
-    },
-    {
       "path": "/api/fpl/sync",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/sofascore/sync-lineups",
-      "schedule": "0 9 * * *"
     }
   ]
 }
