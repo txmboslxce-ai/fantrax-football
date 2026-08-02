@@ -2,11 +2,11 @@ import Papa from "papaparse";
 import { IGNORE_COLUMNS, KEEPER_COLUMN_MAP, PLAYER_COLUMN_MAP } from "@/lib/csv/columnMap";
 import { calcGhostPts, coerceNumber } from "@/lib/csv/transform";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
+import { getFantraxLeagueId } from "@/lib/fantrax/config";
 
 const FANTRAX_DOWNLOAD_URL = "https://www.fantrax.com/fxpa/downloadPlayerStats";
 const FPL_BOOTSTRAP_URL = "https://fantasy.premierleague.com/api/bootstrap-static/";
 const FANTRAX_SEASON = "2025-26";
-const FANTRAX_LEAGUE_ID = "rll4dvajmeahdzar";
 const FANTRAX_START_DATE = "2025-08-15";
 const FANTRAX_END_DATE = "2026-04-07";
 
@@ -293,7 +293,7 @@ function zeroStatsForDnp(row: NormalizedRow): NormalizedRow {
 
 function buildDownloadUrl(gameweek: number, positionOrGroup: FantraxPositionGroup): string {
   const url = new URL(FANTRAX_DOWNLOAD_URL);
-  url.searchParams.set("leagueId", FANTRAX_LEAGUE_ID);
+  url.searchParams.set("leagueId", getFantraxLeagueId());
   url.searchParams.set("view", "STATS");
   url.searchParams.set("positionOrGroup", positionOrGroup);
   url.searchParams.set("seasonOrProjection", "SEASON_925_BY_PERIOD");
