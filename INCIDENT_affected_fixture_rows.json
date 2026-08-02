@@ -1,0 +1,2662 @@
+[
+  {
+    "id": "b1685492-b360-49ca-8db1-96a8a4b1a43f",
+    "gameweek": 1,
+    "home_team": "ARS",
+    "away_team": "COV",
+    "kickoff_at": "2026-08-21T19:00:00+00:00"
+  },
+  {
+    "id": "39edb461-a3b0-4b3a-9a35-28ee1c3c613a",
+    "gameweek": 1,
+    "home_team": "BHA",
+    "away_team": "AVL",
+    "kickoff_at": "2026-08-23T13:00:00+00:00"
+  },
+  {
+    "id": "1054fe14-15e0-4ab6-88ab-ad6a97596f01",
+    "gameweek": 1,
+    "home_team": "BRF",
+    "away_team": "TOT",
+    "kickoff_at": "2026-08-22T16:30:00+00:00"
+  },
+  {
+    "id": "46f30147-6bf3-4f68-b8d5-1fde1a1385ce",
+    "gameweek": 1,
+    "home_team": "EVE",
+    "away_team": "CRY",
+    "kickoff_at": "2026-08-22T14:00:00+00:00"
+  },
+  {
+    "id": "9a3e3f6a-1ca9-4c95-9adf-1f3745cf2880",
+    "gameweek": 1,
+    "home_team": "FUL",
+    "away_team": "CHE",
+    "kickoff_at": "2026-08-24T19:00:00+00:00"
+  },
+  {
+    "id": "a488e7e7-3359-40b2-bde0-4b96cd574fa2",
+    "gameweek": 1,
+    "home_team": "HUL",
+    "away_team": "MUN",
+    "kickoff_at": "2026-08-22T11:30:00+00:00"
+  },
+  {
+    "id": "108f33df-fee0-4022-b717-f88c3486ee8d",
+    "gameweek": 1,
+    "home_team": "IPS",
+    "away_team": "SUN",
+    "kickoff_at": "2026-08-22T14:00:00+00:00"
+  },
+  {
+    "id": "de5ffb5b-c0cf-442a-bb42-9e28a7bf00b9",
+    "gameweek": 1,
+    "home_team": "MCI",
+    "away_team": "BOU",
+    "kickoff_at": "2026-08-23T13:00:00+00:00"
+  },
+  {
+    "id": "0d6116f2-e809-4e92-938c-60ea343b94b7",
+    "gameweek": 1,
+    "home_team": "NEW",
+    "away_team": "LIV",
+    "kickoff_at": "2026-08-23T15:30:00+00:00"
+  },
+  {
+    "id": "6aa4fe32-b3c9-4526-a8f5-47eeef075bea",
+    "gameweek": 1,
+    "home_team": "NOT",
+    "away_team": "LEE",
+    "kickoff_at": "2026-08-22T14:00:00+00:00"
+  },
+  {
+    "id": "889b1ea3-b9d5-4f1b-b941-19bf9eb367b6",
+    "gameweek": 2,
+    "home_team": "AVL",
+    "away_team": "ARS",
+    "kickoff_at": "2026-08-31T19:00:00+00:00"
+  },
+  {
+    "id": "f07bc07f-6b9d-4901-a87d-7e1a17e18141",
+    "gameweek": 2,
+    "home_team": "BOU",
+    "away_team": "EVE",
+    "kickoff_at": "2026-08-29T14:00:00+00:00"
+  },
+  {
+    "id": "410a527b-1de1-4b88-9bb2-164f1ab25713",
+    "gameweek": 2,
+    "home_team": "CHE",
+    "away_team": "BHA",
+    "kickoff_at": "2026-08-30T13:00:00+00:00"
+  },
+  {
+    "id": "ee92b82f-6f9b-4a1a-aff2-e93d34146c07",
+    "gameweek": 2,
+    "home_team": "COV",
+    "away_team": "HUL",
+    "kickoff_at": "2026-08-29T14:00:00+00:00"
+  },
+  {
+    "id": "3aacc585-846c-4580-8247-07f92ef683b7",
+    "gameweek": 2,
+    "home_team": "CRY",
+    "away_team": "MCI",
+    "kickoff_at": "2026-08-28T19:00:00+00:00"
+  },
+  {
+    "id": "466ac4f0-a343-45ca-95fd-34ec8057d526",
+    "gameweek": 2,
+    "home_team": "LEE",
+    "away_team": "BRF",
+    "kickoff_at": "2026-08-30T13:00:00+00:00"
+  },
+  {
+    "id": "9e162c41-71fb-42b2-b6ee-707d725ef606",
+    "gameweek": 2,
+    "home_team": "LIV",
+    "away_team": "NOT",
+    "kickoff_at": "2026-08-29T11:30:00+00:00"
+  },
+  {
+    "id": "3199fd25-1244-4ecb-a844-2596e689746c",
+    "gameweek": 2,
+    "home_team": "MUN",
+    "away_team": "IPS",
+    "kickoff_at": "2026-08-30T15:30:00+00:00"
+  },
+  {
+    "id": "4d7d1b99-454c-4c26-8a9c-45c1d6ee9a39",
+    "gameweek": 2,
+    "home_team": "SUN",
+    "away_team": "FUL",
+    "kickoff_at": "2026-08-30T13:00:00+00:00"
+  },
+  {
+    "id": "9ec7aefe-b606-48d0-92ca-284987da3df0",
+    "gameweek": 2,
+    "home_team": "TOT",
+    "away_team": "NEW",
+    "kickoff_at": "2026-08-29T16:30:00+00:00"
+  },
+  {
+    "id": "8c5601fb-078e-4be9-99d0-a5dfb1131c62",
+    "gameweek": 3,
+    "home_team": "ARS",
+    "away_team": "CHE",
+    "kickoff_at": "2026-09-06T15:30:00+00:00"
+  },
+  {
+    "id": "53a50187-5b6b-4367-8741-b690a6cba684",
+    "gameweek": 3,
+    "home_team": "BHA",
+    "away_team": "LEE",
+    "kickoff_at": "2026-09-05T14:00:00+00:00"
+  },
+  {
+    "id": "ecd6175f-3dfb-4c7f-b3e3-9add04516b93",
+    "gameweek": 3,
+    "home_team": "BRF",
+    "away_team": "SUN",
+    "kickoff_at": "2026-09-05T14:00:00+00:00"
+  },
+  {
+    "id": "1298e207-0e29-4f96-b05d-e14c80600904",
+    "gameweek": 3,
+    "home_team": "EVE",
+    "away_team": "MUN",
+    "kickoff_at": "2026-09-06T13:00:00+00:00"
+  },
+  {
+    "id": "ed13bd3c-e86e-49d7-86fa-e86b55fa057f",
+    "gameweek": 3,
+    "home_team": "FUL",
+    "away_team": "CRY",
+    "kickoff_at": "2026-09-05T14:00:00+00:00"
+  },
+  {
+    "id": "7c87ab51-7eff-4315-a139-8feeba620e07",
+    "gameweek": 3,
+    "home_team": "HUL",
+    "away_team": "AVL",
+    "kickoff_at": "2026-09-05T16:30:00+00:00"
+  },
+  {
+    "id": "49d833b0-7b2b-4dc0-b30d-61f824c2b98e",
+    "gameweek": 3,
+    "home_team": "IPS",
+    "away_team": "LIV",
+    "kickoff_at": "2026-09-04T19:00:00+00:00"
+  },
+  {
+    "id": "8b348ad8-dd61-4c96-9300-9bdb88f1836b",
+    "gameweek": 3,
+    "home_team": "MCI",
+    "away_team": "COV",
+    "kickoff_at": "2026-09-05T14:00:00+00:00"
+  },
+  {
+    "id": "56593d4c-091e-4891-a802-65d1256e41b4",
+    "gameweek": 3,
+    "home_team": "NEW",
+    "away_team": "BOU",
+    "kickoff_at": "2026-09-05T11:30:00+00:00"
+  },
+  {
+    "id": "f1449341-ad51-4afb-bbcf-43a6cd72e230",
+    "gameweek": 3,
+    "home_team": "NOT",
+    "away_team": "TOT",
+    "kickoff_at": "2026-09-05T14:00:00+00:00"
+  },
+  {
+    "id": "4e492f44-d425-4bfe-a565-113d12e1d71c",
+    "gameweek": 4,
+    "home_team": "AVL",
+    "away_team": "NOT",
+    "kickoff_at": "2026-09-12T14:00:00+00:00"
+  },
+  {
+    "id": "94d1dca2-0a23-46aa-978d-dfe3268b3192",
+    "gameweek": 4,
+    "home_team": "BOU",
+    "away_team": "BRF",
+    "kickoff_at": "2026-09-12T14:00:00+00:00"
+  },
+  {
+    "id": "86fd3405-3737-45f7-8ce9-26e1e0e16508",
+    "gameweek": 4,
+    "home_team": "CHE",
+    "away_team": "HUL",
+    "kickoff_at": "2026-09-12T14:00:00+00:00"
+  },
+  {
+    "id": "2adc9085-3c62-4ec1-a937-7d3e04806630",
+    "gameweek": 4,
+    "home_team": "COV",
+    "away_team": "BHA",
+    "kickoff_at": "2026-09-13T13:00:00+00:00"
+  },
+  {
+    "id": "5eb51471-a1c2-4e86-968a-a3525818d1dc",
+    "gameweek": 4,
+    "home_team": "CRY",
+    "away_team": "IPS",
+    "kickoff_at": "2026-09-12T14:00:00+00:00"
+  },
+  {
+    "id": "955fcf54-d0fd-43ae-8ca9-239ae7b1c722",
+    "gameweek": 4,
+    "home_team": "LEE",
+    "away_team": "NEW",
+    "kickoff_at": "2026-09-14T19:00:00+00:00"
+  },
+  {
+    "id": "ac105975-81c0-46f7-97ca-a37508078d83",
+    "gameweek": 4,
+    "home_team": "LIV",
+    "away_team": "FUL",
+    "kickoff_at": "2026-09-12T14:00:00+00:00"
+  },
+  {
+    "id": "e0025c9e-d8bc-48c2-bc97-6b3649ca5599",
+    "gameweek": 4,
+    "home_team": "MUN",
+    "away_team": "MCI",
+    "kickoff_at": "2026-09-13T15:30:00+00:00"
+  },
+  {
+    "id": "5b58519c-c37f-47d1-87bd-5d919859c137",
+    "gameweek": 4,
+    "home_team": "SUN",
+    "away_team": "ARS",
+    "kickoff_at": "2026-09-12T19:00:00+00:00"
+  },
+  {
+    "id": "0b65f035-3197-44e9-b7f7-f6b2137413d7",
+    "gameweek": 4,
+    "home_team": "TOT",
+    "away_team": "EVE",
+    "kickoff_at": "2026-09-12T16:30:00+00:00"
+  },
+  {
+    "id": "020499e0-0c74-4d88-825b-071aec430594",
+    "gameweek": 5,
+    "home_team": "BHA",
+    "away_team": "ARS",
+    "kickoff_at": "2026-09-19T14:00:00+00:00"
+  },
+  {
+    "id": "e5592fa2-dd6f-4d08-a115-b6d1f8d04fb0",
+    "gameweek": 5,
+    "home_team": "BOU",
+    "away_team": "LIV",
+    "kickoff_at": "2026-09-20T13:00:00+00:00"
+  },
+  {
+    "id": "34fc96f8-10a0-4e56-8b99-785e9afff906",
+    "gameweek": 5,
+    "home_team": "BRF",
+    "away_team": "CHE",
+    "kickoff_at": "2026-09-18T19:00:00+00:00"
+  },
+  {
+    "id": "2b07ed30-fb29-46d0-ae0a-c6db5df676a5",
+    "gameweek": 5,
+    "home_team": "EVE",
+    "away_team": "IPS",
+    "kickoff_at": "2026-09-19T14:00:00+00:00"
+  },
+  {
+    "id": "8a98c1aa-e44e-40d3-b7be-7969d2462ee1",
+    "gameweek": 5,
+    "home_team": "FUL",
+    "away_team": "MUN",
+    "kickoff_at": "2026-09-20T15:30:00+00:00"
+  },
+  {
+    "id": "43fdb293-9c67-4e62-a472-6e1c370fdaf6",
+    "gameweek": 5,
+    "home_team": "LEE",
+    "away_team": "CRY",
+    "kickoff_at": "2026-09-19T14:00:00+00:00"
+  },
+  {
+    "id": "29bf3440-3a95-43dd-9757-e0997ef22a85",
+    "gameweek": 5,
+    "home_team": "MCI",
+    "away_team": "SUN",
+    "kickoff_at": "2026-09-19T14:00:00+00:00"
+  },
+  {
+    "id": "85cab479-b98e-4394-9f75-3ad7bf3a53b2",
+    "gameweek": 5,
+    "home_team": "NEW",
+    "away_team": "HUL",
+    "kickoff_at": "2026-09-19T14:00:00+00:00"
+  },
+  {
+    "id": "ee3eaaa1-3d31-496f-a68e-2cbfb68a9744",
+    "gameweek": 5,
+    "home_team": "NOT",
+    "away_team": "COV",
+    "kickoff_at": "2026-09-19T16:30:00+00:00"
+  },
+  {
+    "id": "2d573eac-1ce2-48c5-bc6c-8a878232e9bc",
+    "gameweek": 5,
+    "home_team": "TOT",
+    "away_team": "AVL",
+    "kickoff_at": "2026-09-19T11:30:00+00:00"
+  },
+  {
+    "id": "29633693-418a-4f7f-b243-2f0556c35344",
+    "gameweek": 6,
+    "home_team": "ARS",
+    "away_team": "LEE",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "20e7fdfa-7b42-43a6-a608-465f7ccb82b7",
+    "gameweek": 6,
+    "home_team": "AVL",
+    "away_team": "BRF",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "8c745b3d-6695-436d-8aa4-3a6e8ebf733c",
+    "gameweek": 6,
+    "home_team": "CHE",
+    "away_team": "BOU",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "8ae4ab95-fb88-460f-9cb4-89f904ffc9b2",
+    "gameweek": 6,
+    "home_team": "COV",
+    "away_team": "NEW",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "545878cc-e9d0-4dd4-b01d-093205101dc2",
+    "gameweek": 6,
+    "home_team": "CRY",
+    "away_team": "NOT",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "c4aeef26-dc30-4193-b321-89ad65a19902",
+    "gameweek": 6,
+    "home_team": "HUL",
+    "away_team": "EVE",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "583eb0a4-8202-4242-957b-9326dd078bb2",
+    "gameweek": 6,
+    "home_team": "IPS",
+    "away_team": "FUL",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "b1472b78-17b9-414b-bbcf-5b0a729be462",
+    "gameweek": 6,
+    "home_team": "LIV",
+    "away_team": "MCI",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "17e7a286-f938-433c-8ea3-9f99b2c50b8b",
+    "gameweek": 6,
+    "home_team": "MUN",
+    "away_team": "TOT",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "08074280-4eaf-4a53-895b-a1a64eb98da9",
+    "gameweek": 6,
+    "home_team": "SUN",
+    "away_team": "BHA",
+    "kickoff_at": "2026-10-10T14:00:00+00:00"
+  },
+  {
+    "id": "62be2b7a-67d4-4f00-b9db-ec8cf1818c64",
+    "gameweek": 7,
+    "home_team": "BHA",
+    "away_team": "CRY",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "258131f7-7f1b-4e31-8c5e-68d158aeb2e3",
+    "gameweek": 7,
+    "home_team": "BOU",
+    "away_team": "SUN",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "7acb1b11-f6ba-4b0e-985d-c2714aecbb65",
+    "gameweek": 7,
+    "home_team": "BRF",
+    "away_team": "LIV",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "154d0e50-dbeb-4610-9503-c9512fa9a006",
+    "gameweek": 7,
+    "home_team": "EVE",
+    "away_team": "CHE",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "fcc3f054-22fe-4154-8bc0-51716f630b72",
+    "gameweek": 7,
+    "home_team": "FUL",
+    "away_team": "HUL",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "2b3e4b53-fbdc-4f9f-b189-3dca40d19fe0",
+    "gameweek": 7,
+    "home_team": "LEE",
+    "away_team": "MUN",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "b450fa81-6307-48fa-9171-e8a5fdf831a8",
+    "gameweek": 7,
+    "home_team": "MCI",
+    "away_team": "IPS",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "67fa4a8f-8623-4eb8-a86e-465cdd38ab8e",
+    "gameweek": 7,
+    "home_team": "NEW",
+    "away_team": "AVL",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "7c4a231e-3d47-4ebb-a2c9-91570038d491",
+    "gameweek": 7,
+    "home_team": "NOT",
+    "away_team": "ARS",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "a67a630d-42c1-4cbd-91c2-8842e7d74d35",
+    "gameweek": 7,
+    "home_team": "TOT",
+    "away_team": "COV",
+    "kickoff_at": "2026-10-17T14:00:00+00:00"
+  },
+  {
+    "id": "d90e7daf-c359-4c8b-8bc5-cfb90f7c0bfc",
+    "gameweek": 8,
+    "home_team": "ARS",
+    "away_team": "EVE",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "630aac3d-53c9-42c0-8ae9-33c77914c189",
+    "gameweek": 8,
+    "home_team": "AVL",
+    "away_team": "MCI",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "562b273d-1178-4381-b717-4c606cba9242",
+    "gameweek": 8,
+    "home_team": "CHE",
+    "away_team": "TOT",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "165680df-3ba2-44dc-a3bb-215a5b86e82c",
+    "gameweek": 8,
+    "home_team": "COV",
+    "away_team": "FUL",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "15300cc9-1d05-44f9-8cda-2c56222af87e",
+    "gameweek": 8,
+    "home_team": "CRY",
+    "away_team": "NEW",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "1c5dffe2-1f5d-4eba-bf4b-b89e5d9b75f9",
+    "gameweek": 8,
+    "home_team": "HUL",
+    "away_team": "BRF",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "e9985dcd-1793-4955-8352-22a3138d5a54",
+    "gameweek": 8,
+    "home_team": "IPS",
+    "away_team": "NOT",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "6cc85381-1d27-4bd4-b6bc-225cbfc77da9",
+    "gameweek": 8,
+    "home_team": "LIV",
+    "away_team": "BHA",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "b05f1217-3e1a-428f-832b-30df563a424b",
+    "gameweek": 8,
+    "home_team": "MUN",
+    "away_team": "BOU",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "f1ffc731-bcd6-4902-9e23-c2e9a435b5f5",
+    "gameweek": 8,
+    "home_team": "SUN",
+    "away_team": "LEE",
+    "kickoff_at": "2026-10-24T14:00:00+00:00"
+  },
+  {
+    "id": "26a11882-45d6-45ed-9859-dcc0fa188876",
+    "gameweek": 9,
+    "home_team": "AVL",
+    "away_team": "FUL",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "f2af60ae-a1aa-4568-8b47-5a8d2c66fcc7",
+    "gameweek": 9,
+    "home_team": "BOU",
+    "away_team": "LEE",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "cdfa64be-bd5d-4eaf-97a1-5db410a79589",
+    "gameweek": 9,
+    "home_team": "BRF",
+    "away_team": "NOT",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "cecf1dfd-c5ef-44d5-a256-e213376e4193",
+    "gameweek": 9,
+    "home_team": "CHE",
+    "away_team": "MUN",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "cfe3ac61-9e09-4e32-9e58-8b177ccd6e59",
+    "gameweek": 9,
+    "home_team": "COV",
+    "away_team": "SUN",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "fae4e3b6-7b6a-420d-af90-0a540080fb0b",
+    "gameweek": 9,
+    "home_team": "HUL",
+    "away_team": "IPS",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "1001d7fb-030d-4e10-a10a-9c5482b52897",
+    "gameweek": 9,
+    "home_team": "LIV",
+    "away_team": "ARS",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "c615eb9e-1399-48d8-b0a2-dc30d96dfbe1",
+    "gameweek": 9,
+    "home_team": "MCI",
+    "away_team": "BHA",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "b0dbca37-408f-4290-ba4a-65af1fee16b9",
+    "gameweek": 9,
+    "home_team": "NEW",
+    "away_team": "EVE",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "dd31f340-4923-435f-b063-46b77a55af31",
+    "gameweek": 9,
+    "home_team": "TOT",
+    "away_team": "CRY",
+    "kickoff_at": "2026-10-31T15:00:00+00:00"
+  },
+  {
+    "id": "a3d1698c-88ce-4f87-9adc-d76f50ae51e1",
+    "gameweek": 10,
+    "home_team": "ARS",
+    "away_team": "HUL",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "55a401f2-f058-41e2-ba7f-fba1b3622448",
+    "gameweek": 10,
+    "home_team": "BHA",
+    "away_team": "BRF",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "e8e033cd-1406-4648-ac1f-f766c069aaa3",
+    "gameweek": 10,
+    "home_team": "CRY",
+    "away_team": "LIV",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "4b24f282-4988-4c15-98f3-5223bfd36c29",
+    "gameweek": 10,
+    "home_team": "EVE",
+    "away_team": "COV",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "3581e295-d82b-42af-8130-28a2641539c3",
+    "gameweek": 10,
+    "home_team": "FUL",
+    "away_team": "NEW",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "042c38ac-079f-43c4-af53-a0f5895f305e",
+    "gameweek": 10,
+    "home_team": "IPS",
+    "away_team": "BOU",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "4f805439-14f8-4485-b3ce-8de80fb3e3bc",
+    "gameweek": 10,
+    "home_team": "LEE",
+    "away_team": "TOT",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "def76fed-50e5-46cd-bc83-c992e8ed541e",
+    "gameweek": 10,
+    "home_team": "MUN",
+    "away_team": "AVL",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "6fab8b4b-febc-4211-a6e3-b4d73548186b",
+    "gameweek": 10,
+    "home_team": "NOT",
+    "away_team": "MCI",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "b7b14299-c1fd-45e6-943a-9a8a9b91dcd4",
+    "gameweek": 10,
+    "home_team": "SUN",
+    "away_team": "CHE",
+    "kickoff_at": "2026-11-07T15:00:00+00:00"
+  },
+  {
+    "id": "5c102a1e-ee05-4930-8bcd-a1e47688775c",
+    "gameweek": 11,
+    "home_team": "AVL",
+    "away_team": "SUN",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "f4e1cbc2-47d8-4048-8e28-ba860eea9afd",
+    "gameweek": 11,
+    "home_team": "BOU",
+    "away_team": "NOT",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "dc4925ed-fede-42c0-9435-a0aaec5470da",
+    "gameweek": 11,
+    "home_team": "BRF",
+    "away_team": "EVE",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "8efb2096-ea53-4ebd-a737-93871fcb9d93",
+    "gameweek": 11,
+    "home_team": "CHE",
+    "away_team": "LEE",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "3ec93a2b-be02-4008-9fa3-45f6ce8ebcbe",
+    "gameweek": 11,
+    "home_team": "COV",
+    "away_team": "CRY",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "0a158b5c-293f-49a0-b42f-a81b25f69671",
+    "gameweek": 11,
+    "home_team": "HUL",
+    "away_team": "BHA",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "a6fea7b6-d337-4f81-bc4f-c33c37f11f32",
+    "gameweek": 11,
+    "home_team": "LIV",
+    "away_team": "MUN",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "88d6e202-bbef-4487-b76a-bccbe33755eb",
+    "gameweek": 11,
+    "home_team": "MCI",
+    "away_team": "FUL",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "472edeee-450c-4783-8ea7-cdc7b4ef850a",
+    "gameweek": 11,
+    "home_team": "NEW",
+    "away_team": "ARS",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "8cb90df9-1dde-4d3b-9869-977462727854",
+    "gameweek": 11,
+    "home_team": "TOT",
+    "away_team": "IPS",
+    "kickoff_at": "2026-11-21T15:00:00+00:00"
+  },
+  {
+    "id": "e1374800-3e3a-41af-ad69-3e6729362a6c",
+    "gameweek": 12,
+    "home_team": "ARS",
+    "away_team": "MCI",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "8605b0bb-abbd-4bc6-8b6c-42fa420554ea",
+    "gameweek": 12,
+    "home_team": "BHA",
+    "away_team": "NEW",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "6e2f30a0-92fd-4563-b5ad-0f94681ae660",
+    "gameweek": 12,
+    "home_team": "CRY",
+    "away_team": "HUL",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "445719fe-7813-4df1-9c5a-e3bd55f50f8b",
+    "gameweek": 12,
+    "home_team": "EVE",
+    "away_team": "LIV",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "6536c8af-1fc8-4890-b50c-8c14238d998b",
+    "gameweek": 12,
+    "home_team": "FUL",
+    "away_team": "BOU",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "fe885df2-4808-44a0-9952-2c35ff55e1e6",
+    "gameweek": 12,
+    "home_team": "IPS",
+    "away_team": "AVL",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "f70ae961-283d-4ad5-9869-8530adff5107",
+    "gameweek": 12,
+    "home_team": "LEE",
+    "away_team": "COV",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "8c5682d5-458a-49cf-805b-1f061bb3a4a9",
+    "gameweek": 12,
+    "home_team": "MUN",
+    "away_team": "BRF",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "ea763d35-af75-4441-b360-b783a36c9574",
+    "gameweek": 12,
+    "home_team": "NOT",
+    "away_team": "CHE",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "2b35ed0e-0629-49b8-9387-82b9159255a0",
+    "gameweek": 12,
+    "home_team": "SUN",
+    "away_team": "TOT",
+    "kickoff_at": "2026-11-28T15:00:00+00:00"
+  },
+  {
+    "id": "a623687c-0d65-4ba6-a837-180c815f9534",
+    "gameweek": 13,
+    "home_team": "AVL",
+    "away_team": "EVE",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "22c783b7-5c7d-42b3-91ef-6a4002dba158",
+    "gameweek": 13,
+    "home_team": "BOU",
+    "away_team": "BHA",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "bb1b651c-cac4-44c9-877b-9a5651cd328f",
+    "gameweek": 13,
+    "home_team": "BRF",
+    "away_team": "ARS",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "7fbae722-8fb0-4443-a306-71e395b0a7e1",
+    "gameweek": 13,
+    "home_team": "CHE",
+    "away_team": "CRY",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "d7ae2606-000b-435c-92ea-b30d81cb5548",
+    "gameweek": 13,
+    "home_team": "COV",
+    "away_team": "IPS",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "7f957ae3-b081-4b2f-94f2-72fdad1ec35b",
+    "gameweek": 13,
+    "home_team": "HUL",
+    "away_team": "NOT",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "5703108f-9464-4b79-a7d2-809b1d04b7c9",
+    "gameweek": 13,
+    "home_team": "LIV",
+    "away_team": "SUN",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "6f670a77-9881-43f5-bf69-724499afcaf2",
+    "gameweek": 13,
+    "home_team": "MCI",
+    "away_team": "LEE",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "6ed09aeb-52f6-4f79-b609-b4035bf84704",
+    "gameweek": 13,
+    "home_team": "NEW",
+    "away_team": "MUN",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "48ff7336-490d-41a3-bbdb-e3e06a2fd629",
+    "gameweek": 13,
+    "home_team": "TOT",
+    "away_team": "FUL",
+    "kickoff_at": "2026-12-02T20:00:00+00:00"
+  },
+  {
+    "id": "9e241367-8c77-4aeb-984b-e4e13a285baf",
+    "gameweek": 14,
+    "home_team": "AVL",
+    "away_team": "CRY",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "f7985853-73a9-4a7b-b8cd-f2c8dd09f808",
+    "gameweek": 14,
+    "home_team": "BOU",
+    "away_team": "HUL",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "914ee8b0-cb1c-470c-95dd-5cde92ef3ad8",
+    "gameweek": 14,
+    "home_team": "BRF",
+    "away_team": "MCI",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "7f27a3cd-6311-4807-91cb-7a61f72a127c",
+    "gameweek": 14,
+    "home_team": "CHE",
+    "away_team": "LIV",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "7b1875d2-c139-41f9-a326-065be53455b2",
+    "gameweek": 14,
+    "home_team": "EVE",
+    "away_team": "FUL",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "1f8d51a9-27f8-4e89-b161-48813f8b1048",
+    "gameweek": 14,
+    "home_team": "LEE",
+    "away_team": "IPS",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "fc80f3e6-8bd0-44e6-bc26-2c4cf8b45e5a",
+    "gameweek": 14,
+    "home_team": "MUN",
+    "away_team": "COV",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "ebdd87a0-9179-48b8-b97f-588b80b7b08b",
+    "gameweek": 14,
+    "home_team": "NEW",
+    "away_team": "SUN",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "8aa4524e-bc7d-4c07-8390-ddcbc0635e42",
+    "gameweek": 14,
+    "home_team": "NOT",
+    "away_team": "BHA",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "a352fd5b-2cf8-4714-8597-ae853979d4f8",
+    "gameweek": 14,
+    "home_team": "TOT",
+    "away_team": "ARS",
+    "kickoff_at": "2026-12-05T15:00:00+00:00"
+  },
+  {
+    "id": "72334f43-d3ab-4b23-a057-4f7183ddf09a",
+    "gameweek": 15,
+    "home_team": "ARS",
+    "away_team": "BOU",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "88a0d192-44d3-43a1-9ff1-dd766e55e7a9",
+    "gameweek": 15,
+    "home_team": "BHA",
+    "away_team": "EVE",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "25333e0c-dec3-42cf-b750-2750cc961ffd",
+    "gameweek": 15,
+    "home_team": "COV",
+    "away_team": "AVL",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "a853ff04-48ad-4381-8c9d-cb84279b023f",
+    "gameweek": 15,
+    "home_team": "CRY",
+    "away_team": "MUN",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "f977d8de-a6e7-45fc-b7e3-76f26df863a7",
+    "gameweek": 15,
+    "home_team": "FUL",
+    "away_team": "BRF",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "93fdf53f-6a63-41bf-a2ec-11ef5abc8050",
+    "gameweek": 15,
+    "home_team": "HUL",
+    "away_team": "TOT",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "6c0caf7f-ced6-4a56-906b-9b1b24254161",
+    "gameweek": 15,
+    "home_team": "IPS",
+    "away_team": "NEW",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "7be85351-7ae2-4387-ae38-06eeb03b3ec0",
+    "gameweek": 15,
+    "home_team": "LIV",
+    "away_team": "LEE",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "a882d855-e252-4f8f-ab86-99cb091a079e",
+    "gameweek": 15,
+    "home_team": "MCI",
+    "away_team": "CHE",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "5a361da3-6fb1-4a26-969b-a46c7809305d",
+    "gameweek": 15,
+    "home_team": "SUN",
+    "away_team": "NOT",
+    "kickoff_at": "2026-12-12T15:00:00+00:00"
+  },
+  {
+    "id": "e991aea9-51fe-43eb-978c-50d13bf6f30f",
+    "gameweek": 16,
+    "home_team": "ARS",
+    "away_team": "MUN",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "c338662f-7f47-4e4c-bd9c-6e307f8773e5",
+    "gameweek": 16,
+    "home_team": "BHA",
+    "away_team": "IPS",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "5cad2949-a47a-41a3-ac8b-1127f0c4160e",
+    "gameweek": 16,
+    "home_team": "BOU",
+    "away_team": "COV",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "b1fd4f01-04d5-4978-8d76-a6263e344763",
+    "gameweek": 16,
+    "home_team": "BRF",
+    "away_team": "NEW",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "bff167cb-2e14-4b4b-a437-5b0b5f15b3b1",
+    "gameweek": 16,
+    "home_team": "CHE",
+    "away_team": "AVL",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "4b0e0205-0c17-47fe-869a-4a4a1ba68dc5",
+    "gameweek": 16,
+    "home_team": "LEE",
+    "away_team": "FUL",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "691e9f5e-1919-4b37-8961-8e6cba34a6e9",
+    "gameweek": 16,
+    "home_team": "LIV",
+    "away_team": "TOT",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "f98a21d7-aff9-4680-8956-118b95f3280d",
+    "gameweek": 16,
+    "home_team": "MCI",
+    "away_team": "HUL",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "794a3fb8-8cb4-462b-89e0-d090f8879e54",
+    "gameweek": 16,
+    "home_team": "NOT",
+    "away_team": "EVE",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "c873d9cc-28b4-4676-972a-d4e27ad695da",
+    "gameweek": 16,
+    "home_team": "SUN",
+    "away_team": "CRY",
+    "kickoff_at": "2026-12-19T15:00:00+00:00"
+  },
+  {
+    "id": "b4f6b8fb-9bcb-4255-9556-5007e108fb7e",
+    "gameweek": 17,
+    "home_team": "AVL",
+    "away_team": "LEE",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "6301cc38-3b3a-4bcf-8a3b-a8218e4f1a16",
+    "gameweek": 17,
+    "home_team": "COV",
+    "away_team": "CHE",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "aa2f274d-beba-40e4-8f5f-b37b6e8ec6ad",
+    "gameweek": 17,
+    "home_team": "CRY",
+    "away_team": "ARS",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "dd499bea-4606-4f7e-94a3-ee0886a4e1e3",
+    "gameweek": 17,
+    "home_team": "EVE",
+    "away_team": "SUN",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "f821fbf5-2179-41c4-977e-a162560273ca",
+    "gameweek": 17,
+    "home_team": "FUL",
+    "away_team": "BHA",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "0dff19bf-4fb9-4f9e-8457-57daf4a4fa2b",
+    "gameweek": 17,
+    "home_team": "HUL",
+    "away_team": "LIV",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "9bc9f752-2ac4-4adb-a97d-3f9d756b61ec",
+    "gameweek": 17,
+    "home_team": "IPS",
+    "away_team": "BRF",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "9de17d58-af99-4e12-839b-3513aeca7c80",
+    "gameweek": 17,
+    "home_team": "MUN",
+    "away_team": "NOT",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "7b59fe33-e615-42f2-b526-686ebd2e804f",
+    "gameweek": 17,
+    "home_team": "NEW",
+    "away_team": "MCI",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "215f1ba3-9c3a-4efd-9003-1600dc5191fe",
+    "gameweek": 17,
+    "home_team": "TOT",
+    "away_team": "BOU",
+    "kickoff_at": "2026-12-26T15:00:00+00:00"
+  },
+  {
+    "id": "fbd37bba-5cdf-4adc-a476-4a7715f557ab",
+    "gameweek": 18,
+    "home_team": "AVL",
+    "away_team": "LIV",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "0290db60-1a56-4850-b566-eee72041b929",
+    "gameweek": 18,
+    "home_team": "COV",
+    "away_team": "BRF",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "9e7292c7-3c5c-4b62-a70e-eadd681e205d",
+    "gameweek": 18,
+    "home_team": "CRY",
+    "away_team": "BOU",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "1cb98c36-3c20-497b-8b1b-b4e5ce9d65eb",
+    "gameweek": 18,
+    "home_team": "EVE",
+    "away_team": "MCI",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "ebcac1a1-a1ee-4bb3-b6ee-0d54a39a54b0",
+    "gameweek": 18,
+    "home_team": "FUL",
+    "away_team": "ARS",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "6121b0a7-fa66-4938-8cd9-5dbf6d15ce95",
+    "gameweek": 18,
+    "home_team": "HUL",
+    "away_team": "LEE",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "854cabbd-fdd1-4fb3-9ab3-27ffb95ae429",
+    "gameweek": 18,
+    "home_team": "IPS",
+    "away_team": "CHE",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "4c56816d-7129-43ae-ab00-463f74d2552c",
+    "gameweek": 18,
+    "home_team": "MUN",
+    "away_team": "SUN",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "ac67be68-4492-4dd0-b3b3-babb6e5191c5",
+    "gameweek": 18,
+    "home_team": "NEW",
+    "away_team": "NOT",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "2eda2d15-38f7-4e08-a4fd-1f5fb807dcaf",
+    "gameweek": 18,
+    "home_team": "TOT",
+    "away_team": "BHA",
+    "kickoff_at": "2026-12-30T20:00:00+00:00"
+  },
+  {
+    "id": "d4a34f20-e72f-4eeb-b5a5-aa114cf25414",
+    "gameweek": 19,
+    "home_team": "ARS",
+    "away_team": "IPS",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "18897d24-651b-444a-b94f-26ab5bdf69ac",
+    "gameweek": 19,
+    "home_team": "BHA",
+    "away_team": "MUN",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "0d92e08f-e902-4a64-a92d-892fb313b535",
+    "gameweek": 19,
+    "home_team": "BOU",
+    "away_team": "AVL",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "5ca63912-382c-4e43-8195-4702bedb4fff",
+    "gameweek": 19,
+    "home_team": "BRF",
+    "away_team": "CRY",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "e90d0165-4da2-4206-8dcc-090c70bacc47",
+    "gameweek": 19,
+    "home_team": "CHE",
+    "away_team": "NEW",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "02422886-7bc9-4f6b-8478-f2e1c913dbb9",
+    "gameweek": 19,
+    "home_team": "LEE",
+    "away_team": "EVE",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "79bd118a-4e63-4c25-a4f3-6fb52f0e0e7a",
+    "gameweek": 19,
+    "home_team": "LIV",
+    "away_team": "COV",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "19958425-01a4-4a45-a12b-c9d637b55e4a",
+    "gameweek": 19,
+    "home_team": "MCI",
+    "away_team": "TOT",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "ce22c994-e165-49d2-ac0d-39288a7a2be4",
+    "gameweek": 19,
+    "home_team": "NOT",
+    "away_team": "FUL",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "88321399-b80f-4c6e-a50e-710e8714c44c",
+    "gameweek": 19,
+    "home_team": "SUN",
+    "away_team": "HUL",
+    "kickoff_at": "2027-01-02T15:00:00+00:00"
+  },
+  {
+    "id": "d9879586-1899-47f0-9aeb-54a50c18296e",
+    "gameweek": 20,
+    "home_team": "ARS",
+    "away_team": "BRF",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "8bb4290b-4f5b-410f-a937-aa9d4e36d91f",
+    "gameweek": 20,
+    "home_team": "BHA",
+    "away_team": "BOU",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "e133314b-6891-4d95-a931-74defc35a90b",
+    "gameweek": 20,
+    "home_team": "CRY",
+    "away_team": "CHE",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "9eb09df5-e38e-4ee2-a352-ce71fb8ab38b",
+    "gameweek": 20,
+    "home_team": "EVE",
+    "away_team": "AVL",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "10177c84-007f-44c6-b6e9-2cded9ed8f54",
+    "gameweek": 20,
+    "home_team": "FUL",
+    "away_team": "TOT",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "da20d55a-1a6c-4b51-9bcd-1b53cb5ab1f7",
+    "gameweek": 20,
+    "home_team": "IPS",
+    "away_team": "COV",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "73a53b77-5c65-4c72-ac4f-7df900890fb4",
+    "gameweek": 20,
+    "home_team": "LEE",
+    "away_team": "MCI",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "e79a3408-7b7b-4ad7-8053-58e5a50b6953",
+    "gameweek": 20,
+    "home_team": "MUN",
+    "away_team": "NEW",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "23ecd59e-7e40-40b2-922a-31302a53e47d",
+    "gameweek": 20,
+    "home_team": "NOT",
+    "away_team": "HUL",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "3d1e3f4f-4a0b-4cc8-8bd1-e7eefab6ba5f",
+    "gameweek": 20,
+    "home_team": "SUN",
+    "away_team": "LIV",
+    "kickoff_at": "2027-01-06T20:00:00+00:00"
+  },
+  {
+    "id": "710f00f7-d0fb-4a7e-9611-9777bef9ea12",
+    "gameweek": 21,
+    "home_team": "AVL",
+    "away_team": "MUN",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "6085ee43-3bc9-4c8d-9ba2-239bdf6ca5fb",
+    "gameweek": 21,
+    "home_team": "BOU",
+    "away_team": "IPS",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "bafe5878-f506-41ab-97f1-4f47981d8830",
+    "gameweek": 21,
+    "home_team": "BRF",
+    "away_team": "BHA",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "edb2bce2-047e-4754-ae82-b2b6e9a9615b",
+    "gameweek": 21,
+    "home_team": "CHE",
+    "away_team": "SUN",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "8ab574c1-0fd4-48a8-a664-8126410225bf",
+    "gameweek": 21,
+    "home_team": "COV",
+    "away_team": "EVE",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "046224ce-e870-4e26-a726-1d3cc48b1f20",
+    "gameweek": 21,
+    "home_team": "HUL",
+    "away_team": "ARS",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "26271256-1915-45c7-9e00-250f15db6603",
+    "gameweek": 21,
+    "home_team": "LIV",
+    "away_team": "CRY",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "f951a24f-6226-4651-9f6c-c997c8faf245",
+    "gameweek": 21,
+    "home_team": "MCI",
+    "away_team": "NOT",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "54969308-e513-4fd4-bcbe-0019a9fb5aec",
+    "gameweek": 21,
+    "home_team": "NEW",
+    "away_team": "FUL",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "8c815061-4da8-4f6f-b4dc-823223c5a582",
+    "gameweek": 21,
+    "home_team": "TOT",
+    "away_team": "LEE",
+    "kickoff_at": "2027-01-16T15:00:00+00:00"
+  },
+  {
+    "id": "52e0b9aa-10a4-44f0-9679-f0eda0c8ee1e",
+    "gameweek": 22,
+    "home_team": "ARS",
+    "away_team": "NEW",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "27a7e699-0ced-4b96-9bc3-5cc7fcb22c3b",
+    "gameweek": 22,
+    "home_team": "BHA",
+    "away_team": "MCI",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "24219c62-1be6-46f0-9c5d-d099d70feb8a",
+    "gameweek": 22,
+    "home_team": "CRY",
+    "away_team": "TOT",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "e851c8e9-b796-416a-8f2f-d949a2740d8e",
+    "gameweek": 22,
+    "home_team": "EVE",
+    "away_team": "BRF",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "95116523-89ce-428e-a9a1-a9fc9ede1fae",
+    "gameweek": 22,
+    "home_team": "FUL",
+    "away_team": "AVL",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "1d5d41cc-3c72-40c0-9504-a3e059dae731",
+    "gameweek": 22,
+    "home_team": "IPS",
+    "away_team": "HUL",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "b6d5f3ed-c81c-47d1-ae88-0fbc38598d76",
+    "gameweek": 22,
+    "home_team": "LEE",
+    "away_team": "CHE",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "f382199d-656e-43f4-88dc-dc0e7815b50e",
+    "gameweek": 22,
+    "home_team": "MUN",
+    "away_team": "LIV",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "0c6a3a5a-7dc8-4e07-9c5e-a968ede6886f",
+    "gameweek": 22,
+    "home_team": "NOT",
+    "away_team": "BOU",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "089d0a13-914c-4138-b68f-86fd30f11a5e",
+    "gameweek": 22,
+    "home_team": "SUN",
+    "away_team": "COV",
+    "kickoff_at": "2027-01-23T15:00:00+00:00"
+  },
+  {
+    "id": "7e91126a-8165-49b4-86a7-3a9e1bdd0bf2",
+    "gameweek": 23,
+    "home_team": "AVL",
+    "away_team": "IPS",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "4723ebe5-87f0-4d12-b72b-870ccc28d7c1",
+    "gameweek": 23,
+    "home_team": "BOU",
+    "away_team": "FUL",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "de22f5fa-47d9-4468-821a-db852c43215b",
+    "gameweek": 23,
+    "home_team": "BRF",
+    "away_team": "MUN",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "67f4fcec-a02c-4d49-8949-7e34d2de124f",
+    "gameweek": 23,
+    "home_team": "CHE",
+    "away_team": "NOT",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "73572505-2ebd-4567-8749-6ad2d0c96046",
+    "gameweek": 23,
+    "home_team": "COV",
+    "away_team": "LEE",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "6d98d2d6-199f-4291-a76e-76ecd70514a5",
+    "gameweek": 23,
+    "home_team": "HUL",
+    "away_team": "CRY",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "744edcaf-5475-404f-86b4-d49390daba5a",
+    "gameweek": 23,
+    "home_team": "LIV",
+    "away_team": "EVE",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "fe7df6c8-8b2a-4ef1-9954-7256cd5889d9",
+    "gameweek": 23,
+    "home_team": "MCI",
+    "away_team": "ARS",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "6fe81de0-aecd-4f07-a40b-5b896ba6a36c",
+    "gameweek": 23,
+    "home_team": "NEW",
+    "away_team": "BHA",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "b723e38a-49d3-4d65-9822-4e4e245c1e7c",
+    "gameweek": 23,
+    "home_team": "TOT",
+    "away_team": "SUN",
+    "kickoff_at": "2027-01-30T15:00:00+00:00"
+  },
+  {
+    "id": "0f979c8c-3158-4008-8802-5acd383d0811",
+    "gameweek": 24,
+    "home_team": "ARS",
+    "away_team": "LIV",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "3b9ce115-aa7f-4af7-845a-eec68a9eaa1b",
+    "gameweek": 24,
+    "home_team": "BHA",
+    "away_team": "HUL",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "02cf23b2-34aa-433a-aac5-729f08a08809",
+    "gameweek": 24,
+    "home_team": "CRY",
+    "away_team": "COV",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "29d73b26-5e7b-4fa2-bd77-7bf915a7325b",
+    "gameweek": 24,
+    "home_team": "EVE",
+    "away_team": "NEW",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "9c39e6ba-4114-4eb8-96a5-ce6ec33b844a",
+    "gameweek": 24,
+    "home_team": "FUL",
+    "away_team": "MCI",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "d0cc56dc-163a-4307-ae99-591f8296d10a",
+    "gameweek": 24,
+    "home_team": "IPS",
+    "away_team": "TOT",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "92edc8ea-84bc-48c7-9ac1-a45b96e7d4bb",
+    "gameweek": 24,
+    "home_team": "LEE",
+    "away_team": "BOU",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "ddc6b0f6-7d0d-4c24-ba3a-a393b4ebd8c8",
+    "gameweek": 24,
+    "home_team": "MUN",
+    "away_team": "CHE",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "724807da-0c9c-451c-9839-2eb0a1932e05",
+    "gameweek": 24,
+    "home_team": "NOT",
+    "away_team": "BRF",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "7443fe07-b857-43c2-9c04-be1668de6f3a",
+    "gameweek": 24,
+    "home_team": "SUN",
+    "away_team": "AVL",
+    "kickoff_at": "2027-02-06T15:00:00+00:00"
+  },
+  {
+    "id": "8170b71c-7ca7-4f3a-adef-6ab09d291729",
+    "gameweek": 25,
+    "home_team": "AVL",
+    "away_team": "BOU",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "abbac0fe-dc15-4ca5-83c4-98d370d3f764",
+    "gameweek": 25,
+    "home_team": "COV",
+    "away_team": "LIV",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "4a18b25f-6aff-46fe-9f0e-4890beb5ad8b",
+    "gameweek": 25,
+    "home_team": "CRY",
+    "away_team": "BRF",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "2a487415-eb04-407b-9835-5df7f73002c7",
+    "gameweek": 25,
+    "home_team": "EVE",
+    "away_team": "LEE",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "8b4507ac-7efa-4bc3-b7c7-adccd4d4d91c",
+    "gameweek": 25,
+    "home_team": "FUL",
+    "away_team": "NOT",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "9c774c39-ef2c-4eb4-bb24-c9545a063deb",
+    "gameweek": 25,
+    "home_team": "HUL",
+    "away_team": "SUN",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "a645df18-02ad-4b26-a2e0-070d9c34a0c0",
+    "gameweek": 25,
+    "home_team": "IPS",
+    "away_team": "ARS",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "c378c591-f852-464b-8a5e-8f13632af500",
+    "gameweek": 25,
+    "home_team": "MUN",
+    "away_team": "BHA",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "ce20a73f-797f-4337-a879-ca14d89ee3c2",
+    "gameweek": 25,
+    "home_team": "NEW",
+    "away_team": "CHE",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "9c4d17a1-8f03-4fe6-ae75-44ad36a3815f",
+    "gameweek": 25,
+    "home_team": "TOT",
+    "away_team": "MCI",
+    "kickoff_at": "2027-02-10T20:00:00+00:00"
+  },
+  {
+    "id": "25f0a935-c7ab-4b9a-8efc-19bcb70d9dc0",
+    "gameweek": 26,
+    "home_team": "ARS",
+    "away_team": "FUL",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "2dc0fc53-0448-441d-a70c-53112098b8c4",
+    "gameweek": 26,
+    "home_team": "BHA",
+    "away_team": "TOT",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "c21bb713-5ab0-4fa7-af35-b79e5dfb5574",
+    "gameweek": 26,
+    "home_team": "BOU",
+    "away_team": "CRY",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "aff29fae-1f13-4cf8-8c12-ba169b8080d3",
+    "gameweek": 26,
+    "home_team": "BRF",
+    "away_team": "COV",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "a401cfd9-cc39-47e2-90e5-12d2db428938",
+    "gameweek": 26,
+    "home_team": "CHE",
+    "away_team": "IPS",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "320eda57-cce5-4c88-955a-96aca5fab466",
+    "gameweek": 26,
+    "home_team": "LEE",
+    "away_team": "AVL",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "11c8c928-af41-42fd-8677-825223ae7fe6",
+    "gameweek": 26,
+    "home_team": "LIV",
+    "away_team": "HUL",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "7983813c-9dc9-466f-b0f2-525719769488",
+    "gameweek": 26,
+    "home_team": "MCI",
+    "away_team": "NEW",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "030a878d-7944-46c9-a88e-c19e99208b80",
+    "gameweek": 26,
+    "home_team": "NOT",
+    "away_team": "MUN",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "f0675142-53b5-4d5e-b028-b4dfc42a3d96",
+    "gameweek": 26,
+    "home_team": "SUN",
+    "away_team": "EVE",
+    "kickoff_at": "2027-02-20T15:00:00+00:00"
+  },
+  {
+    "id": "d0e17f22-8e4b-4dd7-8f15-c05d5fecd9e6",
+    "gameweek": 27,
+    "home_team": "AVL",
+    "away_team": "CHE",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "c39175f7-86bb-4159-b1ff-e802246429eb",
+    "gameweek": 27,
+    "home_team": "COV",
+    "away_team": "BOU",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "65fea298-3751-424a-9f13-666149e6ff2d",
+    "gameweek": 27,
+    "home_team": "CRY",
+    "away_team": "SUN",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "b5450e2e-8f3d-4d8b-ae21-acdd4a1ffdc2",
+    "gameweek": 27,
+    "home_team": "EVE",
+    "away_team": "NOT",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "bca06769-ddb1-4bb3-89ba-dc7ea8eaa14a",
+    "gameweek": 27,
+    "home_team": "FUL",
+    "away_team": "LEE",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "5ad8284d-1569-4ddb-bde2-e8c88745852a",
+    "gameweek": 27,
+    "home_team": "HUL",
+    "away_team": "MCI",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "28978efc-4223-4f2f-b7e8-499e7ee6b736",
+    "gameweek": 27,
+    "home_team": "IPS",
+    "away_team": "BHA",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "3169d696-e698-4cc0-be55-e833d86db4de",
+    "gameweek": 27,
+    "home_team": "MUN",
+    "away_team": "ARS",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "6dc87ea5-f107-4335-abd8-fc32cab7f608",
+    "gameweek": 27,
+    "home_team": "NEW",
+    "away_team": "BRF",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "63f5f372-b31e-4e7f-b542-4e4aaea17951",
+    "gameweek": 27,
+    "home_team": "TOT",
+    "away_team": "LIV",
+    "kickoff_at": "2027-02-27T15:00:00+00:00"
+  },
+  {
+    "id": "cefce7f0-9e32-48ee-a150-815eae554885",
+    "gameweek": 28,
+    "home_team": "ARS",
+    "away_team": "CRY",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "f557e57c-0b17-4cee-ac9f-1b13d7207897",
+    "gameweek": 28,
+    "home_team": "BHA",
+    "away_team": "FUL",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "063c05d3-ffca-43e3-8b31-f220b28f8869",
+    "gameweek": 28,
+    "home_team": "BOU",
+    "away_team": "TOT",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "3d0f3c31-d6d1-4f0a-bb6c-c813e918664d",
+    "gameweek": 28,
+    "home_team": "BRF",
+    "away_team": "IPS",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "9e390e1a-70b8-4d1d-b710-0142f1544d8b",
+    "gameweek": 28,
+    "home_team": "CHE",
+    "away_team": "COV",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "b376e24e-39ff-4e42-af3c-194671b91325",
+    "gameweek": 28,
+    "home_team": "LEE",
+    "away_team": "HUL",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "b7142dd6-b763-4d0e-bd82-d2698273b078",
+    "gameweek": 28,
+    "home_team": "LIV",
+    "away_team": "AVL",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "c79cd0c0-d626-4906-9a8d-3eda4be01f72",
+    "gameweek": 28,
+    "home_team": "MCI",
+    "away_team": "EVE",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "63c97d6a-5b8f-4ca5-8794-c930fca7adad",
+    "gameweek": 28,
+    "home_team": "NOT",
+    "away_team": "NEW",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "04c878c5-6510-48b6-a980-c3dcb4b8d422",
+    "gameweek": 28,
+    "home_team": "SUN",
+    "away_team": "MUN",
+    "kickoff_at": "2027-03-03T20:00:00+00:00"
+  },
+  {
+    "id": "7d0b7e00-40f4-4d37-a096-0d666ee6b797",
+    "gameweek": 29,
+    "home_team": "AVL",
+    "away_team": "HUL",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "f41aea77-bc17-46fb-bed8-4eda9bf6327e",
+    "gameweek": 29,
+    "home_team": "BOU",
+    "away_team": "NEW",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "44a1eb3f-9379-4617-9cd0-09c01bbd517a",
+    "gameweek": 29,
+    "home_team": "CHE",
+    "away_team": "ARS",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "ec11e902-0ec2-4cfa-ab1d-c6ed608d79f3",
+    "gameweek": 29,
+    "home_team": "COV",
+    "away_team": "MCI",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "6271172a-fa59-47b6-9ba2-a22c90ded80a",
+    "gameweek": 29,
+    "home_team": "CRY",
+    "away_team": "FUL",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "bd7dbf74-8754-4039-821c-65f5f9c9c326",
+    "gameweek": 29,
+    "home_team": "LEE",
+    "away_team": "BHA",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "6e021020-dcd5-42bf-b875-d9241162ec35",
+    "gameweek": 29,
+    "home_team": "LIV",
+    "away_team": "IPS",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "6c8281f9-bdd2-4778-8dd7-e21d04ba9328",
+    "gameweek": 29,
+    "home_team": "MUN",
+    "away_team": "EVE",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "614a9e77-ea3e-4624-8142-1418bc098587",
+    "gameweek": 29,
+    "home_team": "SUN",
+    "away_team": "BRF",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "b1cc5327-3041-4bef-90b7-7652fcbab09b",
+    "gameweek": 29,
+    "home_team": "TOT",
+    "away_team": "NOT",
+    "kickoff_at": "2027-03-13T15:00:00+00:00"
+  },
+  {
+    "id": "b820b346-b67c-448e-9df2-23e02aa6b3e0",
+    "gameweek": 30,
+    "home_team": "ARS",
+    "away_team": "SUN",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "775915a4-349d-4810-94cf-cf8ba34d6828",
+    "gameweek": 30,
+    "home_team": "BHA",
+    "away_team": "COV",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "a50877f2-b27c-4cb5-a3b1-9b1a4c806464",
+    "gameweek": 30,
+    "home_team": "BRF",
+    "away_team": "BOU",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "111843f6-14bc-49d3-ad87-da07ec9cd2b0",
+    "gameweek": 30,
+    "home_team": "EVE",
+    "away_team": "TOT",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "b50c375b-5da7-445e-94fb-c933f2934b2b",
+    "gameweek": 30,
+    "home_team": "FUL",
+    "away_team": "LIV",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "e9e2eb9b-1d5c-46ba-a14f-d793409c30c8",
+    "gameweek": 30,
+    "home_team": "HUL",
+    "away_team": "CHE",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "2eae44d4-18f9-4ccc-afdd-000ce9a9a23c",
+    "gameweek": 30,
+    "home_team": "IPS",
+    "away_team": "CRY",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "a39034f8-3372-406e-a4ff-07ed3da35c89",
+    "gameweek": 30,
+    "home_team": "MCI",
+    "away_team": "MUN",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "37942d0d-0e7b-4e83-9089-2b9b468d568f",
+    "gameweek": 30,
+    "home_team": "NEW",
+    "away_team": "LEE",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "34872a68-4009-4fba-84d6-2bacf07d4e13",
+    "gameweek": 30,
+    "home_team": "NOT",
+    "away_team": "AVL",
+    "kickoff_at": "2027-03-20T15:00:00+00:00"
+  },
+  {
+    "id": "06237c5f-5fed-40f2-a7e9-ad2673b8a655",
+    "gameweek": 31,
+    "home_team": "AVL",
+    "away_team": "BHA",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "3c5cdf87-e905-4e9b-b7dd-df20fc2e3ae0",
+    "gameweek": 31,
+    "home_team": "BOU",
+    "away_team": "MCI",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "2da89e02-84d9-4d80-a8f5-a13c3d779ba2",
+    "gameweek": 31,
+    "home_team": "CHE",
+    "away_team": "FUL",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "c1421515-e054-4f6f-acdb-2abbc8d54e47",
+    "gameweek": 31,
+    "home_team": "COV",
+    "away_team": "ARS",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "d2fe5216-34fe-433f-8c88-6f1198375bed",
+    "gameweek": 31,
+    "home_team": "CRY",
+    "away_team": "EVE",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "80d1c983-593c-4612-b3e1-f34209d02823",
+    "gameweek": 31,
+    "home_team": "LEE",
+    "away_team": "NOT",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "8a8c3657-6273-4f57-9ad7-cf8300112458",
+    "gameweek": 31,
+    "home_team": "LIV",
+    "away_team": "NEW",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "8115a36e-c226-4b5e-b7a7-147ebabc65fe",
+    "gameweek": 31,
+    "home_team": "MUN",
+    "away_team": "HUL",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "77110a8c-dac4-4313-a1df-9698c9100cee",
+    "gameweek": 31,
+    "home_team": "SUN",
+    "away_team": "IPS",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "2ff65ff0-ac85-49d6-90a6-e663196caf49",
+    "gameweek": 31,
+    "home_team": "TOT",
+    "away_team": "BRF",
+    "kickoff_at": "2027-04-10T14:00:00+00:00"
+  },
+  {
+    "id": "29c050bd-5708-4dbc-a990-77b1621e2c12",
+    "gameweek": 32,
+    "home_team": "ARS",
+    "away_team": "AVL",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "3a76bf66-67a2-4a07-9144-660990f79241",
+    "gameweek": 32,
+    "home_team": "BHA",
+    "away_team": "CHE",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "50ced336-7e34-4a38-b9d3-30a5209e41f7",
+    "gameweek": 32,
+    "home_team": "BRF",
+    "away_team": "LEE",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "2656b7a3-722d-4880-bde8-fc6a9b1c7988",
+    "gameweek": 32,
+    "home_team": "EVE",
+    "away_team": "BOU",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "34da7696-5ffc-48f6-bb57-59fa19167442",
+    "gameweek": 32,
+    "home_team": "FUL",
+    "away_team": "SUN",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "0dab6522-c08f-42cd-bed8-c3c8ca8a8368",
+    "gameweek": 32,
+    "home_team": "HUL",
+    "away_team": "COV",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "1240f8ee-9597-4751-abc2-0fe1e015653b",
+    "gameweek": 32,
+    "home_team": "IPS",
+    "away_team": "MUN",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "6eec7702-eedd-46fa-b21e-cd9ed4fb8fc5",
+    "gameweek": 32,
+    "home_team": "MCI",
+    "away_team": "CRY",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "9ce23275-aa64-432e-9b40-140593012b46",
+    "gameweek": 32,
+    "home_team": "NEW",
+    "away_team": "TOT",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "8f78079d-7a1b-4008-9046-abc8fc2cb3b5",
+    "gameweek": 32,
+    "home_team": "NOT",
+    "away_team": "LIV",
+    "kickoff_at": "2027-04-17T14:00:00+00:00"
+  },
+  {
+    "id": "ab7a21f6-1e07-46f8-89b3-8334b54c1b7c",
+    "gameweek": 33,
+    "home_team": "AVL",
+    "away_team": "COV",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "5e440301-9249-40c4-a2ac-bb9645f2a30a",
+    "gameweek": 33,
+    "home_team": "BOU",
+    "away_team": "ARS",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "e8182c71-d060-4ffd-84e5-dda234f946d5",
+    "gameweek": 33,
+    "home_team": "BRF",
+    "away_team": "FUL",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "c952e56e-c874-4f99-a027-785f9cd31d5b",
+    "gameweek": 33,
+    "home_team": "CHE",
+    "away_team": "MCI",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "5d216007-9f23-42fc-bfbb-c07119cd7e19",
+    "gameweek": 33,
+    "home_team": "EVE",
+    "away_team": "BHA",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "22361aca-4f51-4e1d-8d49-150616879a81",
+    "gameweek": 33,
+    "home_team": "LEE",
+    "away_team": "LIV",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "dc031ece-3316-467f-8d58-6c4b212308e8",
+    "gameweek": 33,
+    "home_team": "MUN",
+    "away_team": "CRY",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "055310cb-c006-4153-a3bb-32786439c121",
+    "gameweek": 33,
+    "home_team": "NEW",
+    "away_team": "IPS",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "8736cd7a-05f1-4ec3-afab-fffc9d36a7c6",
+    "gameweek": 33,
+    "home_team": "NOT",
+    "away_team": "SUN",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "229d80f2-ee6b-4bde-9ab5-a5f47ad7b266",
+    "gameweek": 33,
+    "home_team": "TOT",
+    "away_team": "HUL",
+    "kickoff_at": "2027-04-24T14:00:00+00:00"
+  },
+  {
+    "id": "26b97188-1870-4f1c-aebd-d614cc97f979",
+    "gameweek": 34,
+    "home_team": "ARS",
+    "away_team": "TOT",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "062ec167-f288-4bdc-b5b2-9cdbbbbb3d73",
+    "gameweek": 34,
+    "home_team": "BHA",
+    "away_team": "NOT",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "f87e8e15-ea1c-4afc-899a-de585dfe54c2",
+    "gameweek": 34,
+    "home_team": "COV",
+    "away_team": "MUN",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "f4048f6f-99a1-4b60-8f97-a1e6f8b9de8c",
+    "gameweek": 34,
+    "home_team": "CRY",
+    "away_team": "AVL",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "f0d1d5f3-52ee-4dce-8ee0-490b2ccab8ea",
+    "gameweek": 34,
+    "home_team": "FUL",
+    "away_team": "EVE",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "05c87ffe-0946-4567-a322-56ef6352c41e",
+    "gameweek": 34,
+    "home_team": "HUL",
+    "away_team": "BOU",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "93d1bc10-48e1-4bbd-80cf-33da6e99f7b8",
+    "gameweek": 34,
+    "home_team": "IPS",
+    "away_team": "LEE",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "1284fd5e-c876-460e-9af8-b6fddf89b91c",
+    "gameweek": 34,
+    "home_team": "LIV",
+    "away_team": "CHE",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "c39a54b9-210e-4e0c-ba2e-5af97d73d146",
+    "gameweek": 34,
+    "home_team": "MCI",
+    "away_team": "BRF",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "817e0841-b883-40ec-ac5e-945b0e3b77f5",
+    "gameweek": 34,
+    "home_team": "SUN",
+    "away_team": "NEW",
+    "kickoff_at": "2027-05-01T14:00:00+00:00"
+  },
+  {
+    "id": "0e6ab371-15e6-424c-a9f1-0aab788beb9d",
+    "gameweek": 35,
+    "home_team": "BHA",
+    "away_team": "SUN",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "24de6f45-d292-4c93-a45d-1e1fdba35904",
+    "gameweek": 35,
+    "home_team": "BOU",
+    "away_team": "MUN",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "1dfc3f77-1e97-4413-9942-f3cf5cd6fc62",
+    "gameweek": 35,
+    "home_team": "BRF",
+    "away_team": "AVL",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "4505295c-04ae-45f9-891f-6528bd705cca",
+    "gameweek": 35,
+    "home_team": "EVE",
+    "away_team": "HUL",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "eec6eb03-fffb-407b-8361-02e0217d91d1",
+    "gameweek": 35,
+    "home_team": "FUL",
+    "away_team": "IPS",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "0969e6f6-dbfe-47c2-9d7a-c8186445ad83",
+    "gameweek": 35,
+    "home_team": "LEE",
+    "away_team": "ARS",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "98b03ac9-4e0a-4651-b370-050517197974",
+    "gameweek": 35,
+    "home_team": "MCI",
+    "away_team": "LIV",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "cc4661db-3495-48ba-b452-0eaf4bc9eb6c",
+    "gameweek": 35,
+    "home_team": "NEW",
+    "away_team": "COV",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "6ca8fbbe-2ce3-4ef9-967c-f151204b0b42",
+    "gameweek": 35,
+    "home_team": "NOT",
+    "away_team": "CRY",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "07d8c85a-a71d-4624-beda-c274cb2ebe19",
+    "gameweek": 35,
+    "home_team": "TOT",
+    "away_team": "CHE",
+    "kickoff_at": "2027-05-08T14:00:00+00:00"
+  },
+  {
+    "id": "ad244611-8e24-4387-a3d4-59847255ba7b",
+    "gameweek": 36,
+    "home_team": "ARS",
+    "away_team": "NOT",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "c235ec05-f84a-4b8f-a3da-da56e3d9b79c",
+    "gameweek": 36,
+    "home_team": "AVL",
+    "away_team": "NEW",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "c281fda7-16fc-40ef-8a1b-3a3fc0c196a8",
+    "gameweek": 36,
+    "home_team": "CHE",
+    "away_team": "EVE",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "85fbe5d6-a8ef-4a5b-98af-25f631e06908",
+    "gameweek": 36,
+    "home_team": "COV",
+    "away_team": "TOT",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "205e9356-8df4-4b26-b223-12f2bb126d62",
+    "gameweek": 36,
+    "home_team": "CRY",
+    "away_team": "BHA",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "f0885728-1ca5-4bb5-aa73-f836c4a20840",
+    "gameweek": 36,
+    "home_team": "HUL",
+    "away_team": "FUL",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "fc647cf3-df24-4dcf-bcd4-a90372549346",
+    "gameweek": 36,
+    "home_team": "IPS",
+    "away_team": "MCI",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "3da9e9ec-f588-497c-a17d-26a664a5b79d",
+    "gameweek": 36,
+    "home_team": "LIV",
+    "away_team": "BRF",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "7bad1852-dc60-489b-aeaa-a36dee5c47bd",
+    "gameweek": 36,
+    "home_team": "MUN",
+    "away_team": "LEE",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "c66fe477-5e2f-4dac-a2d3-b07f7b2db46e",
+    "gameweek": 36,
+    "home_team": "SUN",
+    "away_team": "BOU",
+    "kickoff_at": "2027-05-15T14:00:00+00:00"
+  },
+  {
+    "id": "6bcc96b4-41d4-42a6-8871-1ee305b42ded",
+    "gameweek": 37,
+    "home_team": "BHA",
+    "away_team": "LIV",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "bb93450c-efba-4fb1-a1ec-2c40576795a2",
+    "gameweek": 37,
+    "home_team": "BOU",
+    "away_team": "CHE",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "d70a99e1-f913-4e84-9fb1-8470d5736793",
+    "gameweek": 37,
+    "home_team": "BRF",
+    "away_team": "HUL",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "2c9003e2-aa34-4e7d-8d59-86c1bdd91473",
+    "gameweek": 37,
+    "home_team": "EVE",
+    "away_team": "ARS",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "7bbb15d2-f756-4506-9aa2-ce5edc9568b1",
+    "gameweek": 37,
+    "home_team": "FUL",
+    "away_team": "COV",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "69ada6ff-95d2-4b6b-a45e-4a2ff18b9b2b",
+    "gameweek": 37,
+    "home_team": "LEE",
+    "away_team": "SUN",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "3a37233a-f176-4fad-beaa-8bc54383742f",
+    "gameweek": 37,
+    "home_team": "MCI",
+    "away_team": "AVL",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "af0c61fe-c444-4ccc-9913-6292cd99e191",
+    "gameweek": 37,
+    "home_team": "NEW",
+    "away_team": "CRY",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "e811b53f-3bad-4e7b-b40e-d0b316c6c7ba",
+    "gameweek": 37,
+    "home_team": "NOT",
+    "away_team": "IPS",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "a990ce76-ee7f-40ee-bb94-af74cf84566a",
+    "gameweek": 37,
+    "home_team": "TOT",
+    "away_team": "MUN",
+    "kickoff_at": "2027-05-23T14:00:00+00:00"
+  },
+  {
+    "id": "5098267f-1e94-4fad-8458-d8bc334741d0",
+    "gameweek": 38,
+    "home_team": "ARS",
+    "away_team": "BHA",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "80f41a44-51bc-434e-8a4f-d385d05a10ef",
+    "gameweek": 38,
+    "home_team": "AVL",
+    "away_team": "TOT",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "ce01716c-6216-419f-a2bf-3b0e08634d92",
+    "gameweek": 38,
+    "home_team": "CHE",
+    "away_team": "BRF",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "7493aef1-dc7f-4daa-bb10-5ef3c29d5495",
+    "gameweek": 38,
+    "home_team": "COV",
+    "away_team": "NOT",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "4fe351d0-ad3f-402b-a483-b0717780851f",
+    "gameweek": 38,
+    "home_team": "CRY",
+    "away_team": "LEE",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "551fbb26-c344-409a-838f-b0bac26dc4e6",
+    "gameweek": 38,
+    "home_team": "HUL",
+    "away_team": "NEW",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "deefebab-f23f-4a50-9db0-d73712f71cd9",
+    "gameweek": 38,
+    "home_team": "IPS",
+    "away_team": "EVE",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "e8989970-4bc2-4b72-a15d-b32e35af2290",
+    "gameweek": 38,
+    "home_team": "LIV",
+    "away_team": "BOU",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "e38facbf-c483-4469-9276-34ce7eb60649",
+    "gameweek": 38,
+    "home_team": "MUN",
+    "away_team": "FUL",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  },
+  {
+    "id": "b155b25f-a3b3-454a-8bf0-b68b3654353d",
+    "gameweek": 38,
+    "home_team": "SUN",
+    "away_team": "MCI",
+    "kickoff_at": "2027-05-30T15:00:00+00:00"
+  }
+]

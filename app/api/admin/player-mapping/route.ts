@@ -130,6 +130,7 @@ export async function GET() {
 
   const players = (playersData ?? []) as PlayerRow[];
   const mappedFplIds = new Set(players.filter((p) => p.fpl_id != null).map((p) => p.fpl_id as number));
+  const liveFplIds = new Set((bootstrap.elements ?? []).map((element) => element.id));
 
   const unmappedFplPlayers = (bootstrap.elements ?? [])
     .filter((element) => !mappedFplIds.has(element.id) && POSITION_LABELS[element.element_type])
@@ -142,9 +143,21 @@ export async function GET() {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Eligible for the dropdown if truly unmapped (fpl_id null) OR their
+  // current fpl_id is stale -- no longer a real element in live
+  // bootstrap-static (e.g. carried over from last season). A live, valid
+  // fpl_id is never included here, so a correct current mapping can't be
+  // accidentally overwritten from this list.
   const unmappedPlayers = players
-    .filter((p) => p.fpl_id == null)
-    .map((p) => ({ id: p.id, name: p.name, team: p.team, position: p.position }))
+    .filter((p) => p.fpl_id == null || !liveFplIds.has(p.fpl_id))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      team: p.team,
+      position: p.position,
+      isStale: p.fpl_id != null && !liveFplIds.has(p.fpl_id),
+      staleFplId: p.fpl_id != null && !liveFplIds.has(p.fpl_id) ? p.fpl_id : null,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return NextResponse.json({ unmappedFplPlayers, unmappedPlayers });
@@ -205,27 +218,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Player not found" }, { status: 404 });
   }
 
-  if (targetPlayer.fpl_id != null) {
-    return NextResponse.json({ message: "Selected player already has an fpl_id set" }, { status: 409 });
-  }
-
-  // Fetch live FPL data for this player -- needed to populate fpl_player_data
-  // and to confirm the fplId is still real before writing anything.
-  let element: FplElement | undefined;
+  // Fetch live FPL data once -- needed both to check whether the player's
+  // current fpl_id (if any) is stale, and to populate fpl_player_data for
+  // the new fpl_id before writing anything.
+  let bootstrap: FplBootstrapResponse;
   try {
     const response = await fetch(FPL_BOOTSTRAP_URL, { method: "GET", cache: "no-store" });
     if (!response.ok) {
       return NextResponse.json({ message: `FPL API unavailable (${response.status})` }, { status: 502 });
     }
-    const bootstrap = (await response.json()) as FplBootstrapResponse;
-    element = (bootstrap.elements ?? []).find((candidate) => candidate.id === fplId);
+    bootstrap = (await response.json()) as FplBootstrapResponse;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to reach FPL API";
     return NextResponse.json({ message }, { status: 502 });
   }
 
+  const liveFplIds = new Set((bootstrap.elements ?? []).map((candidate) => candidate.id));
+  const element = (bootstrap.elements ?? []).find((candidate) => candidate.id === fplId);
+
   if (!element) {
     return NextResponse.json({ message: `fpl_id ${fplId} not found in current FPL data` }, { status: 404 });
+  }
+
+  // Only block the write if the player's current fpl_id is still live and
+  // valid this season -- a stale id (not in liveFplIds) is safe to
+  // overwrite, since it isn't a correct current mapping anyway.
+  if (targetPlayer.fpl_id != null && liveFplIds.has(targetPlayer.fpl_id)) {
+    return NextResponse.json(
+      { message: `Selected player already has a live fpl_id (${targetPlayer.fpl_id}) for this season` },
+      { status: 409 }
+    );
   }
 
   // Check for a pre-existing fpl_player_data row for this fpl_id before
@@ -266,6 +288,7 @@ export async function POST(request: Request) {
 
   const nowIso = new Date().toISOString();
   let linkedExistingRow = false;
+  let repointedExistingRow = false;
 
   if (existingFplData) {
     // A fpl_player_data row for this fpl_id already exists with player_id
@@ -287,40 +310,76 @@ export async function POST(request: Request) {
       );
     }
   } else {
-    const season = await getCurrentSeason(db);
+    // No fpl_player_data row exists for the new fpl_id. But the player may
+    // already have their own row under their old (stale) fpl_id --
+    // player_id is unique on this table, so inserting a second row would
+    // fail. Repoint the existing row instead of leaving it orphaned.
+    const { data: existingRowForPlayer, error: existingRowForPlayerError } = await db
+      .from("fpl_player_data")
+      .select("id")
+      .eq("player_id", playerId)
+      .maybeSingle();
 
-    const insertRow: FplPlayerDataInsert = {
-      player_id: playerId,
-      fpl_id: fplId,
-      season,
-      status: toNullableText(element.status),
-      chance_of_playing_next_round: element.chance_of_playing_next_round,
-      news: toNullableText(element.news),
-      news_added: toNullableText(element.news_added),
-      expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
-      expected_assists_per_90: parseNullableNumber(element.expected_assists_per_90),
-      clean_sheets_per_90: parseNullableNumber(element.clean_sheets_per_90),
-      expected_goals_conceded_per_90: parseNullableNumber(element.expected_goals_conceded_per_90),
-      saves_per_90: parseNullableNumber(element.saves_per_90),
-      penalties_order: element.penalties_order,
-      corners_order: element.corners_and_indirect_freekicks_order,
-      direct_freekicks_order: element.direct_freekicks_order,
-      starts_per_90: parseNullableNumber(element.starts_per_90),
-      synced_at: nowIso,
-      last_synced_at: nowIso,
-    };
-
-    const { error: insertError } = await db.from("fpl_player_data").insert(insertRow);
-
-    if (insertError) {
+    if (existingRowForPlayerError) {
       return NextResponse.json(
         {
-          message: `players.fpl_id was set, but creating the fpl_player_data row failed: ${insertError.message}`,
+          message: `players.fpl_id was set, but checking for an existing fpl_player_data row failed: ${existingRowForPlayerError.message}`,
         },
         { status: 500 }
       );
     }
+
+    const season = await getCurrentSeason(db);
+
+    if (existingRowForPlayer) {
+      repointedExistingRow = true;
+      const { error: repointError } = await db
+        .from("fpl_player_data")
+        .update({ fpl_id: fplId, season, last_synced_at: nowIso })
+        .eq("id", existingRowForPlayer.id);
+
+      if (repointError) {
+        return NextResponse.json(
+          {
+            message: `players.fpl_id was set, but repointing the existing fpl_player_data row failed: ${repointError.message}`,
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      const insertRow: FplPlayerDataInsert = {
+        player_id: playerId,
+        fpl_id: fplId,
+        season,
+        status: toNullableText(element.status),
+        chance_of_playing_next_round: element.chance_of_playing_next_round,
+        news: toNullableText(element.news),
+        news_added: toNullableText(element.news_added),
+        expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
+        expected_assists_per_90: parseNullableNumber(element.expected_assists_per_90),
+        clean_sheets_per_90: parseNullableNumber(element.clean_sheets_per_90),
+        expected_goals_conceded_per_90: parseNullableNumber(element.expected_goals_conceded_per_90),
+        saves_per_90: parseNullableNumber(element.saves_per_90),
+        penalties_order: element.penalties_order,
+        corners_order: element.corners_and_indirect_freekicks_order,
+        direct_freekicks_order: element.direct_freekicks_order,
+        starts_per_90: parseNullableNumber(element.starts_per_90),
+        synced_at: nowIso,
+        last_synced_at: nowIso,
+      };
+
+      const { error: insertError } = await db.from("fpl_player_data").insert(insertRow);
+
+      if (insertError) {
+        return NextResponse.json(
+          {
+            message: `players.fpl_id was set, but creating the fpl_player_data row failed: ${insertError.message}`,
+          },
+          { status: 500 }
+        );
+      }
+    }
   }
 
-  return NextResponse.json({ success: true, linkedExistingRow });
+  return NextResponse.json({ success: true, linkedExistingRow, repointedExistingRow });
 }

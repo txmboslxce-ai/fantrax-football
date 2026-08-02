@@ -15,6 +15,8 @@ type UnmappedPlayer = {
   name: string;
   team: string;
   position: string;
+  isStale: boolean;
+  staleFplId: number | null;
 };
 
 type FetchResult = {
@@ -169,6 +171,7 @@ export default function PlayerMappingClient() {
                       {candidates.map((player) => (
                         <option key={player.id} value={player.id}>
                           {player.name} ({player.team} / {player.position})
+                          {player.isStale ? ` — (stale match, currently fpl_id ${player.staleFplId})` : ""}
                         </option>
                       ))}
                     </select>

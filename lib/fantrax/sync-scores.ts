@@ -74,8 +74,17 @@ type SyncFantraxScoresResult = {
   positionOrGroup: FantraxPositionGroup;
   positionLabel: string;
   playersSynced: number;
+  playersCreated: number;
   unmatchedFantraxIds: string[];
   season: string;
+};
+
+type NewPlayerInsert = {
+  fantrax_id: string;
+  name: string;
+  team: string;
+  position: string;
+  is_keeper: boolean;
 };
 
 type FplEvent = {
@@ -458,6 +467,7 @@ export async function syncFantraxScores(
       positionOrGroup,
       positionLabel: getFantraxPositionLabel(positionOrGroup),
       playersSynced: 0,
+      playersCreated: 0,
       unmatchedFantraxIds: [],
       season,
     };
@@ -474,7 +484,71 @@ export async function syncFantraxScores(
 
   const players = (playersData ?? []) as PlayerLookupRow[];
   const playerByFantraxId = new Map(players.map((player) => [player.fantrax_id, player]));
-  const unmatchedFantraxIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(scorerId));
+  const trulyUnmatchedIds = scorerIds.filter((scorerId) => !playerByFantraxId.has(scorerId));
+
+  const unmatchedFantraxIds: string[] = [];
+  let playersCreated = 0;
+
+  if (trulyUnmatchedIds.length > 0) {
+    const mappedRowByFantraxId = new Map(mappedRows.map((row) => [row.fantrax_id, row]));
+
+    const { data: teamsData, error: teamsError } = await supabase.from("teams").select("abbrev");
+
+    if (teamsError) {
+      throw new Error(teamsError.message);
+    }
+
+    const validAbbrevs = new Set((teamsData ?? []).map((team) => team.abbrev as string));
+    const isKeeper = uploadType === "keeper";
+    const insertCandidates: NewPlayerInsert[] = [];
+
+    for (const fantraxId of trulyUnmatchedIds) {
+      const row = mappedRowByFantraxId.get(fantraxId);
+      if (!row || !row.name) {
+        unmatchedFantraxIds.push(fantraxId);
+        continue;
+      }
+
+      // Mid-season transfers show as "OLD/NEW" in Fantrax's Team column --
+      // the current club is whichever team is listed last.
+      const teamParts = row.team.split("/");
+      const resolvedTeam = (teamParts[teamParts.length - 1] ?? "").trim().toUpperCase();
+
+      if (!resolvedTeam || !validAbbrevs.has(resolvedTeam)) {
+        unmatchedFantraxIds.push(fantraxId);
+        continue;
+      }
+
+      insertCandidates.push({
+        fantrax_id: fantraxId,
+        name: row.name,
+        team: resolvedTeam,
+        position: row.position,
+        is_keeper: isKeeper,
+      });
+    }
+
+    if (insertCandidates.length > 0) {
+      const { data: insertedPlayers, error: insertPlayersError } = await supabase
+        .from("players")
+        .insert(insertCandidates)
+        .select("id, fantrax_id, name, position");
+
+      if (insertPlayersError) {
+        console.error(
+          `[sync-scores] Failed to insert ${insertCandidates.length} new player(s): ${insertPlayersError.message}`
+        );
+        for (const candidate of insertCandidates) {
+          unmatchedFantraxIds.push(candidate.fantrax_id);
+        }
+      } else {
+        for (const inserted of (insertedPlayers ?? []) as PlayerLookupRow[]) {
+          playerByFantraxId.set(inserted.fantrax_id, inserted);
+          playersCreated += 1;
+        }
+      }
+    }
+  }
 
   const uploadedAt = new Date().toISOString();
   const upserts = mappedRows.flatMap((row) => {
@@ -528,6 +602,7 @@ export async function syncFantraxScores(
     positionOrGroup,
     positionLabel: getFantraxPositionLabel(positionOrGroup),
     playersSynced: upserts.length,
+    playersCreated,
     unmatchedFantraxIds,
     season,
   };
