@@ -183,7 +183,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Missing or invalid playerId/fplId" }, { status: 400 });
   }
 
+  // TEMPORARY debug logging -- remove once the silent-zero-row-write issue
+  // is root-caused. Logs exactly what this request received.
+  console.log(`[player-mapping] POST received playerId=${JSON.stringify(playerId)} fplId=${fplId}`);
+
   const db = createAdminSupabaseClient() ?? auth.supabase;
+  console.log(`[player-mapping] db client source: ${createAdminSupabaseClient() ? "admin (service role)" : "auth.supabase (user session)"}`);
 
   // Guard against creating a duplicate mapping even before the DB-level
   // unique index (migration 016) is applied.
@@ -300,6 +305,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: existingRowForPlayerError.message }, { status: 500 });
   }
 
+  // TEMPORARY debug logging -- remove once root-caused.
+  console.log(
+    `[player-mapping] existingFplData (by fpl_id=${fplId}): ${
+      existingFplData ? JSON.stringify(existingFplData) : "null (no row found)"
+    }`
+  );
+  console.log(
+    `[player-mapping] existingRowForPlayer (by player_id=${JSON.stringify(playerId)}): ${
+      existingRowForPlayer ? JSON.stringify(existingRowForPlayer) : "null (no row found)"
+    }`
+  );
+
   const { error: updateError } = await db.from("players").update({ fpl_id: fplId }).eq("id", playerId);
 
   if (updateError) {
@@ -313,39 +330,37 @@ export async function POST(request: Request) {
 
   if (existingRowForPlayer) {
     // Player already owns a fpl_player_data row (their old/stale fpl_id, or
-    // degenerately already this one). Repoint it -- fpl_id, season, and
-    // last_synced_at only, same as before; leave the other stat columns
-    // alone.
-    repointedExistingRow = true;
-    const season = await getCurrentSeason(db);
-
-    const { error: repointError } = await db
-      .from("fpl_player_data")
-      .update({ fpl_id: fplId, season, last_synced_at: nowIso })
-      .eq("id", existingRowForPlayer.id);
-
-    if (repointError) {
-      return NextResponse.json(
-        {
-          message: `players.fpl_id was set, but repointing the existing fpl_player_data row failed: ${repointError.message}`,
-        },
-        { status: 500 }
-      );
-    }
-
+    // degenerately already this one).
+    //
+    // If a separate orphan row also exists for the new fpl_id, it MUST be
+    // deleted before repointing -- fpl_id has its own unique constraint
+    // (fpl_player_data_fpl_id_key), independent of the player_id one. If we
+    // repoint first, the UPDATE collides with the orphan row still holding
+    // that fpl_id and fails. Delete-then-repoint is the only safe order.
     if (existingFplData && existingFplData.id !== existingRowForPlayer.id) {
-      // A separate row for the new fpl_id also exists -- by construction
-      // its player_id must be null here (the conflict check above already
-      // ruled out it belonging to a different player, and it can't belong
-      // to this player since that row is existingRowForPlayer, a different
-      // id). It's now redundant now that the player's own row points at
-      // this fpl_id -- delete it rather than leave an orphan behind.
-      const { error: deleteError } = await db.from("fpl_player_data").delete().eq("id", existingFplData.id);
+      // By construction its player_id must be null here (the conflict check
+      // above already ruled out it belonging to a different player, and it
+      // can't belong to this player since that row is existingRowForPlayer,
+      // a different id).
+      const { data: deletedRows, error: deleteError } = await db
+        .from("fpl_player_data")
+        .delete()
+        .eq("id", existingFplData.id)
+        .select("id");
 
       if (deleteError) {
         return NextResponse.json(
           {
-            message: `players.fpl_id was set and the player's fpl_player_data row was repointed, but deleting the now-redundant row for fpl_id ${fplId} failed: ${deleteError.message}`,
+            message: `players.fpl_id was set, but deleting the now-redundant row for fpl_id ${fplId} failed: ${deleteError.message}`,
+          },
+          { status: 500 }
+        );
+      }
+
+      if (!deletedRows || deletedRows.length === 0) {
+        return NextResponse.json(
+          {
+            message: `players.fpl_id was set, but deleting the redundant fpl_player_data row ${existingFplData.id} matched zero rows -- it was not actually deleted.`,
           },
           { status: 500 }
         );
@@ -353,19 +368,62 @@ export async function POST(request: Request) {
 
       deletedOrphanRow = true;
     }
+
+    // Now safe to repoint -- fpl_id, season, and last_synced_at only, same
+    // as before; leave the other stat columns alone.
+    repointedExistingRow = true;
+    const season = await getCurrentSeason(db);
+
+    const { data: repointedRows, error: repointError } = await db
+      .from("fpl_player_data")
+      .update({ fpl_id: fplId, season, last_synced_at: nowIso })
+      .eq("id", existingRowForPlayer.id)
+      .select("id");
+
+    if (repointError) {
+      return NextResponse.json(
+        {
+          message: `players.fpl_id was set${
+            deletedOrphanRow ? " and the redundant row was deleted" : ""
+          }, but repointing the existing fpl_player_data row failed: ${repointError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!repointedRows || repointedRows.length === 0) {
+      return NextResponse.json(
+        {
+          message: `players.fpl_id was set${
+            deletedOrphanRow ? " and the redundant row was deleted" : ""
+          }, but repointing fpl_player_data row ${existingRowForPlayer.id} matched zero rows -- it was not actually updated.`,
+        },
+        { status: 500 }
+      );
+    }
   } else if (existingFplData) {
     // No row of the player's own; a row already exists for the new fpl_id
     // (player_id null -- written by the daily cron). Link it.
     linkedExistingRow = true;
-    const { error: linkError } = await db
+    const { data: linkedRows, error: linkError } = await db
       .from("fpl_player_data")
       .update({ player_id: playerId })
-      .eq("id", existingFplData.id);
+      .eq("id", existingFplData.id)
+      .select("id");
 
     if (linkError) {
       return NextResponse.json(
         {
           message: `players.fpl_id was set, but linking the existing fpl_player_data row failed: ${linkError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!linkedRows || linkedRows.length === 0) {
+      return NextResponse.json(
+        {
+          message: `players.fpl_id was set, but linking fpl_player_data row ${existingFplData.id} matched zero rows -- it was not actually updated.`,
         },
         { status: 500 }
       );
@@ -395,12 +453,21 @@ export async function POST(request: Request) {
       last_synced_at: nowIso,
     };
 
-    const { error: insertError } = await db.from("fpl_player_data").insert(insertRow);
+    const { data: insertedRows, error: insertError } = await db.from("fpl_player_data").insert(insertRow).select("id");
 
     if (insertError) {
       return NextResponse.json(
         {
           message: `players.fpl_id was set, but creating the fpl_player_data row failed: ${insertError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!insertedRows || insertedRows.length === 0) {
+      return NextResponse.json(
+        {
+          message: `players.fpl_id was set, but the fpl_player_data insert reported success while returning zero rows -- it may not have actually been created.`,
         },
         { status: 500 }
       );
