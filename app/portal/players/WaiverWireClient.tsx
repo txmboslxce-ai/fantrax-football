@@ -35,8 +35,6 @@ type PlayerGameweekJoinRow = {
     | null;
 };
 
-const SEASON = "2025-26";
-
 function parseOwnership(value: string | null): number {
   if (!value) {
     return 0;
@@ -138,7 +136,13 @@ const positionBadgeClass: Record<WaiverRow["position"], string> = {
   F: "bg-[#27412d]",
 };
 
-export default function WaiverWireClient({ leagueRoster }: { leagueRoster: LeagueRosterData | null }) {
+export default function WaiverWireClient({
+  leagueRoster,
+  season,
+}: {
+  leagueRoster: LeagueRosterData | null;
+  season: string;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [gameweeks, setGameweeks] = useState<number[]>([]);
   const [selectedGw, setSelectedGw] = useState<number | null>(null);
@@ -159,7 +163,7 @@ export default function WaiverWireClient({ leagueRoster }: { leagueRoster: Leagu
       const { data, error: gwError } = await supabase
         .from("player_gameweeks")
         .select("gameweek")
-        .eq("season", SEASON)
+        .eq("season", season)
         .order("gameweek", { ascending: false });
 
       if (!alive) {
@@ -187,7 +191,7 @@ export default function WaiverWireClient({ leagueRoster }: { leagueRoster: Leagu
     return () => {
       alive = false;
     };
-  }, [supabase]);
+  }, [supabase, season]);
 
   useEffect(() => {
     let alive = true;
@@ -205,7 +209,7 @@ export default function WaiverWireClient({ leagueRoster }: { leagueRoster: Leagu
       const { data, error: rowsError } = await supabase
         .from("player_gameweeks")
         .select("raw_fantrax_pts, players!inner(id, name, team, position, ownership_pct)")
-        .eq("season", SEASON)
+        .eq("season", season)
         .eq("gameweek", selectedGw)
         .gt("games_played", 0);
 
@@ -255,7 +259,7 @@ export default function WaiverWireClient({ leagueRoster }: { leagueRoster: Leagu
     return () => {
       alive = false;
     };
-  }, [selectedGw, supabase]);
+  }, [selectedGw, supabase, season]);
 
   const filteredRows = useMemo(() => {
     if (availabilityFilter === "All" || !leagueRoster) return rows;

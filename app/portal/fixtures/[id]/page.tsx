@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import FixtureDetailClient from "@/app/portal/fixtures/FixtureDetailClient";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-
-const SEASON = "2025-26";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type PageProps = {
   params:
@@ -66,12 +65,13 @@ type PlayerGameweekRow = {
 
 async function loadFixture(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  fixtureId: string
+  fixtureId: string,
+  season: string
 ): Promise<FixtureRow | null> {
   const withKickoff = await supabase
     .from("fixtures")
     .select("id, gameweek, home_team, away_team, kickoff_at")
-    .eq("season", SEASON)
+    .eq("season", season)
     .eq("id", fixtureId)
     .limit(1);
 
@@ -86,7 +86,7 @@ async function loadFixture(
   const withoutKickoff = await supabase
     .from("fixtures")
     .select("id, gameweek, home_team, away_team")
-    .eq("season", SEASON)
+    .eq("season", season)
     .eq("id", fixtureId)
     .limit(1);
 
@@ -161,9 +161,10 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [fixture, { data: teamsData, error: teamsError }, leagueRoster] = await Promise.all([
-    loadFixture(supabase, resolvedParams.id),
+    loadFixture(supabase, resolvedParams.id, SEASON),
     supabase.from("teams").select("abbrev, full_name, name"),
     user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
   ]);

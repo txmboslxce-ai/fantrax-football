@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { SEASON, mapPosition } from "@/lib/portal/playerMetrics";
+import { mapPosition } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 import MyLeagueClient, { type LeaguePlayerData, type LeagueTeam } from "./MyLeagueClient";
 
 type ProfileRow = {
@@ -85,6 +86,8 @@ export default async function MyLeaguePage() {
   if (playerIds.length === 0) {
     return <MyLeagueClient leagueId={leagueId} lastSyncedAt={lastSyncedAt} teams={[]} players={[]} savedTeamId={savedTeamId} savedTeamName={savedTeamName} />;
   }
+
+  const SEASON = await getCurrentSeason(supabase);
 
   const [{ data: playerRows }, { data: gwRows }] = await Promise.all([
     supabase.from("players").select("id, name, team, position, ownership_pct").in("id", playerIds),

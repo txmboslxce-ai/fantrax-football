@@ -1,6 +1,7 @@
 import TeamSquadClient from "@/components/portal/TeamSquadClient";
-import { SEASON, mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
+import { mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -191,6 +192,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   const requestedTab = toTabKey(resolvedSearchParams?.tab);
 
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
     .select("abbrev, name, full_name")

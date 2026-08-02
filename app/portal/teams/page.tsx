@@ -1,6 +1,7 @@
 import TeamsTableClient from "@/components/portal/TeamsTableClient";
-import { SEASON, mapPosition, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
+import { mapPosition, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type PlayerRow = {
   id: string;
@@ -67,6 +68,7 @@ function avgPerStart(points: number, starts: number): number {
 
 export default async function TeamsPage() {
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [
     { data: teams, error: teamsError },

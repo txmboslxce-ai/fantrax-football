@@ -90,7 +90,6 @@ type FixtureCell = {
   isHome: boolean;
 };
 
-const SEASON = "2025-26";
 const positionFilters: Array<"All" | Position> = ["All", "GK", "DEF", "MID", "FWD"];
 
 function mapPosition(position: string): Position {
@@ -160,7 +159,13 @@ function gradientCellColor(value: number, min: number, max: number): string {
   return mixColor(yellow, green, (ratio - 0.5) * 2);
 }
 
-export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: LeagueRosterData | null }) {
+export default function FixturePlannerClient({
+  leagueRoster,
+  season,
+}: {
+  leagueRoster: LeagueRosterData | null;
+  season: string;
+}) {
   const supabase = useMemo(() => createClient(), []);
 
   const [rows, setRows] = useState<PlayerPlannerRow[]>([]);
@@ -199,10 +204,10 @@ export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: L
           .select(
             "player_id, gameweek, games_played, raw_fantrax_pts, players!inner(id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
           )
-          .eq("season", SEASON)
+          .eq("season", season)
           .gt("games_played", 0),
-        supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
-        supabase.from("fixtures").select("id, gameweek, home_team, away_team").eq("season", SEASON).order("gameweek", { ascending: true }),
+        supabase.from("player_gameweeks").select("gameweek").eq("season", season).order("gameweek", { ascending: false }).limit(1),
+        supabase.from("fixtures").select("id, gameweek, home_team, away_team").eq("season", season).order("gameweek", { ascending: true }),
         supabase.from("teams").select("abbrev").order("abbrev"),
       ]);
 
@@ -364,7 +369,7 @@ export default function FixturePlannerClient({ leagueRoster }: { leagueRoster: L
     return () => {
       alive = false;
     };
-  }, [supabase]);
+  }, [supabase, season]);
 
   const nextGws = useMemo(() => {
     if (latestGw == null) {

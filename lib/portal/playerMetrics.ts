@@ -1,5 +1,3 @@
-export const SEASON = "2025-26";
-
 export type PlayerRow = {
   id: string;
   name: string;

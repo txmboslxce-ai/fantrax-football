@@ -1,7 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { mapPosition } from "@/lib/portal/playerMetrics";
-
-const SEASON = "2025-26";
+import { getCurrentSeason } from "@/lib/season/current";
 
 export type AdviceStatKey =
   | "pts_per_start"
@@ -124,6 +123,7 @@ function resolveAccum(
 
 export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [
     { data: playersRaw, error: playersError },

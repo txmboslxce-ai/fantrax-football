@@ -14,6 +14,7 @@ import {
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
+import { getCurrentSeason } from "@/lib/season/current";
 import Link from "next/link";
 
 type PageProps = {
@@ -42,8 +43,6 @@ type PlayerRecord = {
   windows: Record<PlayerTableWindowKey, PlayerWindowStats>;
 };
 
-const SEASON = "2025-26";
-
 const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
   { key: "players", label: "Players" },
   { key: "form", label: "Form Table" },
@@ -69,7 +68,7 @@ function toTabKey(value: string | string[] | undefined): PlayersTabKey {
   return "players";
 }
 
-async function getPlayersTableData(): Promise<PlayerRecord[]> {
+async function getPlayersTableData(season: string): Promise<PlayerRecord[]> {
   const supabase = await createServerSupabaseClient();
 
   const [{ data: players, error: playersError }, { data: gameweeks, error: gameweeksError }, { data: fixtures, error: fixturesError }] =
@@ -83,9 +82,9 @@ async function getPlayersTableData(): Promise<PlayerRecord[]> {
         .select(
           "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
         )
-        .eq("season", SEASON)
+        .eq("season", season)
         .range(0, 40000),
-      supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
+      supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", season),
     ]);
 
   if (playersError) {
@@ -190,9 +189,10 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const season = await getCurrentSeason(supabase);
 
   const [players, formData, leagueRoster] = await Promise.all([
-    activeTab === "players" ? getPlayersTableData() : Promise.resolve(null),
+    activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),
     activeTab === "form" ? getGWOverviewData() : Promise.resolve(null),
     user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
   ]);
@@ -201,7 +201,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Players</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Season {SEASON} player outputs. Click any row for player detail.</p>
+        <p className="mt-2 text-sm text-brand-creamDark">Season {season} player outputs. Click any row for player detail.</p>
       </div>
 
       <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
@@ -236,8 +236,8 @@ export default async function PlayersPage({ searchParams }: PageProps) {
         />
       ) : null}
 
-      {activeTab === "waiver" ? <WaiverWireClient leagueRoster={leagueRoster} /> : null}
-      {activeTab === "fixtures" ? <FixturePlannerClient leagueRoster={leagueRoster} /> : null}
+      {activeTab === "waiver" ? <WaiverWireClient leagueRoster={leagueRoster} season={season} /> : null}
+      {activeTab === "fixtures" ? <FixturePlannerClient leagueRoster={leagueRoster} season={season} /> : null}
     </div>
   );
 }

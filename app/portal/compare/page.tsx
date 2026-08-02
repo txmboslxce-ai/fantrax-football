@@ -1,6 +1,5 @@
 import CompareClient from "@/app/portal/compare/CompareClient";
 import {
-  SEASON,
   decorateGameweeks,
   mapPosition,
   nextFixtures,
@@ -12,6 +11,7 @@ import {
   type TeamRow,
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type ComparePlayerSnapshot = {
   id: string;
@@ -45,6 +45,7 @@ type ComparePlayerSnapshot = {
 
 export default async function ComparePage() {
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [
     { data: players, error: playersError },

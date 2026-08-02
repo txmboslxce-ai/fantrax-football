@@ -11,7 +11,7 @@ import type {
   TradeValueEntry,
   AnalyticsPayload,
 } from "../types";
-import { SEASON } from "@/lib/portal/playerMetrics";
+import { getCurrentSeason } from "@/lib/season/current";
 
 export type { AnalyticsPayload } from "../types";
 
@@ -250,6 +250,8 @@ export async function GET(request: Request) {
   }
 
   const payload = computeAnalytics(standings, scheduleMatches);
+
+  const SEASON = await getCurrentSeason(supabase);
 
   // ── Trade Values ──────────────────────────────────────────────────────────
   const { data: rosters } = await supabase

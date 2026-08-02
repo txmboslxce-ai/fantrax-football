@@ -1,6 +1,5 @@
 import PlayerDetailCharts from "@/components/portal/charts/PlayerDetailCharts";
 import {
-  SEASON,
   decorateGameweeks,
   formatFixed,
   mapPosition,
@@ -12,6 +11,7 @@ import {
   type TeamRow,
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 import { notFound } from "next/navigation";
 import PlayerGameweekTableClient from "./PlayerGameweekTableClient";
 
@@ -91,6 +91,7 @@ function formatShortDate(value: string | null): string | null {
 export default async function PlayerDetailPage({ params }: PlayerDetailPageProps) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
+  const season = await getCurrentSeason(supabase);
 
   const [
     {
@@ -115,12 +116,12 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
         "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, goals_against_outfield, saves, key_passes, shots_on_target, tackles_won, interceptions, clearances, aerials_won, accurate_crosses, blocked_shots, dribbles_succeeded, dispossessed, penalties_drawn, penalties_missed, yellow_cards, red_cards, own_goals, subbed_on, subbed_off, penalty_saves, high_claims, smothers, corner_kicks, free_kick_shots"
       )
       .eq("player_id", id)
-      .eq("season", SEASON)
+      .eq("season", season)
       .order("gameweek", { ascending: true }),
     supabase
       .from("fixtures")
       .select("id, season, gameweek, home_team, away_team")
-      .eq("season", SEASON)
+      .eq("season", season)
       .order("gameweek"),
     supabase.from("teams").select("abbrev, name, full_name"),
   ]);
@@ -152,7 +153,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const { data: fdrGameweeks } = await supabase
     .from("player_gameweeks")
     .select("gameweek, raw_fantrax_pts, players!inner(team, position)")
-    .eq("season", SEASON)
+    .eq("season", season)
     .gte("games_started", 1)
     .gt("games_played", 0);
 

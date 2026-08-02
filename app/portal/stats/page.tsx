@@ -1,7 +1,8 @@
 import StatsTableClient from "@/app/portal/stats/StatsTableClient";
-import { SEASON, mapPosition, type PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
+import { mapPosition, type PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type StatsWindowRow = {
   season_pts: number;
@@ -148,6 +149,7 @@ function summarizeStatsWindow(rows: StatsPlayerGameweekRow[]): StatsWindowRow {
 
 export default async function StatsPage() {
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [
     {

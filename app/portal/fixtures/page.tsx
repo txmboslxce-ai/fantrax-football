@@ -1,7 +1,6 @@
 import FixturesClient from "@/app/portal/fixtures/FixturesClient";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-
-const SEASON = "2025-26";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type PageProps = {
   searchParams?:
@@ -32,12 +31,13 @@ type LatestGameweekRow = {
 };
 
 async function loadFixtures(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  season: string
 ): Promise<{ data: FixtureRow[]; hasKickoffAt: boolean }> {
   const withKickoff = await supabase
     .from("fixtures")
     .select("id, gameweek, home_team, away_team, kickoff_at")
-    .eq("season", SEASON)
+    .eq("season", season)
     .order("gameweek");
 
   if (!withKickoff.error) {
@@ -51,7 +51,7 @@ async function loadFixtures(
   const withoutKickoff = await supabase
     .from("fixtures")
     .select("id, gameweek, home_team, away_team")
-    .eq("season", SEASON)
+    .eq("season", season)
     .order("gameweek");
 
   if (withoutKickoff.error) {
@@ -78,9 +78,10 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
 
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [{ data: fixturesData }, { data: teamsData, error: teamsError }, { data: currentGwData, error: currentGwError }] = await Promise.all([
-    loadFixtures(supabase),
+    loadFixtures(supabase, SEASON),
     supabase.from("teams").select("abbrev, full_name, name"),
     supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
   ]);

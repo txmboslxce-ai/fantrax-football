@@ -1,6 +1,6 @@
 import type { GWOverviewFixture, GWOverviewPlayer, GWOverviewTeam } from "@/app/portal/gw-overview/GWOverviewClient";
-import { SEASON } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type PlayerRow = {
   id: string;
@@ -67,6 +67,7 @@ function parseOwnership(value: string | null): number {
 
 export async function getGWOverviewData(): Promise<GWOverviewTabData> {
   const supabase = await createServerSupabaseClient();
+  const SEASON = await getCurrentSeason(supabase);
 
   const [
     { data: players, error: playersError },

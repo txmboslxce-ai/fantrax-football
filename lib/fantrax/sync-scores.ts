@@ -3,10 +3,10 @@ import { IGNORE_COLUMNS, KEEPER_COLUMN_MAP, PLAYER_COLUMN_MAP } from "@/lib/csv/
 import { calcGhostPts, coerceNumber } from "@/lib/csv/transform";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { getFantraxLeagueId } from "@/lib/fantrax/config";
+import { getCurrentSeason } from "@/lib/season/current";
 
 const FANTRAX_DOWNLOAD_URL = "https://www.fantrax.com/fxpa/downloadPlayerStats";
 const FPL_BOOTSTRAP_URL = "https://fantasy.premierleague.com/api/bootstrap-static/";
-const FANTRAX_SEASON = "2025-26";
 const FANTRAX_START_DATE = "2025-08-15";
 const FANTRAX_END_DATE = "2026-04-07";
 
@@ -341,13 +341,14 @@ function buildUpsert(
   position: string,
   gameweek: number,
   stats: NormalizedRow,
-  uploadedAt: string
+  uploadedAt: string,
+  season: string
 ): PlayerGameweekUpsert {
   const row = stats.games_played <= 0 ? zeroStatsForDnp(stats) : stats;
 
   return {
     player_id: playerId,
-    season: FANTRAX_SEASON,
+    season,
     gameweek,
     games_played: Math.max(0, Math.trunc(Number(row.games_played ?? 0))),
     games_started: Math.max(0, Math.trunc(Number(row.games_started ?? 0))),
@@ -433,6 +434,8 @@ export async function syncFantraxScores(
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for Fantrax sync.");
   }
 
+  const season = await getCurrentSeason(supabase);
+
   if (!Number.isInteger(gameweek) || gameweek < 1 || gameweek > 38) {
     throw new Error("Gameweek must be an integer between 1 and 38.");
   }
@@ -456,7 +459,7 @@ export async function syncFantraxScores(
       positionLabel: getFantraxPositionLabel(positionOrGroup),
       playersSynced: 0,
       unmatchedFantraxIds: [],
-      season: FANTRAX_SEASON,
+      season,
     };
   }
 
@@ -480,7 +483,7 @@ export async function syncFantraxScores(
       return [];
     }
 
-    return [buildUpsert(player.id, player.position, gameweek, row, uploadedAt)];
+    return [buildUpsert(player.id, player.position, gameweek, row, uploadedAt, season)];
   });
 
   if (upserts.length > 0) {
@@ -526,6 +529,6 @@ export async function syncFantraxScores(
     positionLabel: getFantraxPositionLabel(positionOrGroup),
     playersSynced: upserts.length,
     unmatchedFantraxIds,
-    season: FANTRAX_SEASON,
+    season,
   };
 }

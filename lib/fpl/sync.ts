@@ -1,7 +1,7 @@
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
+import { getCurrentSeason } from "@/lib/season/current";
 
 const FPL_BOOTSTRAP_URL = "https://fantasy.premierleague.com/api/bootstrap-static/";
-const FPL_SEASON = "2025-26";
 
 type FplElement = {
   id: number;
@@ -68,6 +68,8 @@ export async function syncFplPlayerData() {
   if (!supabase) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for FPL sync.");
   }
+
+  const FPL_SEASON = await getCurrentSeason(supabase);
 
   const response = await fetch(FPL_BOOTSTRAP_URL, {
     method: "GET",
