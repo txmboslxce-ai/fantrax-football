@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncFplPlayerData } from "@/lib/fpl/sync";
+import { syncFplPlayerData, syncFixtures } from "@/lib/fpl/sync";
 
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -16,10 +16,10 @@ async function handleSync(request: Request) {
   }
 
   try {
-    const result = await syncFplPlayerData();
-    return NextResponse.json({ success: true, ...result });
+    const [playerResult, fixturesResult] = await Promise.all([syncFplPlayerData(), syncFixtures()]);
+    return NextResponse.json({ success: true, ...playerResult, fixtures: fixturesResult });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to sync FPL player data.";
+    const message = error instanceof Error ? error.message : "Failed to sync FPL data.";
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

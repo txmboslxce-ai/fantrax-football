@@ -23,6 +23,11 @@ const adminLinks = [
     title: "Upload Teams",
     description: "Upload team map XLSX and upsert team definitions.",
   },
+  {
+    href: "/admin/player-mapping",
+    title: "Player Mapping",
+    description: "Manually match FPL players to Fantrax players when the automatic sync can't.",
+  },
 ];
 
 export default async function AdminPage() {

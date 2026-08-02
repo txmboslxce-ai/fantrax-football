@@ -70,11 +70,7 @@ function normalizeName(value: string | null | undefined): string {
     return "";
   }
 
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 function parseNullableNumber(value: string | number | null | undefined): number | null {
