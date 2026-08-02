@@ -280,6 +280,26 @@ export async function POST(request: Request) {
     );
   }
 
+  // Look up whether this player already owns a fpl_player_data row (under
+  // any fpl_id) *before* deciding how to handle the new fpl_id's row --
+  // this is what last round's fix got wrong: it only checked "does the
+  // player have their own row" inside the branch where no row existed yet
+  // for the new fpl_id. In practice a row for the new fpl_id almost always
+  // already exists (the daily cron upserts one for every live FPL id,
+  // player_id left null), so that branch rarely ran, and a player being
+  // re-mapped from a stale id would hit the other branch's blind
+  // UPDATE ... SET player_id, colliding with their own existing row and
+  // violating fpl_player_data_player_id_key.
+  const { data: existingRowForPlayer, error: existingRowForPlayerError } = await db
+    .from("fpl_player_data")
+    .select("id")
+    .eq("player_id", playerId)
+    .maybeSingle();
+
+  if (existingRowForPlayerError) {
+    return NextResponse.json({ message: existingRowForPlayerError.message }, { status: 500 });
+  }
+
   const { error: updateError } = await db.from("players").update({ fpl_id: fplId }).eq("id", playerId);
 
   if (updateError) {
@@ -289,12 +309,53 @@ export async function POST(request: Request) {
   const nowIso = new Date().toISOString();
   let linkedExistingRow = false;
   let repointedExistingRow = false;
+  let deletedOrphanRow = false;
 
-  if (existingFplData) {
-    // A fpl_player_data row for this fpl_id already exists with player_id
-    // null -- almost certainly written by the daily cron, which upserts by
-    // fpl_id but never links player_id. Just link it; leave season/stats
-    // alone since the cron already keeps those fresh and correct.
+  if (existingRowForPlayer) {
+    // Player already owns a fpl_player_data row (their old/stale fpl_id, or
+    // degenerately already this one). Repoint it -- fpl_id, season, and
+    // last_synced_at only, same as before; leave the other stat columns
+    // alone.
+    repointedExistingRow = true;
+    const season = await getCurrentSeason(db);
+
+    const { error: repointError } = await db
+      .from("fpl_player_data")
+      .update({ fpl_id: fplId, season, last_synced_at: nowIso })
+      .eq("id", existingRowForPlayer.id);
+
+    if (repointError) {
+      return NextResponse.json(
+        {
+          message: `players.fpl_id was set, but repointing the existing fpl_player_data row failed: ${repointError.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (existingFplData && existingFplData.id !== existingRowForPlayer.id) {
+      // A separate row for the new fpl_id also exists -- by construction
+      // its player_id must be null here (the conflict check above already
+      // ruled out it belonging to a different player, and it can't belong
+      // to this player since that row is existingRowForPlayer, a different
+      // id). It's now redundant now that the player's own row points at
+      // this fpl_id -- delete it rather than leave an orphan behind.
+      const { error: deleteError } = await db.from("fpl_player_data").delete().eq("id", existingFplData.id);
+
+      if (deleteError) {
+        return NextResponse.json(
+          {
+            message: `players.fpl_id was set and the player's fpl_player_data row was repointed, but deleting the now-redundant row for fpl_id ${fplId} failed: ${deleteError.message}`,
+          },
+          { status: 500 }
+        );
+      }
+
+      deletedOrphanRow = true;
+    }
+  } else if (existingFplData) {
+    // No row of the player's own; a row already exists for the new fpl_id
+    // (player_id null -- written by the daily cron). Link it.
     linkedExistingRow = true;
     const { error: linkError } = await db
       .from("fpl_player_data")
@@ -310,76 +371,41 @@ export async function POST(request: Request) {
       );
     }
   } else {
-    // No fpl_player_data row exists for the new fpl_id. But the player may
-    // already have their own row under their old (stale) fpl_id --
-    // player_id is unique on this table, so inserting a second row would
-    // fail. Repoint the existing row instead of leaving it orphaned.
-    const { data: existingRowForPlayer, error: existingRowForPlayerError } = await db
-      .from("fpl_player_data")
-      .select("id")
-      .eq("player_id", playerId)
-      .maybeSingle();
+    // Neither exists -- insert fresh.
+    const season = await getCurrentSeason(db);
 
-    if (existingRowForPlayerError) {
+    const insertRow: FplPlayerDataInsert = {
+      player_id: playerId,
+      fpl_id: fplId,
+      season,
+      status: toNullableText(element.status),
+      chance_of_playing_next_round: element.chance_of_playing_next_round,
+      news: toNullableText(element.news),
+      news_added: toNullableText(element.news_added),
+      expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
+      expected_assists_per_90: parseNullableNumber(element.expected_assists_per_90),
+      clean_sheets_per_90: parseNullableNumber(element.clean_sheets_per_90),
+      expected_goals_conceded_per_90: parseNullableNumber(element.expected_goals_conceded_per_90),
+      saves_per_90: parseNullableNumber(element.saves_per_90),
+      penalties_order: element.penalties_order,
+      corners_order: element.corners_and_indirect_freekicks_order,
+      direct_freekicks_order: element.direct_freekicks_order,
+      starts_per_90: parseNullableNumber(element.starts_per_90),
+      synced_at: nowIso,
+      last_synced_at: nowIso,
+    };
+
+    const { error: insertError } = await db.from("fpl_player_data").insert(insertRow);
+
+    if (insertError) {
       return NextResponse.json(
         {
-          message: `players.fpl_id was set, but checking for an existing fpl_player_data row failed: ${existingRowForPlayerError.message}`,
+          message: `players.fpl_id was set, but creating the fpl_player_data row failed: ${insertError.message}`,
         },
         { status: 500 }
       );
     }
-
-    const season = await getCurrentSeason(db);
-
-    if (existingRowForPlayer) {
-      repointedExistingRow = true;
-      const { error: repointError } = await db
-        .from("fpl_player_data")
-        .update({ fpl_id: fplId, season, last_synced_at: nowIso })
-        .eq("id", existingRowForPlayer.id);
-
-      if (repointError) {
-        return NextResponse.json(
-          {
-            message: `players.fpl_id was set, but repointing the existing fpl_player_data row failed: ${repointError.message}`,
-          },
-          { status: 500 }
-        );
-      }
-    } else {
-      const insertRow: FplPlayerDataInsert = {
-        player_id: playerId,
-        fpl_id: fplId,
-        season,
-        status: toNullableText(element.status),
-        chance_of_playing_next_round: element.chance_of_playing_next_round,
-        news: toNullableText(element.news),
-        news_added: toNullableText(element.news_added),
-        expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
-        expected_assists_per_90: parseNullableNumber(element.expected_assists_per_90),
-        clean_sheets_per_90: parseNullableNumber(element.clean_sheets_per_90),
-        expected_goals_conceded_per_90: parseNullableNumber(element.expected_goals_conceded_per_90),
-        saves_per_90: parseNullableNumber(element.saves_per_90),
-        penalties_order: element.penalties_order,
-        corners_order: element.corners_and_indirect_freekicks_order,
-        direct_freekicks_order: element.direct_freekicks_order,
-        starts_per_90: parseNullableNumber(element.starts_per_90),
-        synced_at: nowIso,
-        last_synced_at: nowIso,
-      };
-
-      const { error: insertError } = await db.from("fpl_player_data").insert(insertRow);
-
-      if (insertError) {
-        return NextResponse.json(
-          {
-            message: `players.fpl_id was set, but creating the fpl_player_data row failed: ${insertError.message}`,
-          },
-          { status: 500 }
-        );
-      }
-    }
   }
 
-  return NextResponse.json({ success: true, linkedExistingRow, repointedExistingRow });
+  return NextResponse.json({ success: true, linkedExistingRow, repointedExistingRow, deletedOrphanRow });
 }
