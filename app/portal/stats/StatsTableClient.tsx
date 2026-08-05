@@ -4,7 +4,7 @@ import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import type { PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type StatsWindowRow = {
@@ -104,6 +104,14 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
 const COLUMN_CATEGORIES: ColumnCategory[] = ["Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement"];
 const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "clean_sheets"];
 const MAX_SELECTED_COLUMNS = 6;
+const COLUMN_PRESETS: Array<{ label: string; keys: StatColumnKey[] }> = [
+  { label: "Essentials", keys: DEFAULT_SELECTED_COLUMN_KEYS },
+  { label: "Attacking", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Attacking").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
+  { label: "Defensive", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Defensive").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
+  { label: "Goalkeeping", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Goalkeeping").map((column) => column.key) },
+  { label: "Discipline", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Discipline").map((column) => column.key) },
+  { label: "Involvement", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Involvement").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
+];
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -152,9 +160,16 @@ function positionLetter(position: StatsRow["position"]): "G" | "D" | "M" | "F" {
   return "F";
 }
 
+function positionBadgeClass(position: StatsRow["position"]): string {
+  if (position === "GK") return "bg-amber-100 text-amber-900";
+  if (position === "DEF") return "bg-emerald-200 text-emerald-950";
+  if (position === "MID") return "bg-violet-200 text-violet-950";
+  return "bg-orange-200 text-orange-950";
+}
+
 const MOBILE_ROW_CAP = 150;
 
-export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRow[]; leagueRoster: LeagueRosterData | null }) {
+export default function StatsTableClient({ rows, leagueRoster, season, availableSeasons }: { rows: StatsRow[]; leagueRoster: LeagueRosterData | null; season: string; availableSeasons: string[] }) {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState("");
@@ -178,6 +193,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
     Discipline: false,
     Involvement: false,
   });
+  const columnPickerRef = useRef<HTMLDivElement>(null);
 
   const teams = useMemo(() => {
     return [...new Set(rows.map((row) => row.team))].sort((a, b) => a.localeCompare(b));
@@ -190,6 +206,21 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
   }, [selectedColumns]);
 
   const hasReachedColumnLimit = selectedColumns.length >= MAX_SELECTED_COLUMNS;
+  const activePresetLabel = useMemo(() => {
+    const selected = new Set(selectedColumns);
+    return COLUMN_PRESETS.find((preset) => preset.keys.length === selected.size && preset.keys.every((key) => selected.has(key)))?.label;
+  }, [selectedColumns]);
+
+  useEffect(() => {
+    if (!isColumnPanelOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (columnPickerRef.current && !columnPickerRef.current.contains(event.target as Node)) setIsColumnPanelOpen(false);
+    };
+    const closeEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setIsColumnPanelOpen(false); };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeEscape);
+    return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeEscape); };
+  }, [isColumnPanelOpen]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -197,13 +228,6 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  useEffect(() => {
-    if (sortKey !== "player" && !visibleColumns.some((column) => column.key === sortKey)) {
-      setSortKey("goals");
-      setSortDir("desc");
-    }
-  }, [sortKey, visibleColumns]);
 
   const filteredSorted = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
@@ -312,6 +336,15 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
     setSelectedColumns([]);
   }
 
+  function selectColumns(columnKeys: StatColumnKey[]) {
+    const selected = new Set(columnKeys);
+    setSelectedColumns(COLUMN_DEFINITIONS.map((column) => column.key).filter((key) => selected.has(key)));
+  }
+
+  function selectSeason(nextSeason: string) {
+    router.push(`/portal/stats?season=${encodeURIComponent(nextSeason)}`);
+  }
+
   function toggleCategory(category: ColumnCategory) {
     setExpandedCategories((current) => ({
       ...current,
@@ -344,7 +377,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
           </div>
         ) : null}
 
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+      <div ref={columnPickerRef} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
         <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
           <label className="space-y-1 md:shrink-0">
             <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
@@ -495,6 +528,13 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
             </div>
           </div>
 
+          <label className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Season</span>
+            <select value={season} onChange={(event) => selectSeason(event.target.value)} className="rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none">
+              {availableSeasons.map((availableSeason) => <option key={availableSeason} value={availableSeason}>{availableSeason}</option>)}
+            </select>
+          </label>
+
           <button
             type="button"
             onClick={() => setIsColumnPanelOpen((current) => !current)}
@@ -510,13 +550,20 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
       </div>
 
       {isColumnPanelOpen ? (
-        <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
+        <div className="absolute right-4 z-40 mt-[-0.5rem] w-[30rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-cream/20 bg-[#102116] p-4 shadow-xl sm:p-5">
           <div className="mb-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
             <p className="mt-1 text-sm text-brand-creamDark">Expand a category to add or remove columns.</p>
             {hasReachedColumnLimit ? (
               <p className="mt-2 text-xs font-semibold text-amber-300">Maximum columns selected</p>
             ) : null}
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-2 border-b border-brand-cream/15 pb-4">
+            {COLUMN_PRESETS.map((preset) => (
+              <button key={preset.label} type="button" onClick={() => selectColumns(preset.keys)} className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${activePresetLabel === preset.label ? "border-brand-green bg-brand-green text-brand-cream" : "border-brand-cream/35 text-brand-cream hover:bg-brand-cream/10"}`}>{preset.label}</button>
+            ))}
+            <button type="button" onClick={clearAllColumns} className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream">Clear all</button>
           </div>
 
           <div className="space-y-3">
@@ -666,7 +713,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
               const visibleRows = isMobile ? filteredSorted.slice(0, MOBILE_ROW_CAP) : filteredSorted;
               return visibleRows.map((row, index) => {
                 const rowHref = `/portal/players/${row.id}`;
-                const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+                const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                 const overallRank = index + 1;
                 const posKey = positionLetter(row.position);
                 posCounters[posKey] = (posCounters[posKey] ?? 0) + 1;
@@ -675,7 +722,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                 return (
                   <tr
                     key={row.id}
-                    className={`${rowShade} cursor-pointer text-brand-cream`}
+                    className={`${rowShade} group cursor-pointer text-brand-dark hover:bg-brand-green/10`}
                     onClick={() => router.push(rowHref)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -686,15 +733,16 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                     role="link"
                     tabIndex={0}
                   >
-                    <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-brand-cream/10 px-1.5 py-1.5 text-center ${rowShade}`}>
-                      <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
-                      <div className="text-xs text-brand-creamDark/80">
+                    <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-slate-200 px-1.5 py-1.5 text-center ${rowShade}`}>
+                      <div className="text-sm font-bold text-brand-dark">{overallRank}</div>
+                      <div className="text-xs text-slate-500">
                         {posKey} #{posRank}
                       </div>
                     </td>
-                    <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1.5 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
+                    <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
+                          <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>{positionLetter(row.position)}</span>
                           <span>{row.player}</span>
                           {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                           <AvailabilityIcon
@@ -705,7 +753,7 @@ export default function StatsTableClient({ rows, leagueRoster }: { rows: StatsRo
                           <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                         </span>
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
+                      <div className="mt-0.5 truncate text-xs text-slate-500 md:overflow-visible md:whitespace-normal">
                         {row.team} / {row.position} / {row.ownershipPct.toFixed(1)}%
                       </div>
                     </td>

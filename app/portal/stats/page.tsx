@@ -147,9 +147,21 @@ function summarizeStatsWindow(rows: StatsPlayerGameweekRow[]): StatsWindowRow {
   };
 }
 
-export default async function StatsPage() {
+type StatsPageProps = {
+  searchParams?: { season?: string | string[] } | Promise<{ season?: string | string[] }>;
+};
+
+export default async function StatsPage({ searchParams }: StatsPageProps) {
   const supabase = await createServerSupabaseClient();
-  const SEASON = await getCurrentSeason(supabase);
+  const resolvedSearchParams = searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
+  const [currentSeason, seasonsResult] = await Promise.all([
+    getCurrentSeason(supabase),
+    supabase.from("seasons").select("id").order("id", { ascending: false }),
+  ]);
+  if (seasonsResult.error) throw new Error(`Unable to load seasons: ${seasonsResult.error.message}`);
+  const availableSeasons = (seasonsResult.data ?? []).map((row) => row.id);
+  const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
+  const SEASON = requestedSeason && availableSeasons.includes(requestedSeason) ? requestedSeason : currentSeason;
 
   const { data: poolRows, error: poolError } = await supabase
     .from("season_player_pool")
@@ -260,7 +272,7 @@ export default async function StatsPage() {
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Player Stats</h1>
         <p className="mt-2 text-sm text-brand-dark/70">Filterable and sortable season {SEASON} player output.</p>
       </div>
-      <StatsTableClient rows={statsRows} leagueRoster={leagueRoster} />
+      <StatsTableClient rows={statsRows} leagueRoster={leagueRoster} season={SEASON} availableSeasons={availableSeasons} />
     </div>
   );
 }
