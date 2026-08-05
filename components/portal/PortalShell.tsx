@@ -75,8 +75,8 @@ export default function PortalShell({ email, children }: PortalShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-full bg-brand-dark text-brand-cream">
-      <div className="border-b border-brand-cream/20 px-4 py-3 md:hidden">
+    <div className="min-h-full">
+      <div className="bg-brand-green border-b border-brand-cream/20 px-4 py-3 text-brand-cream md:hidden">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-wide">Portal</p>
           <button
@@ -108,8 +108,8 @@ export default function PortalShell({ email, children }: PortalShellProps) {
         )}
       </div>
 
-      <div className="mx-auto flex min-h-full max-w-[1440px] md:min-h-[calc(100vh-8rem)]">
-        <aside className="hidden w-72 flex-col border-r border-brand-cream/20 bg-brand-dark px-4 py-6 md:sticky md:top-[69px] md:flex md:h-[calc(100vh-69px)] md:overflow-y-auto">
+      <div className="flex min-h-full md:min-h-[calc(100vh-8rem)]">
+        <aside className="hidden w-72 flex-col border-r border-brand-cream/20 bg-brand-green px-4 py-6 text-brand-cream md:sticky md:top-[69px] md:flex md:h-[calc(100vh-69px)] md:overflow-y-auto">
           <p className="px-3 text-xs font-bold uppercase tracking-widest text-brand-creamDark">Subscriber Portal</p>
           <div className="mt-4 flex-1">
             <NavLinks pathname={pathname} />
@@ -128,7 +128,7 @@ export default function PortalShell({ email, children }: PortalShellProps) {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-x-hidden bg-white px-4 py-6 text-brand-dark sm:px-6 lg:px-8">
           {children}
         </main>
       </div>
