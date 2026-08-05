@@ -77,6 +77,7 @@ const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
   "season_pts",
   "fantasy_pts_per_start",
   "ghost_pts_per_start",
+  "ghost_pts_pct",
   "minutes_per_start",
   "games_started",
   "floor_per_start",
@@ -142,7 +143,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
   const [ownershipMax, setOwnershipMax] = useState("100");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
   const [selectedColumns, setSelectedColumns] = useState<NumericColumnKey[]>(DEFAULT_SELECTED_COLUMN_KEYS);
-  const [sortKey, setSortKey] = useState<SortKey>("fantasy_pts_per_start");
+  const [sortKey, setSortKey] = useState<SortKey>("season_pts");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
