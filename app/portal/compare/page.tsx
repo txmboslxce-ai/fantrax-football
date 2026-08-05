@@ -163,8 +163,8 @@ export default async function ComparePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Compare Players</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Side-by-side comparison for season {SEASON}.</p>
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Compare Players</h1>
+        <p className="mt-2 text-sm text-brand-dark/70">Side-by-side comparison for season {SEASON}.</p>
       </div>
       <CompareClient players={snapshots} />
     </div>

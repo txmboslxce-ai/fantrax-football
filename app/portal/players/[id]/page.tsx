@@ -333,7 +333,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
         />
 
         <section className="space-y-3">
-          <h2 className="text-2xl font-black text-brand-cream">Next Fixtures</h2>
+          <h2 className="text-2xl font-black text-brand-dark">Next Fixtures</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {upcoming.map((fixture) => (
               <article key={fixture.id} className="rounded-xl border border-brand-cream/20 bg-brand-greenDark p-4 text-brand-cream">
@@ -346,7 +346,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-2xl font-black text-brand-cream">Full Gameweek Stats</h2>
+          <h2 className="text-2xl font-black text-brand-dark">Full Gameweek Stats</h2>
           <PlayerGameweekTableClient
             rows={decorated}
             teamNames={teamNamesRecord}

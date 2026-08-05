@@ -19,8 +19,8 @@ export default async function AdvicePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Advice</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Advice</h1>
+        <p className="mt-2 text-sm text-brand-dark/70">
           Season {season} — player averages vs upcoming fixture difficulty.
         </p>
       </div>

@@ -200,8 +200,8 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Players</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Season {season} player outputs. Click any row for player detail.</p>
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Players</h1>
+        <p className="mt-2 text-sm text-brand-dark/70">Season {season} player outputs. Click any row for player detail.</p>
       </div>
 
       <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>

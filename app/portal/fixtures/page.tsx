@@ -124,8 +124,8 @@ export default async function FixturesPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Fixtures</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Season {SEASON} fixtures by gameweek. Click a fixture to see player outputs.</p>
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Fixtures</h1>
+        <p className="mt-2 text-sm text-brand-dark/70">Season {SEASON} fixtures by gameweek. Click a fixture to see player outputs.</p>
       </div>
       <FixturesClient fixtures={fixtures} defaultGameweek={defaultGameweek} />
     </div>

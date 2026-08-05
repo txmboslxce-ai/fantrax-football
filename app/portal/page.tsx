@@ -13,8 +13,8 @@ export default function PortalPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Dashboard</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Your Fantrax and Football subscriber portal.</p>
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Dashboard</h1>
+        <p className="mt-2 text-sm text-brand-dark/70">Your Fantrax and Football subscriber portal.</p>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

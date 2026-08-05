@@ -178,8 +178,8 @@ export default async function TeamsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">Team Stats</h1>
-        <p className="mt-2 text-sm text-brand-creamDark">Club-level season {SEASON} scoring and concession profile.</p>
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Team Stats</h1>
+        <p className="mt-2 text-sm text-brand-dark/70">Club-level season {SEASON} scoring and concession profile.</p>
       </div>
       <TeamsTableClient rows={rows} />
     </div>

@@ -178,8 +178,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">My League</h1>
-          <p className="mt-2 text-sm text-brand-creamDark">Connect your Fantrax league to track roster availability.</p>
+          <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">My League</h1>
+          <p className="mt-2 text-sm text-brand-dark/70">Connect your Fantrax league to track roster availability.</p>
         </div>
 
         <div className="mx-auto max-w-lg rounded-xl border border-brand-cream/20 bg-brand-dark/60 p-6 sm:p-8">
@@ -251,9 +251,9 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-brand-cream sm:text-4xl">My League</h1>
-          <p className="mt-1 text-sm text-brand-creamDark">
-            League ID: <span className="font-mono text-brand-cream">{leagueId}</span>
+          <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">My League</h1>
+          <p className="mt-1 text-sm text-brand-dark/70">
+            League ID: <span className="font-mono text-brand-dark">{leagueId}</span>
           </p>
           <p className="mt-0.5 text-xs text-brand-creamDark">Last synced: {formatSyncDate(lastSyncedAt)}</p>
           {/* My Team selector */}

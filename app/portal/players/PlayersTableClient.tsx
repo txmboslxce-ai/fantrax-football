@@ -1,7 +1,6 @@
 "use client";
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
-import RosterPill from "@/app/components/ui/RosterPill";
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -77,60 +76,14 @@ const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
   "season_pts",
   "fantasy_pts_per_start",
   "ghost_pts_per_start",
+  "minutes_per_start",
   "games_started",
   "floor_per_start",
   "ceiling_per_start",
-  "avg_pts_per_gw",
-  "std_deviation",
-  "median_pts_per_start",
-  "coefficient_of_variation",
-  "minutes_per_start",
-  "games_played",
-  "total_minutes",
-  "home_pts_per_start",
-  "home_pts_pct",
-  "away_pts_per_start",
-  "away_pts_pct",
-  "goals_pts_pct",
-  "assist_pts_pct",
-  "clean_sheet_pts_pct",
-  "ghost_pts_pct",
-  "attacking_pts_pct",
-  "defensive_pts_pct",
-  "total_attacking_defensive_pct",
 ];
 const maxColumns_MOBILE = 4;
 const maxColumns_DESKTOP = 8;
 const PAGE_SIZE = 150;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
-  const safeRatio = clamp(ratio, 0, 1);
-  const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
-  const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
-  const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
-  return `rgb(${r}, ${g}, ${blue})`;
-}
-
-function pointsBadgeBackground(value: number, min: number, max: number): string {
-  const red: [number, number, number] = [239, 68, 68];
-  const yellow: [number, number, number] = [234, 179, 8];
-  const green: [number, number, number] = [42, 122, 59];
-
-  if (max <= min) {
-    return "rgb(234, 179, 8)";
-  }
-
-  const normalized = clamp((value - min) / (max - min), 0, 1);
-  if (normalized <= 0.5) {
-    return mixColor(red, yellow, normalized * 2);
-  }
-
-  return mixColor(yellow, green, (normalized - 0.5) * 2);
-}
 
 function formatValue(value: number, column: ColumnDefinition): string {
   const digits = column.digits ?? 2;
@@ -149,10 +102,11 @@ function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" 
   return "F";
 }
 
-function formatPlayerName(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length < 2) return name;
-  return `${parts[0][0].toUpperCase()}. ${parts.slice(1).join(" ")}`;
+function positionBadgeClass(position: PlayerRow["position"]): string {
+  if (position === "GK") return "bg-amber-100 text-amber-800";
+  if (position === "DEF") return "bg-emerald-100 text-emerald-800";
+  if (position === "MID") return "bg-violet-100 text-violet-800";
+  return "bg-orange-100 text-orange-800";
 }
 
 export default function PlayersTableClient({ players, leagueRoster }: PlayersTableClientProps) {
@@ -265,32 +219,6 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
     sortKey,
     teamFilter,
   ]);
-
-  // Pre-compute positional ranks across the full sorted list so pagination doesn't reset counters
-  const posRankMap = useMemo(() => {
-    const counters: Record<string, number> = {};
-    const map = new Map<string, number>();
-    for (const player of filteredAndSorted) {
-      const posKey = positionLetter(player.position);
-      counters[posKey] = (counters[posKey] ?? 0) + 1;
-      map.set(player.id, counters[posKey]);
-    }
-    return map;
-  }, [filteredAndSorted]);
-
-  const visibleRanges = useMemo(() => {
-    const ranges = {} as Record<NumericColumnKey, { min: number; max: number }>;
-
-    for (const column of visibleColumns) {
-      const values = filteredAndSorted.map((player) => player.windows[selectedWindow][column.key]);
-      ranges[column.key] = {
-        min: values.length > 0 ? Math.min(...values) : 0,
-        max: values.length > 0 ? Math.max(...values) : 0,
-      };
-    }
-
-    return ranges;
-  }, [filteredAndSorted, selectedWindow, visibleColumns]);
 
   const columnsByCategory = useMemo(() => {
     return COLUMN_CATEGORIES.reduce<Record<ColumnCategory, ColumnDefinition[]>>((accumulator, category) => {
@@ -676,28 +604,38 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
       </div>
 
       {/* Table — single overflow-auto container for both axes so sticky works */}
-      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
-        <table className="w-max border-separate border-spacing-0 text-left text-sm">
+      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[32px] min-w-[32px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-0.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 #
               </th>
-              <th className="sticky left-[32px] top-0 z-30 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-9 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Pos
+              </th>
+              <th className="sticky left-[76px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
                 </button>
               </th>
+              {/* Future ADP column belongs here, between Player and Team. */}
+              <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Team
+              </th>
+              <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Own%
+              </th>
               {displayColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="sticky top-0 z-20 w-[96px] min-w-[96px] border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
                     onClick={() => handleSort(column.key)}
-                    className="inline-flex items-center justify-center gap-1"
+                    className="inline-flex w-full items-center justify-end gap-1"
                   >
                     <span>{column.label}</span>
                     <span aria-hidden="true">{sortArrow(column.key)}</span>
@@ -709,15 +647,16 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
           <tbody>
             {pageRows.map((player, index) => {
               const rowHref = `/portal/players/${player.id}`;
-              const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const overallRank = pageStart + index + 1;
               const posKey = positionLetter(player.position);
-              const posRank = posRankMap.get(player.id) ?? 0;
+              const rosterTeam = leagueRoster?.teamByPlayerId[player.id];
+              const availabilityLabel = rosterTeam ? "Taken" : "Available";
 
               return (
                 <tr
                   key={player.id}
-                  className={`${rowShade} cursor-pointer text-brand-cream`}
+                  className={`group ${rowShade} cursor-pointer text-brand-dark transition-colors hover:bg-brand-green/10`}
                   onClick={() => router.push(rowHref)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -728,44 +667,40 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                   role="link"
                   tabIndex={0}
                 >
-                  <td className={`sticky left-0 z-20 w-[32px] min-w-[32px] border-b border-r border-brand-cream/10 px-0.5 py-1 text-center ${rowShade}`}>
-                    <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
-                    <div className="whitespace-nowrap text-[9px] text-brand-creamDark/80">
-                      {posKey} #{posRank}
-                    </div>
+                  <td className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
+                    {overallRank}
                   </td>
-                  <td className={`sticky left-[32px] z-20 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
-                    <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
-                      <span className="inline-flex flex-wrap items-center gap-1">
-                        <span className="md:hidden">{formatPlayerName(player.name)}</span>
-                        <span className="hidden md:inline">{player.name}</span>
-                        {leagueRoster?.myTeamPlayerIds.includes(player.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
-                        <AvailabilityIcon
-                          chanceOfPlaying={player.chanceOfPlaying}
-                          status={player.availabilityStatus}
-                          news={player.availabilityNews}
-                        />
-                      </span>
-                    </div>
-                    <div className="mt-0.5">
-                      <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
-                    </div>
-                    <div className="mt-0 truncate text-[10px] text-brand-creamDark/70 md:overflow-visible md:whitespace-normal">
-                      {player.team} / {player.position} / {player.ownershipPct.toFixed(1)}%
-                    </div>
+                  <td className={`sticky left-9 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
+                      {posKey}
+                    </span>
+                  </td>
+                  <td className={`sticky left-[76px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                      <span>{player.name}</span>
+                      {leagueRoster ? (
+                        <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>
+                          {availabilityLabel}
+                        </span>
+                      ) : null}
+                      {leagueRoster?.myTeamPlayerIds.includes(player.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
+                      <AvailabilityIcon
+                        chanceOfPlaying={player.chanceOfPlaying}
+                        status={player.availabilityStatus}
+                        news={player.availabilityNews}
+                      />
+                    </span>
+                  </td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
+                    {player.ownershipPct.toFixed(1)}%
                   </td>
                   {displayColumns.map((column) => {
                     const value = player.windows[selectedWindow][column.key];
-                    const range = visibleRanges[column.key];
 
                     return (
-                      <td key={column.key} className={`border-b border-r border-brand-cream/10 px-2 py-1 text-center ${rowShade}`}>
-                        <span
-                          className="text-xs font-bold tabular-nums"
-                          style={{ color: pointsBadgeBackground(value, range.min, range.max) }}
-                        >
-                          {formatValue(value, column)}
-                        </span>
+                      <td key={column.key} className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                        {formatValue(value, column)}
                       </td>
                     );
                   })}
@@ -775,8 +710,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
             {filteredAndSorted.length === 0 ? (
               <tr>
                 <td
-                  colSpan={displayColumns.length + 2}
-                  className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark"
+                  colSpan={displayColumns.length + 5}
+                  className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500"
                 >
                   No players match the current filters.
                 </td>
