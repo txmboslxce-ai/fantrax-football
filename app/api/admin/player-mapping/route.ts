@@ -183,12 +183,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Missing or invalid playerId/fplId" }, { status: 400 });
   }
 
-  // TEMPORARY debug logging -- remove once the silent-zero-row-write issue
-  // is root-caused. Logs exactly what this request received.
-  console.log(`[player-mapping] POST received playerId=${JSON.stringify(playerId)} fplId=${fplId}`);
-
   const db = createAdminSupabaseClient() ?? auth.supabase;
-  console.log(`[player-mapping] db client source: ${createAdminSupabaseClient() ? "admin (service role)" : "auth.supabase (user session)"}`);
 
   // Guard against creating a duplicate mapping even before the DB-level
   // unique index (migration 016) is applied.
@@ -304,18 +299,6 @@ export async function POST(request: Request) {
   if (existingRowForPlayerError) {
     return NextResponse.json({ message: existingRowForPlayerError.message }, { status: 500 });
   }
-
-  // TEMPORARY debug logging -- remove once root-caused.
-  console.log(
-    `[player-mapping] existingFplData (by fpl_id=${fplId}): ${
-      existingFplData ? JSON.stringify(existingFplData) : "null (no row found)"
-    }`
-  );
-  console.log(
-    `[player-mapping] existingRowForPlayer (by player_id=${JSON.stringify(playerId)}): ${
-      existingRowForPlayer ? JSON.stringify(existingRowForPlayer) : "null (no row found)"
-    }`
-  );
 
   const { error: updateError } = await db.from("players").update({ fpl_id: fplId }).eq("id", playerId);
 
