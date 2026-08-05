@@ -327,7 +327,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
             { label: "Away", value: summary.away_avg },
           ]}
           breakdown={[
-            { name: "Ghost Pts", value: summary.ghost_pts_total, color: "#2A7A3B" },
+            { name: "Ghost Pts", value: summary.ghost_pts_total, color: "#005B3A" },
             { name: "G/A/CS", value: summary.attack_pts, color: "#E8E4D9" },
           ]}
         />

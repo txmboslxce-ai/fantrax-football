@@ -540,7 +540,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
           </tbody>
           {tally ? (
             <tfoot>
-              <tr className="border-t-2 border-brand-cream/30 bg-[#1a3a22] font-semibold text-brand-cream">
+              <tr className="border-t-2 border-brand-cream/30 bg-brand-greenDark font-semibold text-brand-cream">
                 <td className="px-3 py-3 text-xs uppercase tracking-wide text-brand-creamDark">
                   Avg ({tally.n})
                 </td>

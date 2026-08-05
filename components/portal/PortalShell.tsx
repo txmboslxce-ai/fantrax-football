@@ -55,7 +55,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
             <Link
               href={item.href}
               onClick={onNavigate}
-              className={`block rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+              className={`block rounded-md px-3 py-2 text-sm font-heading font-semibold transition-colors ${
                 active
                   ? "bg-brand-green text-brand-cream"
                   : "text-brand-cream hover:bg-brand-cream/10"

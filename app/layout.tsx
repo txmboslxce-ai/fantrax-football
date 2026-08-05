@@ -1,9 +1,20 @@
 import type { Metadata } from "next";
+import { Inter, League_Spartan } from "next/font/google";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const leagueSpartan = League_Spartan({
+  subsets: ["latin"],
+  variable: "--font-league-spartan",
+});
 
 export const metadata: Metadata = {
   title: "Fantrax and Football",
@@ -22,7 +33,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className="bg-brand-cream text-brand-dark antialiased">
+      <body className={`${inter.variable} ${leagueSpartan.variable} bg-brand-cream font-sans text-brand-dark antialiased`}>
         <div className="flex min-h-screen flex-col">
           <Navbar isLoggedIn={Boolean(user)} isAdmin={isAdminEmail(user?.email)} />
           <main className="flex-1">{children}</main>

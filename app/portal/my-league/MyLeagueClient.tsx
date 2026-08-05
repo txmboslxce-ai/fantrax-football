@@ -353,16 +353,16 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   <th className="sticky left-0 border-b border-r border-brand-cream/20 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
                     Player
                   </th>
-                  <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="border-b border-r border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Season Pts
                   </th>
-                  <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="border-b border-r border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Avg Pts/GW
                   </th>
-                  <th className="border-b border-r border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="border-b border-r border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Ghost Pts/GW
                   </th>
-                  <th className="border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="border-b border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Ownership %
                   </th>
                 </tr>
@@ -415,8 +415,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 const avgOwnership = selectedTeamPlayers.reduce((sum, p) => sum + p.ownershipPct, 0) / n;
                 return (
                   <tfoot>
-                    <tr className="bg-[#1a3a22]">
-                      <td className="sticky left-0 border-t border-brand-cream/20 bg-[#1a3a22] px-4 py-3 text-xs font-bold uppercase tracking-wide text-brand-cream">
+                    <tr className="bg-brand-greenDark">
+                      <td className="sticky left-0 border-t border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-xs font-bold uppercase tracking-wide text-brand-cream">
                         Team Total
                       </td>
                       <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
@@ -600,7 +600,7 @@ function AnalyticsTable({
               {headers.map((h, i) => (
                 <th
                   key={h}
-                  className={`border-b border-brand-cream/20 bg-[#1a3a22] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream ${i === 0 ? "" : "text-center"}`}
+                  className={`border-b border-brand-cream/20 bg-brand-greenDark px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream ${i === 0 ? "" : "text-center"}`}
                 >
                   {h}
                 </th>
@@ -692,4 +692,3 @@ function ConsistencyProfileBadge({ stdDev }: { stdDev: number }) {
     </span>
   );
 }
-

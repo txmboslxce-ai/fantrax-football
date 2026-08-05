@@ -212,7 +212,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
 
         <nav className="hidden items-center gap-7 text-sm md:flex">
           {links.map((link) => (
-            <Link key={link.href} href={link.href} className="transition-colors hover:text-brand-greenLight">
+            <Link key={link.href} href={link.href} className="font-heading transition-colors hover:text-brand-greenLight">
               {link.label}
             </Link>
           ))}
@@ -221,14 +221,14 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
               <PortalSearch />
               <Link
                 href="/portal"
-                className="rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
+                className="rounded-md bg-brand-green px-4 py-2 font-heading font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
               >
                 Portal
               </Link>
               {isAdmin && (
                 <Link
                   href="/admin"
-                  className="rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-semibold text-amber-200 transition-colors hover:bg-amber-500/20"
+                  className="rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-heading font-semibold text-amber-200 transition-colors hover:bg-amber-500/20"
                 >
                   Admin
                 </Link>
@@ -237,7 +237,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
           ) : (
             <Link
               href="/login"
-              className="rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
+              className="rounded-md bg-brand-green px-4 py-2 font-heading font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
             >
               Login
             </Link>
@@ -262,7 +262,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-md px-2 py-2 transition-colors hover:bg-brand-green/20"
+                className="rounded-md px-2 py-2 font-heading transition-colors hover:bg-brand-green/20"
                 onClick={() => setIsOpen(false)}
               >
                 {link.label}
@@ -275,7 +275,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
                 </div>
                 <Link
                   href="/portal"
-                  className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream"
+                  className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-heading font-semibold text-brand-cream"
                   onClick={() => setIsOpen(false)}
                 >
                   Portal
@@ -283,7 +283,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
                 {isAdmin && (
                   <Link
                     href="/admin"
-                    className="w-fit rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-semibold text-amber-200"
+                    className="w-fit rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-heading font-semibold text-amber-200"
                     onClick={() => setIsOpen(false)}
                   >
                     Admin
@@ -293,7 +293,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
             ) : (
               <Link
                 href="/login"
-                className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream"
+                className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-heading font-semibold text-brand-cream"
                 onClick={() => setIsOpen(false)}
               >
                 Login

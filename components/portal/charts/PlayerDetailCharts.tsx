@@ -48,11 +48,11 @@ export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakd
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={pointsByGw} margin={{ top: 12, right: 20, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A7A3B33" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#005B3A33" />
               <XAxis dataKey="gameweek" stroke="#E8E4D9" />
               <YAxis stroke="#E8E4D9" />
               <Tooltip contentStyle={{ backgroundColor: "#0F1F13", border: "1px solid #E8E4D933", color: "#E8E4D9" }} />
-              <Bar dataKey="points" fill="#2A7A3B" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="points" fill="#005B3A" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -63,11 +63,11 @@ export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakd
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={last5} margin={{ top: 20, right: 20, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A7A3B33" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#005B3A33" />
               <XAxis dataKey="gameweek" stroke="#E8E4D9" />
               <YAxis stroke="#E8E4D9" />
               <Tooltip contentStyle={{ backgroundColor: "#0F1F13", border: "1px solid #E8E4D933", color: "#E8E4D9" }} />
-              <Line type="monotone" dataKey="points" stroke="#2A7A3B" strokeWidth={3} dot={{ r: 4, fill: "#2A7A3B" }}>
+              <Line type="monotone" dataKey="points" stroke="#005B3A" strokeWidth={3} dot={{ r: 4, fill: "#005B3A" }}>
                 <LabelList dataKey="points" position="top" formatter={(value: number) => value.toFixed(2)} />
               </Line>
             </LineChart>
@@ -80,11 +80,11 @@ export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakd
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={homeAway} margin={{ top: 18, right: 20, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A7A3B33" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#005B3A33" />
               <XAxis dataKey="label" stroke="#E8E4D9" />
               <YAxis stroke="#E8E4D9" />
               <Tooltip contentStyle={{ backgroundColor: "#0F1F13", border: "1px solid #E8E4D933", color: "#E8E4D9" }} />
-              <Bar dataKey="value" fill="#2A7A3B" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="value" fill="#005B3A" radius={[6, 6, 0, 0]}>
                 <LabelList dataKey="value" position="top" formatter={(value: number) => value.toFixed(2)} />
               </Bar>
             </BarChart>

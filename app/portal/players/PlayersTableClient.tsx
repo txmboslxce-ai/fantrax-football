@@ -660,10 +660,10 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         <table className="w-max border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[32px] min-w-[32px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-0.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-0 top-0 z-30 w-[32px] min-w-[32px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-0.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
                 #
               </th>
-              <th className="sticky left-[32px] top-0 z-30 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-[32px] top-0 z-30 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
@@ -672,7 +672,7 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
               {displayColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="sticky top-0 z-20 w-[96px] min-w-[96px] border-b border-r border-brand-cream/35 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 w-[96px] min-w-[96px] border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"

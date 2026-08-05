@@ -447,31 +447,31 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="text-brand-creamDark">
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide">
                 #
               </th>
-              <th className="sticky left-[48px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] border-b border-r border-brand-cream/25 bg-[#1A4D2E] px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-[48px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
                 <button type="button" onClick={() => handleSort("playerName")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{arrow("playerName")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("playerStat")} className="inline-flex items-center justify-center gap-1">
                   <span>{meta.label}</span>
                   <span aria-hidden="true">{arrow("playerStat")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("fixture")} className="inline-flex items-center justify-center gap-1">
                   <span>Fixture</span>
                   <span aria-hidden="true">{arrow("fixture")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("oppStat")} className="inline-flex items-center justify-center gap-1">
                   <span className="max-w-[120px] text-left leading-tight">{oppColHeader}</span>
                   <span aria-hidden="true">{arrow("oppStat")}</span>

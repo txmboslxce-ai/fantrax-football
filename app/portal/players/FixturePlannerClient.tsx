@@ -544,7 +544,7 @@ export default function FixturePlannerClient({
               <th className="sticky left-0 top-0 z-20 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
                 Name
               </th>
-              <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-brand-greenDark px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
                 <button
                   type="button"
                   onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -557,7 +557,7 @@ export default function FixturePlannerClient({
               {nextGws.map((gw) => (
                 <th
                   key={gw}
-                  className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-[#1a3a22] px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream last:border-r-0"
+                  className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-brand-greenDark px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream last:border-r-0"
                 >
                   GW{gw}
                 </th>
