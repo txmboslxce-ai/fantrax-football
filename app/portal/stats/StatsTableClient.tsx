@@ -102,7 +102,7 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
 ];
 
 const COLUMN_CATEGORIES: ColumnCategory[] = ["Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement"];
-const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "clean_sheets"];
+const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "clean_sheets", "tackles_won", "games_played"];
 const MAX_SELECTED_COLUMNS = 6;
 const COLUMN_PRESETS: Array<{ label: string; keys: StatColumnKey[] }> = [
   { label: "Essentials", keys: DEFAULT_SELECTED_COLUMN_KEYS },
@@ -112,35 +112,6 @@ const COLUMN_PRESETS: Array<{ label: string; keys: StatColumnKey[] }> = [
   { label: "Discipline", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Discipline").map((column) => column.key) },
   { label: "Involvement", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Involvement").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
 ];
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
-  const safeRatio = clamp(ratio, 0, 1);
-  const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
-  const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
-  const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
-  return `rgb(${r}, ${g}, ${blue})`;
-}
-
-function pointsBadgeBackground(value: number, min: number, max: number): string {
-  const red: [number, number, number] = [239, 68, 68];
-  const yellow: [number, number, number] = [234, 179, 8];
-  const green: [number, number, number] = [42, 122, 59];
-
-  if (max <= min) {
-    return "rgb(234, 179, 8)";
-  }
-
-  const normalized = clamp((value - min) / (max - min), 0, 1);
-  if (normalized <= 0.5) {
-    return mixColor(red, yellow, normalized * 2);
-  }
-
-  return mixColor(yellow, green, (normalized - 0.5) * 2);
-}
 
 function formatValue(value: number, column: ColumnDefinition): string {
   const digits = column.digits ?? 2;
@@ -267,20 +238,6 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
   }, [availabilityFilter, deferredSearch, leagueRoster, minGames, ownershipMax, ownershipMin, position, rows, selectedWindow, sortDir, sortKey, teamFilter]);
-
-  const visibleRanges = useMemo(() => {
-    const ranges = {} as Record<StatColumnKey, { min: number; max: number }>;
-
-    for (const column of visibleColumns) {
-      const values = filteredSorted.map((row) => row.windows[selectedWindow][column.key]);
-      ranges[column.key] = {
-        min: values.length > 0 ? Math.min(...values) : 0,
-        max: values.length > 0 ? Math.max(...values) : 0,
-      };
-    }
-
-    return ranges;
-  }, [filteredSorted, selectedWindow, visibleColumns]);
 
   const columnsByCategory = useMemo(() => {
     return COLUMN_CATEGORIES.reduce<Record<ColumnCategory, ColumnDefinition[]>>((accumulator, category) => {
@@ -684,12 +641,17 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
               <th className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
                 #
               </th>
-              <th className="sticky left-[48px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-[48px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-greenDark px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+                Pos
+              </th>
+              <th className="sticky left-[88px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
                 <button type="button" onClick={() => onSort("player")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("player")}</span>
                 </button>
               </th>
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Team</th>
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-right text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Own%</th>
               {visibleColumns.map((column) => (
                 <th
                   key={column.key}
@@ -709,15 +671,14 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
           </thead>
           <tbody>
             {(() => {
-              const posCounters: Record<string, number> = {};
               const visibleRows = isMobile ? filteredSorted.slice(0, MOBILE_ROW_CAP) : filteredSorted;
               return visibleRows.map((row, index) => {
                 const rowHref = `/portal/players/${row.id}`;
                 const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                 const overallRank = index + 1;
                 const posKey = positionLetter(row.position);
-                posCounters[posKey] = (posCounters[posKey] ?? 0) + 1;
-                const posRank = posCounters[posKey];
+                const rosterTeam = leagueRoster?.teamByPlayerId[row.id];
+                const availabilityLabel = rosterTeam ? "Taken" : "Available";
 
                 return (
                   <tr
@@ -735,15 +696,15 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                   >
                     <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-slate-200 px-1.5 py-1.5 text-center ${rowShade}`}>
                       <div className="text-sm font-bold text-brand-dark">{overallRank}</div>
-                      <div className="text-xs text-slate-500">
-                        {posKey} #{posRank}
-                      </div>
                     </td>
-                    <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
+                    <td className={`sticky left-[48px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1.5 py-1.5 text-center ${rowShade}`}>
+                      <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>{posKey}</span>
+                    </td>
+                    <td className={`sticky left-[88px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
                       <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
                         <span className="inline-flex flex-wrap items-center gap-1">
-                          <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>{positionLetter(row.position)}</span>
                           <span>{row.player}</span>
+                          {leagueRoster ? <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>{availabilityLabel}</span> : null}
                           {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                           <AvailabilityIcon
                             chanceOfPlaying={row.chanceOfPlaying}
@@ -753,22 +714,15 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                           <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                         </span>
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-slate-500 md:overflow-visible md:whitespace-normal">
-                        {row.team} / {row.position} / {row.ownershipPct.toFixed(1)}%
-                      </div>
                     </td>
+                    <td className={`border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600 ${rowShade}`}>{row.team}</td>
+                    <td className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600 ${rowShade}`}>{row.ownershipPct.toFixed(1)}%</td>
                     {visibleColumns.map((column) => {
                       const value = row.windows[selectedWindow][column.key];
-                      const range = visibleRanges[column.key];
 
                       return (
-                        <td key={column.key} className={`border-b border-r border-brand-cream/10 px-2 py-1.5 text-center ${rowShade}`}>
-                          <span
-                            className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                            style={{ backgroundColor: pointsBadgeBackground(value, range.min, range.max) }}
-                          >
-                            {formatValue(value, column)}
-                          </span>
+                        <td key={column.key} className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark ${rowShade}`}>
+                          {formatValue(value, column)}
                         </td>
                       );
                     })}
@@ -779,7 +733,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
             {filteredSorted.length === 0 ? (
               <tr>
                 <td
-                  colSpan={visibleColumns.length + 2}
+                  colSpan={visibleColumns.length + 5}
                   className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark"
                 >
                   No players match the current filters.
