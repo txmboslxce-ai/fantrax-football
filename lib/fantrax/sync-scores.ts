@@ -435,7 +435,8 @@ export async function getCurrentGameweek() {
 
 export async function syncFantraxScores(
   gameweek: number,
-  positionOrGroup: FantraxPositionGroup
+  positionOrGroup: FantraxPositionGroup,
+  seasonOverride?: string
 ): Promise<SyncFantraxScoresResult> {
   const supabase = createAdminSupabaseClient();
 
@@ -443,7 +444,7 @@ export async function syncFantraxScores(
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for Fantrax sync.");
   }
 
-  const season = await getCurrentSeason(supabase);
+  const season = seasonOverride ?? (await getCurrentSeason(supabase));
 
   if (!Number.isInteger(gameweek) || gameweek < 1 || gameweek > 38) {
     throw new Error("Gameweek must be an integer between 1 and 38.");

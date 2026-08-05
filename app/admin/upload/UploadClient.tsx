@@ -15,21 +15,18 @@ type UploadResult = {
 type FantraxSyncResponse = {
   success: boolean;
   gameweek?: number;
+  season?: string;
   playersSynced?: number;
   unmatchedFantraxIds?: string[];
   currentGameweek?: number;
   positionOrGroup?: FantraxPositionGroup;
   positionLabel?: string;
+  positionResults?: Array<{
+    positionLabel: string;
+    playersSynced: number;
+    unmatchedFantraxIds: string[];
+  }>;
   message?: string;
-};
-
-type SyncAllSummary = {
-  totalPlayersSynced: number;
-  unmatchedFantraxIds: string[];
-  completed: number;
-  total: number;
-  currentStep: string | null;
-  errors: string[];
 };
 
 type PreviewRow = Record<string, string>;
@@ -40,26 +37,6 @@ type CsvUploadCardProps = {
   defaultSeason: string;
 };
 
-type PositionSyncCardProps = {
-  buttonLabel: string;
-  positionLabel: string;
-  positionOrGroup: FantraxPositionGroup;
-  defaultGameweek: number;
-  currentGameweek: number | null;
-  isLoadingCurrentGw: boolean;
-  onSync: (gameweek: number, positionOrGroup: FantraxPositionGroup) => Promise<FantraxSyncResponse>;
-};
-
-const FANTRAX_POSITION_CARDS: Array<{
-  buttonLabel: string;
-  positionLabel: string;
-  positionOrGroup: FantraxPositionGroup;
-}> = [
-  { buttonLabel: "Sync Forwards (GW)", positionLabel: "Forwards", positionOrGroup: "POS_701" },
-  { buttonLabel: "Sync Midfielders (GW)", positionLabel: "Midfielders", positionOrGroup: "POS_702" },
-  { buttonLabel: "Sync Defenders (GW)", positionLabel: "Defenders", positionOrGroup: "POS_703" },
-  { buttonLabel: "Sync Goalkeepers (GW)", positionLabel: "Goalkeepers", positionOrGroup: "POS_704" },
-];
 
 function CsvUploadCard({ title, type, defaultSeason }: CsvUploadCardProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -249,105 +226,13 @@ function CsvUploadCard({ title, type, defaultSeason }: CsvUploadCardProps) {
   );
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-function PositionSyncCard({
-  buttonLabel,
-  positionLabel,
-  positionOrGroup,
-  defaultGameweek,
-  currentGameweek,
-  isLoadingCurrentGw,
-  onSync,
-}: PositionSyncCardProps) {
-  const [gameweek, setGameweek] = useState(defaultGameweek);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [result, setResult] = useState<FantraxSyncResponse | null>(null);
-
-  useEffect(() => {
-    setGameweek(defaultGameweek);
-  }, [defaultGameweek]);
-
-  async function handleSync() {
-    setIsSyncing(true);
-    setResult(null);
-
-    try {
-      const data = await onSync(gameweek, positionOrGroup);
-      setResult(data);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : `${positionLabel} sync failed.`;
-      setResult({ success: false, message, positionOrGroup, positionLabel, gameweek });
-    } finally {
-      setIsSyncing(false);
-    }
-  }
-
-  return (
-    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
-      <h3 className="text-lg font-bold text-brand-cream">{positionLabel}</h3>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,180px)_auto] md:items-end">
-        <label className="text-sm">
-          <span className="mb-2 block font-semibold text-brand-creamDark">Gameweek</span>
-          <input
-            type="number"
-            min={1}
-            max={38}
-            value={gameweek}
-            onChange={(event) => setGameweek(Number(event.target.value))}
-            className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-brand-cream"
-          />
-        </label>
-
-        <button
-          type="button"
-          onClick={handleSync}
-          disabled={isSyncing || isLoadingCurrentGw}
-          className="rounded-md bg-brand-green px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
-        >
-          {isSyncing ? "Syncing..." : buttonLabel}
-        </button>
-      </div>
-
-      <p className="mt-3 text-xs text-brand-creamDark">
-        {isLoadingCurrentGw
-          ? "Loading current gameweek..."
-          : `Current gameweek: ${currentGameweek ?? "Unavailable"}`}
-      </p>
-
-      {result ? (
-        <div
-          className={`mt-5 rounded-lg border p-4 text-sm ${
-            result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"
-          }`}
-        >
-          {result.success ? (
-            <>
-              <p className="font-semibold">
-                Synced {result.playersSynced ?? 0} {positionLabel.toLowerCase()} for GW {result.gameweek ?? gameweek}.
-              </p>
-              <p className="mt-2">Unmatched Fantrax IDs: {(result.unmatchedFantraxIds ?? []).join(", ") || "None"}</p>
-            </>
-          ) : (
-            <p>{result.message ?? `${positionLabel} sync failed.`}</p>
-          )}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function FantraxSyncPanel() {
+function FantraxSyncPanel({ seasons, defaultSeason }: { seasons: string[]; defaultSeason: string }) {
   const [currentGameweek, setCurrentGameweek] = useState<number | null>(null);
   const [isLoadingCurrentGw, setIsLoadingCurrentGw] = useState(true);
-  const [syncAllSummary, setSyncAllSummary] = useState<SyncAllSummary | null>(null);
-  const [isSyncingAll, setIsSyncingAll] = useState(false);
-  const [syncAllGameweek, setSyncAllGameweek] = useState(1);
+  const [gameweek, setGameweek] = useState(1);
+  const [season, setSeason] = useState(defaultSeason);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [result, setResult] = useState<FantraxSyncResponse | null>(null);
   const [currentGwError, setCurrentGwError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -367,7 +252,7 @@ function FantraxSyncPanel() {
 
         if (data.success && data.currentGameweek) {
           setCurrentGameweek(data.currentGameweek);
-          setSyncAllGameweek(data.currentGameweek);
+          setGameweek(data.currentGameweek);
         } else {
           setCurrentGwError(data.message ?? "Failed to load current gameweek.");
         }
@@ -390,145 +275,67 @@ function FantraxSyncPanel() {
     };
   }, []);
 
-  async function syncSingleGameweek(targetGameweek: number, positionOrGroup: FantraxPositionGroup) {
-    const response = await fetch("/api/fantrax/sync-scores", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ gameweek: targetGameweek, positionOrGroup }),
-    });
-
-    return (await response.json()) as FantraxSyncResponse;
-  }
-
-  async function handleSyncAllGameweeks() {
-    const lastGameweek = currentGameweek ?? syncAllGameweek;
-    if (!Number.isInteger(lastGameweek) || lastGameweek < 1) {
-      setSyncAllSummary({
-        totalPlayersSynced: 0,
-        unmatchedFantraxIds: [],
-        completed: 0,
-        total: 0,
-        currentStep: null,
-        errors: ["Current gameweek is unavailable."],
-      });
-      return;
-    }
-
-    setIsSyncingAll(true);
-    setSyncAllSummary({
-      totalPlayersSynced: 0,
-      unmatchedFantraxIds: [],
-      completed: 0,
-      total: lastGameweek,
-      currentStep: "Starting...",
-      errors: [],
-    });
-
-    const unmatchedIds = new Set<string>();
-    const errors: string[] = [];
-    let totalPlayersSynced = 0;
-    let completed = 0;
+  async function handleSyncAllPositions() {
+    setIsSyncing(true);
+    setResult(null);
 
     try {
-      for (let gw = 1; gw <= lastGameweek; gw += 1) {
-        for (const position of FANTRAX_POSITION_CARDS) {
-          setSyncAllSummary({
-            totalPlayersSynced,
-            unmatchedFantraxIds: Array.from(unmatchedIds),
-            completed,
-            total: lastGameweek,
-            currentStep: `GW ${gw}: ${position.positionLabel}`,
-            errors: [...errors],
-          });
-
-          const data = await syncSingleGameweek(gw, position.positionOrGroup);
-
-          if (!data.success) {
-            errors.push(`GW ${gw} ${position.positionLabel}: ${data.message ?? "Sync failed."}`);
-          } else {
-            totalPlayersSynced += data.playersSynced ?? 0;
-            (data.unmatchedFantraxIds ?? []).forEach((id) => unmatchedIds.add(id));
-          }
-
-          await wait(500);
-        }
-
-        completed = gw;
-        setSyncAllSummary({
-          totalPlayersSynced,
-          unmatchedFantraxIds: Array.from(unmatchedIds),
-          completed,
-          total: lastGameweek,
-          currentStep: `Completed GW ${gw}`,
-          errors: [...errors],
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Sync all gameweeks failed.";
-      errors.push(message);
-      setSyncAllSummary({
-        totalPlayersSynced,
-        unmatchedFantraxIds: Array.from(unmatchedIds),
-        completed,
-        total: lastGameweek,
-        currentStep: null,
-        errors: [...errors],
+      const response = await fetch("/api/fantrax/sync-scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameweek, season, syncAllPositions: true }),
       });
+      const data = (await response.json()) as FantraxSyncResponse;
+      setResult(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Fantrax sync failed.";
+      setResult({ success: false, message, gameweek, season });
     } finally {
-      setIsSyncingAll(false);
+      setIsSyncing(false);
     }
   }
-
-  const progressPercent =
-    syncAllSummary && syncAllSummary.total > 0
-      ? Math.round((syncAllSummary.completed / syncAllSummary.total) * 100)
-      : 0;
 
   return (
     <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
       <h2 className="text-xl font-bold text-brand-cream">Fantrax API Score Sync</h2>
       <p className="mt-2 text-sm text-brand-creamDark">
-        Sync each position independently into `player_gameweeks`, or run all positions for every gameweek up to the current one.
+        Sync all four Fantrax position groups into `player_gameweeks` for one selected season and gameweek.
       </p>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        {FANTRAX_POSITION_CARDS.map((card) => (
-          <PositionSyncCard
-            key={card.positionOrGroup}
-            buttonLabel={card.buttonLabel}
-            positionLabel={card.positionLabel}
-            positionOrGroup={card.positionOrGroup}
-            defaultGameweek={currentGameweek ?? 1}
-            currentGameweek={currentGameweek}
-            isLoadingCurrentGw={isLoadingCurrentGw}
-            onSync={syncSingleGameweek}
-          />
-        ))}
-      </div>
-
-      <div className="mt-6 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,180px)_auto] md:items-end">
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,180px)_minmax(0,180px)_auto] md:items-end">
           <label className="text-sm">
-            <span className="mb-2 block font-semibold text-brand-creamDark">Sync All Through GW</span>
+            <span className="mb-2 block font-semibold text-brand-creamDark">Season</span>
+            <select
+              value={season}
+              onChange={(event) => setSeason(event.target.value)}
+              className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-brand-cream"
+            >
+              {seasons.map((availableSeason) => (
+                <option key={availableSeason} value={availableSeason}>{availableSeason}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm">
+            <span className="mb-2 block font-semibold text-brand-creamDark">Gameweek</span>
             <input
               type="number"
               min={1}
               max={38}
-              value={syncAllGameweek}
-              onChange={(event) => setSyncAllGameweek(Number(event.target.value))}
+              value={gameweek}
+              onChange={(event) => setGameweek(Number(event.target.value))}
               className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-brand-cream"
             />
           </label>
 
           <button
             type="button"
-            onClick={handleSyncAllGameweeks}
-            disabled={isSyncingAll || isLoadingCurrentGw}
+            onClick={handleSyncAllPositions}
+            disabled={isSyncing || isLoadingCurrentGw}
             className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
           >
-            {isSyncingAll ? "Syncing All..." : "Sync All Gameweeks"}
+            {isSyncing ? "Syncing All Positions..." : "Sync All Positions (GW)"}
           </button>
         </div>
 
@@ -540,39 +347,34 @@ function FantraxSyncPanel() {
               : `Current gameweek: ${currentGameweek ?? "Unavailable"}`}
         </p>
 
-        {isSyncingAll && syncAllSummary ? (
-          <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/70 p-4">
-            <p className="text-sm font-semibold text-brand-cream">{syncAllSummary.currentStep ?? "Running..."}</p>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-brand-cream/15">
-              <div
-                className="h-full rounded-full bg-brand-greenLight transition-all"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-brand-creamDark">{progressPercent}% complete</p>
+        {season !== defaultSeason ? (
+          <div className="mt-4 rounded-lg border border-amber-300/50 bg-amber-950/20 p-3 text-sm text-amber-100">
+            <p className="font-semibold">Non-current season selected</p>
+            <p className="mt-1 text-amber-100/80">
+              This temporarily changes the live season while all four position groups sync, then restores it. Run this alone—do not sync or edit season data concurrently.
+            </p>
           </div>
         ) : null}
 
-        {syncAllSummary ? (
+        {result ? (
           <div
             className={`mt-5 rounded-lg border p-4 text-sm ${
-              syncAllSummary.errors.length === 0 ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"
+              result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"
             }`}
           >
-            <p className="font-semibold">
-              {isSyncingAll ? "In progress" : "Summary"}: {syncAllSummary.completed}/{syncAllSummary.total} gameweeks processed.
-            </p>
-            <p className="mt-2">Total players synced: {syncAllSummary.totalPlayersSynced}</p>
-            <p className="mt-2">
-              Unmatched Fantrax IDs: {syncAllSummary.unmatchedFantraxIds.join(", ") || "None"}
-            </p>
-            {syncAllSummary.errors.length > 0 ? (
-              <ul className="mt-2 list-disc pl-5">
-                {syncAllSummary.errors.map((error, index) => (
-                  <li key={`${error}-${index}`}>{error}</li>
-                ))}
-              </ul>
-            ) : null}
+            {result.success ? (
+              <>
+                <p className="font-semibold">Synced {result.playersSynced ?? 0} players across all positions for {result.season ?? season}, GW {result.gameweek ?? gameweek}.</p>
+                <p className="mt-2">Unmatched Fantrax IDs: {(result.unmatchedFantraxIds ?? []).join(", ") || "None"}</p>
+                <ul className="mt-2 list-disc pl-5">
+                  {(result.positionResults ?? []).map((position) => (
+                    <li key={position.positionLabel}>{position.positionLabel}: {position.playersSynced} players synced</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p>{result.message ?? "Fantrax sync failed."}</p>
+            )}
           </div>
         ) : null}
       </div>
@@ -580,16 +382,16 @@ function FantraxSyncPanel() {
   );
 }
 
-export default function UploadClient({ defaultSeason }: { defaultSeason: string }) {
+export default function UploadClient({ defaultSeason, seasons }: { defaultSeason: string; seasons: string[] }) {
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <h1 className="text-3xl font-black sm:text-4xl">Admin Data Upload</h1>
         <p className="text-sm text-brand-creamDark">
-          Sync Fantrax API scores by position or upload weekly player and keeper Fantrax CSV dumps.
+          Sync all Fantrax positions for a selected season and gameweek, or upload weekly player and keeper Fantrax CSV dumps.
         </p>
 
-        <FantraxSyncPanel />
+        <FantraxSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>

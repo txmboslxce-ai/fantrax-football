@@ -20,7 +20,14 @@ export default async function AdminUploadPage() {
     );
   }
 
-  const defaultSeason = await getCurrentSeason(supabase);
+  const [defaultSeason, seasonsResult] = await Promise.all([
+    getCurrentSeason(supabase),
+    supabase.from("seasons").select("id").order("id", { ascending: false }),
+  ]);
 
-  return <UploadClient defaultSeason={defaultSeason} />;
+  if (seasonsResult.error) {
+    throw new Error(`Unable to load seasons: ${seasonsResult.error.message}`);
+  }
+
+  return <UploadClient defaultSeason={defaultSeason} seasons={(seasonsResult.data ?? []).map((season) => season.id)} />;
 }
