@@ -84,6 +84,12 @@ const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
 ];
 const PAGE_SIZE = 150;
 
+const COLUMN_PRESETS: Array<{ label: string; keys: NumericColumnKey[] }> = [
+  { label: "Essentials", keys: DEFAULT_SELECTED_COLUMN_KEYS },
+  { label: "Scoring", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Scoring").map((column) => column.key) },
+  { label: "Everything", keys: COLUMN_DEFINITIONS.map((column) => column.key) },
+];
+
 function formatValue(value: number, column: ColumnDefinition): string {
   const digits = column.digits ?? 2;
   if (!Number.isFinite(value)) {
@@ -154,6 +160,13 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
   }, [selectedColumns]);
 
   const selectedColumnDefinitions = visibleColumns;
+
+  const activePresetLabel = useMemo(() => {
+    const selected = new Set(selectedColumns);
+    return COLUMN_PRESETS.find(
+      (preset) => preset.keys.length === selected.size && preset.keys.every((key) => selected.has(key))
+    )?.label;
+  }, [selectedColumns]);
 
   useEffect(() => {
     if (!isColumnPanelOpen) return;
@@ -464,9 +477,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                 </div>
               </div>
             </div>
-            </div>
 
-            <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
               <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
                 <span className="block font-semibold uppercase tracking-wide text-slate-500">Window</span>
                 <div className="flex flex-nowrap gap-1">
@@ -503,13 +514,14 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                 </select>
               </label>
 
-              <div ref={columnPickerRef} className="relative ml-auto">
+              <div ref={columnPickerRef} className="relative space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+                <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
                 <button
                   type="button"
                   onClick={() => setIsColumnPanelOpen((current) => !current)}
                   aria-expanded={isColumnPanelOpen}
                   aria-controls="players-column-picker"
-                  className={`rounded border px-2 py-1 text-xs font-semibold ${
+                  className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                     isColumnPanelOpen
                       ? "border-brand-green bg-brand-green text-brand-cream"
                       : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
@@ -525,15 +537,23 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                     </div>
 
                     <div className="mb-4 flex flex-wrap gap-2 border-b border-brand-cream/15 pb-4">
-                      <button type="button" onClick={() => selectColumns(DEFAULT_SELECTED_COLUMN_KEYS)} className="rounded-md border border-brand-green bg-brand-green px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight">
-                        Essentials
-                      </button>
-                      <button type="button" onClick={() => selectColumns(COLUMN_DEFINITIONS.filter((column) => column.category === "Scoring").map((column) => column.key))} className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10">
-                        Scoring
-                      </button>
-                      <button type="button" onClick={() => selectColumns(COLUMN_DEFINITIONS.map((column) => column.key))} className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10">
-                        Everything
-                      </button>
+                      {COLUMN_PRESETS.map((preset) => {
+                        const active = activePresetLabel === preset.label;
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => selectColumns(preset.keys)}
+                            className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                              active
+                                ? "border-brand-green bg-brand-green text-brand-cream"
+                                : "border-brand-cream/35 text-brand-cream hover:bg-brand-cream/10"
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
                       <button type="button" onClick={clearAllColumns} disabled={selectedColumnDefinitions.length === 0} className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10 disabled:cursor-not-allowed disabled:opacity-40">
                         Clear all
                       </button>
@@ -563,26 +583,27 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                   </div>
                 ) : null}
               </div>
+
             </div>
           </div>
 
           {/* Active columns */}
-          <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
             <div className="mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Active Columns</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Columns</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {selectedColumnDefinitions.length > 0 ? (
                 selectedColumnDefinitions.map((column) => (
                   <span
                     key={column.key}
-                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
                   >
                     <span>{column.label}</span>
                     <button
                       type="button"
                       onClick={() => toggleColumn(column.key)}
-                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream"
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-dark/60 hover:bg-brand-green/20 hover:text-brand-dark"
                       aria-label={`Remove ${column.label}`}
                     >
                       ×
@@ -590,7 +611,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-brand-creamDark">No optional columns selected.</span>
+                <span className="text-xs text-slate-500">No optional columns selected.</span>
               )}
             </div>
           </div>
