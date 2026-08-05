@@ -1,6 +1,7 @@
 import FixturesUploadClient from "./FixturesUploadClient";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 
 export default async function AdminFixturesPage() {
   const supabase = await createServerSupabaseClient();
@@ -19,5 +20,7 @@ export default async function AdminFixturesPage() {
     );
   }
 
-  return <FixturesUploadClient />;
+  const defaultSeason = await getCurrentSeason(supabase);
+
+  return <FixturesUploadClient defaultSeason={defaultSeason} />;
 }

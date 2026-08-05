@@ -1,6 +1,7 @@
 import UploadClient from "./UploadClient";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentSeason } from "@/lib/season/current";
 
 export default async function AdminUploadPage() {
   const supabase = await createServerSupabaseClient();
@@ -19,5 +20,7 @@ export default async function AdminUploadPage() {
     );
   }
 
-  return <UploadClient />;
+  const defaultSeason = await getCurrentSeason(supabase);
+
+  return <UploadClient defaultSeason={defaultSeason} />;
 }

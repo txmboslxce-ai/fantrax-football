@@ -37,6 +37,7 @@ type PreviewRow = Record<string, string>;
 type CsvUploadCardProps = {
   title: string;
   type: UploadType;
+  defaultSeason: string;
 };
 
 type PositionSyncCardProps = {
@@ -60,9 +61,9 @@ const FANTRAX_POSITION_CARDS: Array<{
   { buttonLabel: "Sync Goalkeepers (GW)", positionLabel: "Goalkeepers", positionOrGroup: "POS_704" },
 ];
 
-function CsvUploadCard({ title, type }: CsvUploadCardProps) {
+function CsvUploadCard({ title, type, defaultSeason }: CsvUploadCardProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [season, setSeason] = useState("2024-25");
+  const [season, setSeason] = useState(defaultSeason);
   const [gameweek, setGameweek] = useState(1);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -579,7 +580,7 @@ function FantraxSyncPanel() {
   );
 }
 
-export default function UploadClient() {
+export default function UploadClient({ defaultSeason }: { defaultSeason: string }) {
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -589,8 +590,8 @@ export default function UploadClient() {
         </p>
 
         <FantraxSyncPanel />
-        <CsvUploadCard title="Upload Player Dump" type="player" />
-        <CsvUploadCard title="Upload Keeper Dump" type="keeper" />
+        <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
+        <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>
     </div>
   );

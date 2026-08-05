@@ -3,6 +3,7 @@ import { isAdminEmail } from "@/lib/admin";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { FPL_ID_TO_ABBREV } from "@/lib/fpl/sync";
+import { getCurrentSeason } from "@/lib/season/current";
 
 type PlayerRow = {
   id: string;
@@ -44,6 +45,7 @@ type PlayerFplUpdate = {
 type FplDataUpsert = {
   player_id: string;
   fpl_id: number;
+  season: string;
   status: string | null;
   chance_of_playing_next_round: number | null;
   news: string | null;
@@ -178,6 +180,7 @@ export async function POST() {
     return NextResponse.json({ success: false, message: playersError.message }, { status: 500 });
   }
 
+  const season = await getCurrentSeason(db);
   const players = (playersData ?? []) as PlayerRow[];
   const byFplId = new Map<number, PlayerRow>();
   const byName = new Map<string, PlayerRow[]>();
@@ -239,6 +242,7 @@ export async function POST() {
       fplDataUpserts.push({
         player_id: matchedPlayer.id,
         fpl_id: element.id,
+        season,
         status: toNullableText(element.status),
         chance_of_playing_next_round: element.chance_of_playing_next_round,
         news: toNullableText(element.news),

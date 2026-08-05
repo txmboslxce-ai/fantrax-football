@@ -8,9 +8,9 @@ type UploadResult = {
   errors: string[];
 };
 
-export default function FixturesUploadClient() {
+export default function FixturesUploadClient({ defaultSeason }: { defaultSeason: string }) {
   const [file, setFile] = useState<File | null>(null);
-  const [season, setSeason] = useState("2024-25");
+  const [season, setSeason] = useState(defaultSeason);
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
 
