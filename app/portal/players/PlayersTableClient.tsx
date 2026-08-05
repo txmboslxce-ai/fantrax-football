@@ -1,6 +1,5 @@
 "use client";
 
-import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -81,8 +80,6 @@ const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
   "floor_per_start",
   "ceiling_per_start",
 ];
-const maxColumns_MOBILE = 4;
-const maxColumns_DESKTOP = 8;
 const PAGE_SIZE = 150;
 
 function formatValue(value: number, column: ColumnDefinition): string {
@@ -103,15 +100,30 @@ function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" 
 }
 
 function positionBadgeClass(position: PlayerRow["position"]): string {
-  if (position === "GK") return "bg-amber-100 text-amber-800";
-  if (position === "DEF") return "bg-emerald-100 text-emerald-800";
-  if (position === "MID") return "bg-violet-100 text-violet-800";
-  return "bg-orange-100 text-orange-800";
+  if (position === "GK") return "bg-amber-100 text-amber-900";
+  if (position === "DEF") return "bg-emerald-200 text-emerald-950";
+  if (position === "MID") return "bg-violet-200 text-violet-950";
+  return "bg-orange-200 text-orange-950";
+}
+
+type InjuryStatusIndicator = {
+  className: string;
+  label: string;
+};
+
+function injuryStatusIndicator(chanceOfPlaying: number | null, status: string | null): InjuryStatusIndicator | null {
+  if (chanceOfPlaying == null || chanceOfPlaying === 100) return null;
+  if (chanceOfPlaying === 75) return { className: "bg-amber-400 ring-amber-700", label: "Doubtful (75%)" };
+  if (chanceOfPlaying === 50) return { className: "bg-amber-500 ring-amber-800", label: "Doubtful (50%)" };
+  if (chanceOfPlaying === 25) return { className: "bg-orange-500 ring-orange-800", label: "Doubtful (25%)" };
+  if (chanceOfPlaying === 0 && status === "i") return { className: "bg-red-600 ring-red-900", label: "Injured" };
+  if (chanceOfPlaying === 0 && status === "s") return { className: "bg-fuchsia-600 ring-fuchsia-900", label: "Suspended" };
+  if (chanceOfPlaying === 0 && status === "u") return { className: "bg-slate-500 ring-slate-800", label: "Unavailable" };
+  return null;
 }
 
 export default function PlayersTableClient({ players, leagueRoster }: PlayersTableClientProps) {
   const router = useRouter();
-  const [isMobile, setIsMobile] = useState(true);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
@@ -126,12 +138,6 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<ColumnCategory, boolean>>({
-    Scoring: false,
-    Involvement: false,
-    "Home/Away": false,
-    "Point Breakdown": false,
-  });
   const [page, setPage] = useState(1);
 
   const teams = useMemo(() => {
@@ -145,16 +151,6 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
   }, [selectedColumns]);
 
   const selectedColumnDefinitions = visibleColumns;
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  const maxColumns = isMobile ? maxColumns_MOBILE : maxColumns_DESKTOP;
-  const hasReachedColumnLimit = selectedColumns.length >= maxColumns;
 
   useEffect(() => {
     if (sortKey !== "name" && !visibleColumns.some((column) => column.key === sortKey)) {
@@ -268,10 +264,6 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
         return current.filter((key) => key !== columnKey);
       }
 
-      if (current.length >= maxColumns) {
-        return current;
-      }
-
       const next = [...current, columnKey];
       return COLUMN_DEFINITIONS.map((column) => column.key).filter((key) => next.includes(key));
     });
@@ -281,11 +273,9 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
     setSelectedColumns([]);
   }
 
-  function toggleCategory(category: ColumnCategory) {
-    setExpandedCategories((current) => ({
-      ...current,
-      [category]: !current[category],
-    }));
+  function selectColumns(columnKeys: NumericColumnKey[]) {
+    const selected = new Set(columnKeys);
+    setSelectedColumns(COLUMN_DEFINITIONS.map((column) => column.key).filter((key) => selected.has(key)));
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -486,60 +476,66 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
 
           {isColumnPanelOpen ? (
             <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
-              <div className="mb-4">
+              <div className="mb-3">
                 <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
-                <p className="mt-1 text-sm text-brand-creamDark">Expand a category to add or remove columns.</p>
-                {hasReachedColumnLimit ? (
-                  <p className="mt-2 text-xs font-semibold text-amber-300">Maximum columns selected</p>
-                ) : null}
+                <p className="mt-1 text-sm text-brand-creamDark">Choose the stats to show in the table.</p>
               </div>
 
-              <div className="space-y-3">
+              <div className="mb-4 flex flex-wrap gap-2 border-b border-brand-cream/15 pb-4">
+                <button
+                  type="button"
+                  onClick={() => selectColumns(DEFAULT_SELECTED_COLUMN_KEYS)}
+                  className="rounded-md border border-brand-green bg-brand-green px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
+                >
+                  Essentials
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectColumns(COLUMN_DEFINITIONS.filter((column) => column.category === "Scoring").map((column) => column.key))}
+                  className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10"
+                >
+                  Scoring
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectColumns(COLUMN_DEFINITIONS.map((column) => column.key))}
+                  className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10"
+                >
+                  Everything
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAllColumns}
+                  disabled={selectedColumnDefinitions.length === 0}
+                  className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Clear all
+                </button>
+              </div>
+
+              <div className="max-h-96 space-y-4 overflow-y-auto pr-1">
                 {COLUMN_CATEGORIES.map((category) => {
-                  const expanded = expandedCategories[category];
                   const categoryColumns = columnsByCategory[category];
 
                   return (
-                    <section key={category} className="rounded-xl border border-brand-cream/15 bg-brand-dark/40">
-                      <button
-                        type="button"
-                        onClick={() => toggleCategory(category)}
-                        className="flex w-full items-center justify-between px-4 py-3 text-left"
-                      >
-                        <div>
-                          <div className="text-sm font-bold text-brand-cream">{category}</div>
-                          <div className="text-xs text-brand-creamDark">{categoryColumns.length} columns</div>
-                        </div>
-                        <span className="text-lg text-brand-cream">{expanded ? "−" : "+"}</span>
-                      </button>
-
-                      {expanded ? (
-                        <div className="grid gap-3 border-t border-brand-cream/10 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
-                          {categoryColumns.map((column) => {
-                            const checked = selectedColumns.includes(column.key);
-                            const disabled = !checked && hasReachedColumnLimit;
-                            return (
-                              <label
-                                key={column.key}
-                                className={`flex items-start gap-3 rounded-lg border px-3 py-3 text-sm ${
-                                  disabled
-                                    ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/50"
-                                    : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  disabled={disabled}
-                                  onChange={() => toggleColumn(column.key)}
-                                  className="mt-0.5 h-5 w-5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
-                                />
-                                <span className="leading-snug">{column.label}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      ) : null}
+                    <section key={category}>
+                      <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-brand-creamDark">{category}</h3>
+                      <div className="grid gap-x-5 sm:grid-cols-2 xl:grid-cols-3">
+                        {categoryColumns.map((column) => {
+                          const checked = selectedColumns.includes(column.key);
+                          return (
+                            <label key={column.key} className="flex items-center gap-2 border-b border-brand-cream/10 py-2 text-sm text-brand-cream hover:bg-brand-cream/5">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleColumn(column.key)}
+                                className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="leading-snug">{column.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </section>
                   );
                 })}
@@ -549,20 +545,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
 
           {/* Active columns */}
           <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Active Columns</span>
-              <button
-                type="button"
-                onClick={clearAllColumns}
-                disabled={selectedColumnDefinitions.length === 0}
-                className={`rounded border px-2 py-1 text-[11px] font-semibold ${
-                  selectedColumnDefinitions.length === 0
-                    ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
-                    : "border-brand-cream/35 text-brand-cream"
-                }`}
-              >
-                Clear all
-              </button>
             </div>
             <div className="flex flex-wrap gap-2">
               {selectedColumnDefinitions.length > 0 ? (
@@ -652,6 +636,8 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
               const posKey = positionLetter(player.position);
               const rosterTeam = leagueRoster?.teamByPlayerId[player.id];
               const availabilityLabel = rosterTeam ? "Taken" : "Available";
+              const injuryIndicator = injuryStatusIndicator(player.chanceOfPlaying, player.availabilityStatus);
+              const injuryTitle = player.availabilityNews?.trim() || injuryIndicator?.label;
 
               return (
                 <tr
@@ -684,11 +670,13 @@ export default function PlayersTableClient({ players, leagueRoster }: PlayersTab
                         </span>
                       ) : null}
                       {leagueRoster?.myTeamPlayerIds.includes(player.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
-                      <AvailabilityIcon
-                        chanceOfPlaying={player.chanceOfPlaying}
-                        status={player.availabilityStatus}
-                        news={player.availabilityNews}
-                      />
+                      {injuryIndicator ? (
+                        <span
+                          title={injuryTitle}
+                          aria-label={injuryTitle}
+                          className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`}
+                        />
+                      ) : null}
                     </span>
                   </td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
