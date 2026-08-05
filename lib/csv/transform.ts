@@ -195,7 +195,7 @@ export function calcGhostPts(row: any): number { // eslint-disable-line @typescr
 
   const rawPts = toNumber(row.raw_fantrax_pts);
   const result = rawPts - (calcGoalPts(row) + calcAssistPts(row) + calcCleanSheetPts(row));
-  return roundTo2(Math.max(0, result));
+  return roundTo2(result);
 }
 
 // Parse opponent and home/away from fixtures table
