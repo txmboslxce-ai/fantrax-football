@@ -303,7 +303,6 @@ function zeroStatsForDnp(row: NormalizedRow): NormalizedRow {
 function buildDownloadUrl(gameweek: number, positionOrGroup: FantraxPositionGroup): string {
   const url = new URL(FANTRAX_DOWNLOAD_URL);
   const leagueId = getFantraxLeagueId();
-  console.log(`[fantrax/sync-scores] resolved league ID suffix: ${leagueId.slice(-4)}`);
   url.searchParams.set("leagueId", leagueId);
   url.searchParams.set("view", "STATS");
   url.searchParams.set("positionOrGroup", positionOrGroup);
