@@ -21,10 +21,12 @@ type PageProps = {
   searchParams?:
     | {
         tab?: string | string[];
+        season?: string | string[];
         startGw?: string | string[];
       }
     | Promise<{
         tab?: string | string[];
+        season?: string | string[];
         startGw?: string | string[];
       }>;
 };
@@ -189,7 +191,18 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const season = await getCurrentSeason(supabase);
+  const [currentSeason, seasonsResult] = await Promise.all([
+    getCurrentSeason(supabase),
+    supabase.from("seasons").select("id").order("id", { ascending: false }),
+  ]);
+
+  if (seasonsResult.error) {
+    throw new Error(`Unable to load seasons: ${seasonsResult.error.message}`);
+  }
+
+  const availableSeasons = (seasonsResult.data ?? []).map((row) => row.id);
+  const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
+  const season = requestedSeason && availableSeasons.includes(requestedSeason) ? requestedSeason : currentSeason;
 
   const [players, formData, leagueRoster] = await Promise.all([
     activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),
@@ -221,7 +234,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
       </nav>
 
       {activeTab === "players" && players ? (
-        <PlayersTableClient players={players} leagueRoster={leagueRoster} />
+        <PlayersTableClient players={players} leagueRoster={leagueRoster} season={season} availableSeasons={availableSeasons} />
       ) : null}
 
       {activeTab === "form" && formData ? (
