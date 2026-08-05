@@ -2,17 +2,13 @@ import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { FPL_ID_TO_ABBREV } from "@/lib/fpl/sync";
 
 type PlayerRow = {
   id: string;
   name: string;
   team: string;
   fpl_id: number | null;
-};
-
-type FplTeam = {
-  id: number;
-  short_name: string;
 };
 
 type FplElement = {
@@ -38,7 +34,6 @@ type FplElement = {
 
 type FplBootstrapResponse = {
   elements: FplElement[];
-  teams: FplTeam[];
 };
 
 type PlayerFplUpdate = {
@@ -86,35 +81,54 @@ function parseNullableNumber(value: string | number | null | undefined): number 
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Team is a hard gate: only ever returns a candidate whose team exactly
+// matches. No team info, zero on-team candidates, or more than one
+// (ambiguous even after team filtering) all resolve to "leave unmatched"
+// rather than guessing -- there is no off-team or arbitrary fallback.
 function pickByTeam(candidates: PlayerRow[], teamAbbrev: string | null): PlayerRow | null {
-  if (candidates.length === 0) {
+  if (candidates.length === 0 || !teamAbbrev) {
     return null;
   }
 
-  if (!teamAbbrev) {
-    return candidates[0];
+  const onTeam = candidates.filter((player) => player.team === teamAbbrev);
+  return onTeam.length === 1 ? onTeam[0] : null;
+}
+
+// Tokenizes a name for fuzzy comparison: NFD-normalized (existing accent
+// stripping), periods/hyphens treated as separators, single-letter initials
+// (and empty strings) dropped as too weak to carry any signal.
+function significantTokens(value: string): string[] {
+  return normalizeName(value)
+    .replace(/[.\-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 1);
+}
+
+// A name is only considered a fuzzy match if the SHORTER side has at least
+// two significant tokens (a single common surname/initial alone is never
+// enough signal -- this is what refuses a bare "Fernandes") AND every one
+// of the shorter side's tokens appears in the longer side (strict: all
+// tokens must match, not just most).
+function tokenOverlapMatch(nameA: string, nameB: string): boolean {
+  const tokensA = significantTokens(nameA);
+  const tokensB = significantTokens(nameB);
+  const [shorter, longer] = tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
+
+  if (shorter.length < 2) {
+    return false;
   }
 
-  const exactTeam = candidates.find((player) => player.team === teamAbbrev);
-  return exactTeam ?? candidates[0];
+  const longerSet = new Set(longer);
+  return shorter.every((token) => longerSet.has(token));
 }
 
 function findFuzzyMatch(players: PlayerRow[], fullName: string, webName: string, teamAbbrev: string | null): PlayerRow | null {
-  const normalizedFull = normalizeName(fullName);
-  const normalizedWeb = normalizeName(webName);
-
   const candidates = players.filter((player) => {
-    const normalizedPlayer = normalizeName(player.name);
-    if (!normalizedPlayer) {
+    if (!player.name) {
       return false;
     }
 
-    return (
-      normalizedFull.includes(normalizedPlayer) ||
-      normalizedPlayer.includes(normalizedFull) ||
-      normalizedWeb.includes(normalizedPlayer) ||
-      normalizedPlayer.includes(normalizedWeb)
-    );
+    return tokenOverlapMatch(fullName, player.name) || tokenOverlapMatch(webName, player.name);
   });
 
   return pickByTeam(candidates, teamAbbrev);
@@ -183,7 +197,6 @@ export async function POST() {
     byName.set(key, existing);
   }
 
-  const teamById = new Map<number, string>((bootstrap.teams ?? []).map((team) => [team.id, team.short_name]));
   const nowIso = new Date().toISOString();
 
   let matched = 0;
@@ -194,7 +207,7 @@ export async function POST() {
 
   for (const element of bootstrap.elements ?? []) {
     const fplName = `${element.first_name} ${element.second_name}`.trim();
-    const teamAbbrev = teamById.get(element.team) ?? null;
+    const teamAbbrev = FPL_ID_TO_ABBREV[element.team] ?? null;
 
     let matchedPlayer: PlayerRow | null = byFplId.get(element.id) ?? null;
 
