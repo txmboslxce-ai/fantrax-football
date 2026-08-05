@@ -487,11 +487,24 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   }
 
   if (activeTab === "squad") {
-    const { data: players, error: playersError } = await supabase
-      .from("players")
-      .select("id, name, position, ownership_pct")
-      .eq("team", teamAbbrev)
-      .order("name");
+    const { data: poolRows, error: poolError } = await supabase
+      .from("season_player_pool")
+      .select("fantrax_id")
+      .eq("season", SEASON);
+
+    if (poolError) {
+      throw new Error(`Unable to load the ${SEASON} player pool: ${poolError.message}`);
+    }
+
+    const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+    const { data: players, error: playersError } = poolFantraxIds.length > 0
+      ? await supabase
+          .from("players")
+          .select("id, name, position, ownership_pct")
+          .eq("team", teamAbbrev)
+          .in("fantrax_id", poolFantraxIds)
+          .order("name")
+      : { data: [], error: null };
     if (playersError) {
       throw new Error(`Unable to load squad players: ${playersError.message}`);
     }

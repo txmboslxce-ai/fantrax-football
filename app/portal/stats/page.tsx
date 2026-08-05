@@ -151,6 +151,17 @@ export default async function StatsPage() {
   const supabase = await createServerSupabaseClient();
   const SEASON = await getCurrentSeason(supabase);
 
+  const { data: poolRows, error: poolError } = await supabase
+    .from("season_player_pool")
+    .select("fantrax_id")
+    .eq("season", SEASON);
+
+  if (poolError) {
+    throw new Error(`Unable to load the ${SEASON} player pool: ${poolError.message}`);
+  }
+
+  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+
   const [
     {
       data: { user },
@@ -159,10 +170,13 @@ export default async function StatsPage() {
     { data: gameweeks, error: gameweeksError },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase
-      .from("players")
-      .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
-      .order("name"),
+    poolFantraxIds.length > 0
+      ? supabase
+          .from("players")
+          .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
+          .in("fantrax_id", poolFantraxIds)
+          .order("name")
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("player_gameweeks")
       .select(

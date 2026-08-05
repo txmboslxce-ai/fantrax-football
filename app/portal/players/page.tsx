@@ -73,11 +73,26 @@ function toTabKey(value: string | string[] | undefined): PlayersTabKey {
 async function getPlayersTableData(season: string): Promise<PlayerRecord[]> {
   const supabase = await createServerSupabaseClient();
 
+  const { data: poolRows, error: poolError } = await supabase
+    .from("season_player_pool")
+    .select("fantrax_id")
+    .eq("season", season);
+
+  if (poolError) {
+    throw new Error(`Unable to load the ${season} player pool: ${poolError.message}`);
+  }
+
+  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+  if (poolFantraxIds.length === 0) {
+    return [];
+  }
+
   const [{ data: players, error: playersError }, { data: gameweeks, error: gameweeksError }, { data: fixtures, error: fixturesError }] =
     await Promise.all([
       supabase
         .from("players")
         .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
+        .in("fantrax_id", poolFantraxIds)
         .order("name"),
       supabase
         .from("player_gameweeks")

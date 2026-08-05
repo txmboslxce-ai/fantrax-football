@@ -475,6 +475,15 @@ export async function syncFantraxScores(
     };
   }
 
+  const { error: poolUpsertError } = await supabase.from("season_player_pool").upsert(
+    scorerIds.map((fantraxId) => ({ season, fantrax_id: fantraxId })),
+    { onConflict: "season,fantrax_id", ignoreDuplicates: true }
+  );
+
+  if (poolUpsertError) {
+    throw new Error(`Unable to update the ${season} season player pool: ${poolUpsertError.message}`);
+  }
+
   const { data: playersData, error: playersError } = await supabase
     .from("players")
     .select("id, fantrax_id, name, position")
