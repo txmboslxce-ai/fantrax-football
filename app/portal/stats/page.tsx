@@ -2,7 +2,7 @@ import StatsTableClient from "@/app/portal/stats/StatsTableClient";
 import { mapPosition, type PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentSeason } from "@/lib/season/current";
+import { resolvePortalSeason } from "@/lib/season/portal-season";
 
 type StatsWindowRow = {
   season_pts: number;
@@ -154,14 +154,8 @@ type StatsPageProps = {
 export default async function StatsPage({ searchParams }: StatsPageProps) {
   const supabase = await createServerSupabaseClient();
   const resolvedSearchParams = searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
-  const [currentSeason, seasonsResult] = await Promise.all([
-    getCurrentSeason(supabase),
-    supabase.from("seasons").select("id").order("id", { ascending: false }),
-  ]);
-  if (seasonsResult.error) throw new Error(`Unable to load seasons: ${seasonsResult.error.message}`);
-  const availableSeasons = (seasonsResult.data ?? []).map((row) => row.id);
   const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
-  const SEASON = requestedSeason && availableSeasons.includes(requestedSeason) ? requestedSeason : currentSeason;
+  const { availableSeasons, season: SEASON } = await resolvePortalSeason(supabase, requestedSeason);
 
   const { data: poolRows, error: poolError } = await supabase
     .from("season_player_pool")

@@ -14,7 +14,7 @@ import {
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
-import { getCurrentSeason } from "@/lib/season/current";
+import { resolvePortalSeason } from "@/lib/season/portal-season";
 import Link from "next/link";
 
 type PageProps = {
@@ -206,18 +206,8 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [currentSeason, seasonsResult] = await Promise.all([
-    getCurrentSeason(supabase),
-    supabase.from("seasons").select("id").order("id", { ascending: false }),
-  ]);
-
-  if (seasonsResult.error) {
-    throw new Error(`Unable to load seasons: ${seasonsResult.error.message}`);
-  }
-
-  const availableSeasons = (seasonsResult.data ?? []).map((row) => row.id);
   const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
-  const season = requestedSeason && availableSeasons.includes(requestedSeason) ? requestedSeason : currentSeason;
+  const { availableSeasons, season } = await resolvePortalSeason(supabase, requestedSeason);
 
   const [players, formData, leagueRoster] = await Promise.all([
     activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),

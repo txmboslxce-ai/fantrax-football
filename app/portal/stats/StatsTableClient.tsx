@@ -70,7 +70,6 @@ const WINDOW_OPTIONS: Array<{ key: PlayerTableWindowKey; label: string }> = [
 ];
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
-  { key: "games_started", label: "Games Started", category: "Involvement", digits: 0 },
   { key: "goals", label: "Goals", category: "Attacking", digits: 0 },
   { key: "assists", label: "Assists", category: "Attacking", digits: 0 },
   { key: "key_passes", label: "Key Passes", category: "Attacking", digits: 0 },
@@ -94,21 +93,21 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "red_cards", label: "Red Cards", category: "Discipline", digits: 0 },
   { key: "own_goals", label: "Own Goals", category: "Discipline", digits: 0 },
   { key: "penalties_missed", label: "Penalties Missed", category: "Discipline", digits: 0 },
+  { key: "games_started", label: "Games Started", category: "Involvement", digits: 0 },
   { key: "games_played", label: "Games Played", category: "Involvement", digits: 0 },
   { key: "minutes_played", label: "Minutes Played", category: "Involvement", digits: 0 },
   { key: "penalties_drawn", label: "Penalties Drawn", category: "Involvement", digits: 0 },
 ];
 
 const COLUMN_CATEGORIES: ColumnCategory[] = ["Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement"];
-const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "clean_sheets", "tackles_won", "games_played"];
-const MAX_SELECTED_COLUMNS = 6;
+const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "shots_on_target", "corner_kicks", "free_kick_shots", "clean_sheets", "tackles_won", "games_started", "games_played"];
 const COLUMN_PRESETS: Array<{ label: string; keys: StatColumnKey[] }> = [
   { label: "Essentials", keys: DEFAULT_SELECTED_COLUMN_KEYS },
-  { label: "Attacking", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Attacking").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
-  { label: "Defensive", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Defensive").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
+  { label: "Attacking", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Attacking").map((column) => column.key) },
+  { label: "Defensive", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Defensive").map((column) => column.key) },
   { label: "Goalkeeping", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Goalkeeping").map((column) => column.key) },
   { label: "Discipline", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Discipline").map((column) => column.key) },
-  { label: "Involvement", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Involvement").map((column) => column.key).slice(0, MAX_SELECTED_COLUMNS) },
+  { label: "Involvement", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Involvement").map((column) => column.key) },
 ];
 
 function formatValue(value: number, column: ColumnDefinition): string {
@@ -181,7 +180,6 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
       .filter((column): column is ColumnDefinition => Boolean(column));
   }, [selectedColumns]);
 
-  const hasReachedColumnLimit = selectedColumns.length >= MAX_SELECTED_COLUMNS;
   const activePresetLabel = useMemo(() => {
     const selected = new Set(selectedColumns);
     return COLUMN_PRESETS.find((preset) => preset.keys.length === selected.size && preset.keys.every((key) => selected.has(key)))?.label;
@@ -279,10 +277,6 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
     setSelectedColumns((current) => {
       if (current.includes(columnKey)) {
         return current.filter((key) => key !== columnKey);
-      }
-
-      if (current.length >= MAX_SELECTED_COLUMNS) {
-        return current;
       }
 
       const next = [...current, columnKey];
@@ -449,9 +443,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
             </div>
           </div>
           </div>
-        </div>
 
-        <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-2">
           <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
             <span className="block font-semibold uppercase tracking-wide text-slate-500">Window</span>
             <div className="flex flex-nowrap gap-1">
@@ -504,9 +496,6 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
           <div className="mb-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
             <p className="mt-1 text-sm text-brand-creamDark">Choose the stats to show in the table.</p>
-            {hasReachedColumnLimit ? (
-              <p className="mt-2 text-xs font-semibold text-amber-300">Maximum columns selected</p>
-            ) : null}
           </div>
 
           <div className="mb-4 flex flex-wrap gap-2 border-b border-brand-cream/15 pb-4">
@@ -526,11 +515,9 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                   <div className="grid gap-x-5 sm:grid-cols-2">
                     {categoryColumns.map((column) => {
                       const checked = selectedColumns.includes(column.key);
-                      const disabled = !checked && hasReachedColumnLimit;
-
                       return (
-                        <label key={column.key} className={`flex items-center gap-2 border-b border-brand-cream/10 py-2 text-sm ${disabled ? "cursor-not-allowed text-brand-creamDark/50" : "text-brand-cream hover:bg-brand-cream/5"}`}>
-                          <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggleColumn(column.key)} className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green" />
+                        <label key={column.key} className="flex items-center gap-2 border-b border-brand-cream/10 py-2 text-sm text-brand-cream hover:bg-brand-cream/5">
+                          <input type="checkbox" checked={checked} onChange={() => toggleColumn(column.key)} className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green" />
                           <span className="leading-snug">{column.label}</span>
                         </label>
                       );

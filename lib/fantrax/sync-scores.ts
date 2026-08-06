@@ -20,8 +20,8 @@ const POSITION_LABELS: Record<FantraxPositionGroup, string> = {
   POS_704: "Goalkeepers",
 };
 
-type UploadType = "player" | "keeper";
-type CsvRow = Record<string, string>;
+export type UploadType = "player" | "keeper";
+export type CsvRow = Record<string, string>;
 
 type PlayerLookupRow = {
   id: string;
@@ -98,7 +98,7 @@ type FplBootstrapResponse = {
   events?: FplEvent[];
 };
 
-type NormalizedRow = {
+export type NormalizedRow = {
   fantrax_id: string;
   name: string;
   team: string;
@@ -192,11 +192,11 @@ export function getFantraxPositionLabel(positionOrGroup: FantraxPositionGroup): 
   return POSITION_LABELS[positionOrGroup];
 }
 
-function getUploadType(positionOrGroup: FantraxPositionGroup): UploadType {
+export function getUploadType(positionOrGroup: FantraxPositionGroup): UploadType {
   return positionOrGroup === "POS_704" ? "keeper" : "player";
 }
 
-function parseCsv(text: string): CsvRow[] {
+export function parseFantraxCsv(text: string): CsvRow[] {
   const parsed = Papa.parse<CsvRow>(text, {
     header: true,
     skipEmptyLines: true,
@@ -210,7 +210,7 @@ function parseCsv(text: string): CsvRow[] {
   return parsed.data;
 }
 
-function mapCsvRow(row: CsvRow, type: UploadType, fallbackGameweek: number): NormalizedRow {
+export function mapFantraxCsvRow(row: CsvRow, type: UploadType, fallbackGameweek: number): NormalizedRow {
   const columnMap = type === "keeper" ? KEEPER_COLUMN_MAP : PLAYER_COLUMN_MAP;
   const normalized: Record<string, unknown> = {
     gameweek: fallbackGameweek,
@@ -300,6 +300,12 @@ function zeroStatsForDnp(row: NormalizedRow): NormalizedRow {
   return cloned;
 }
 
+export function resolveFantraxTeam(team: string, validAbbrevs: Set<string>): string | null {
+  const teamParts = team.split("/");
+  const resolvedTeam = (teamParts[teamParts.length - 1] ?? "").trim().toUpperCase();
+  return resolvedTeam && validAbbrevs.has(resolvedTeam) ? resolvedTeam : null;
+}
+
 function buildDownloadUrl(gameweek: number, positionOrGroup: FantraxPositionGroup, leagueId: string): string {
   const url = new URL(FANTRAX_DOWNLOAD_URL);
   url.searchParams.set("leagueId", leagueId);
@@ -321,7 +327,7 @@ function buildDownloadUrl(gameweek: number, positionOrGroup: FantraxPositionGrou
   return url.toString();
 }
 
-async function fetchFantraxCsv(gameweek: number, positionOrGroup: FantraxPositionGroup, leagueId: string) {
+export async function fetchFantraxCsv(gameweek: number, positionOrGroup: FantraxPositionGroup, leagueId: string) {
   const sessionCookie = getRequiredEnv("FANTRAX_SESSION_COOKIE");
   const response = await fetch(buildDownloadUrl(gameweek, positionOrGroup, leagueId), {
     method: "GET",
@@ -456,10 +462,10 @@ export async function syncFantraxScores(
   }
 
   const csvText = await fetchFantraxCsv(gameweek, positionOrGroup, leagueId);
-  const rawRows = parseCsv(csvText);
+  const rawRows = parseFantraxCsv(csvText);
   const uploadType = getUploadType(positionOrGroup);
   const mappedRows = rawRows
-    .map((row) => mapCsvRow(row, uploadType, gameweek))
+    .map((row) => mapFantraxCsvRow(row, uploadType, gameweek))
     .filter((row) => row.fantrax_id);
 
   const scorerIds = Array.from(new Set(mappedRows.map((row) => row.fantrax_id.trim())));
@@ -522,8 +528,7 @@ export async function syncFantraxScores(
 
       // Mid-season transfers show as "OLD/NEW" in Fantrax's Team column --
       // the current club is whichever team is listed last.
-      const teamParts = row.team.split("/");
-      const resolvedTeam = (teamParts[teamParts.length - 1] ?? "").trim().toUpperCase();
+      const resolvedTeam = resolveFantraxTeam(row.team, validAbbrevs);
 
       if (!resolvedTeam || !validAbbrevs.has(resolvedTeam)) {
         unmatchedFantraxIds.push(fantraxId);

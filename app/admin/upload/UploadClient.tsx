@@ -29,6 +29,22 @@ type FantraxSyncResponse = {
   message?: string;
 };
 
+type FantraxPlayerSyncResponse = {
+  success: boolean;
+  season?: string;
+  playersFound?: number;
+  poolEntriesAdded?: number;
+  added?: Array<{ fantraxId: string; name: string; team: string; position: string }>;
+  changed?: Array<{
+    fantraxId: string;
+    name: string;
+    before: { team: string | null; position: string };
+    after: { team: string; position: string };
+  }>;
+  unmatched?: Array<{ fantraxId: string; name: string; team: string; reason: string }>;
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -382,6 +398,75 @@ function FantraxSyncPanel({ seasons, defaultSeason }: { seasons: string[]; defau
   );
 }
 
+function FantraxPlayerSyncPanel({ seasons, defaultSeason }: { seasons: string[]; defaultSeason: string }) {
+  const [season, setSeason] = useState(defaultSeason);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [result, setResult] = useState<FantraxPlayerSyncResponse | null>(null);
+
+  async function handleSyncPlayers() {
+    setIsSyncing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/fantrax/sync-players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ season }),
+      });
+      setResult((await response.json()) as FantraxPlayerSyncResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Fantrax player sync failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Fantrax Player Pool Sync</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Add the selected league&apos;s players to the season pool and update only player team or position changes. Scores and ownership are not touched.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="w-full max-w-[180px] text-sm">
+            <span className="mb-2 block font-semibold text-brand-creamDark">Season</span>
+            <select value={season} onChange={(event) => setSeason(event.target.value)} className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-brand-cream">
+              {seasons.map((availableSeason) => <option key={availableSeason} value={availableSeason}>{availableSeason}</option>)}
+            </select>
+          </label>
+          <button type="button" onClick={handleSyncPlayers} disabled={isSyncing} className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60">
+            {isSyncing ? "Syncing Players..." : "Sync Players"}
+          </button>
+        </div>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <>
+                <p className="font-semibold">{result.added?.length ?? 0} added, {result.changed?.length ?? 0} team/position changes, {result.unmatched?.length ?? 0} unmatched.</p>
+                <p className="mt-1 text-brand-creamDark">Players found: {result.playersFound ?? 0}. New season-pool entries: {result.poolEntriesAdded ?? 0}.</p>
+                {(result.changed?.length ?? 0) > 0 ? (
+                  <ul className="mt-3 space-y-1 border-t border-brand-cream/15 pt-3">
+                    {result.changed?.map((player) => <li key={player.fantraxId}>{player.name}: {player.before.team ?? "—"} / {player.before.position} → {player.after.team} / {player.after.position}</li>)}
+                  </ul>
+                ) : null}
+                {(result.unmatched?.length ?? 0) > 0 ? (
+                  <ul className="mt-3 space-y-1 border-t border-brand-cream/15 pt-3">
+                    {result.unmatched?.map((player) => <li key={player.fantraxId}>{player.name} ({player.team || "no team"}): {player.reason}</li>)}
+                  </ul>
+                ) : null}
+              </>
+            ) : <p>{result.message ?? "Fantrax player sync failed."}</p>}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function UploadClient({ defaultSeason, seasons }: { defaultSeason: string; seasons: string[] }) {
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
@@ -392,6 +477,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
         </p>
 
         <FantraxSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
+        <FantraxPlayerSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>
