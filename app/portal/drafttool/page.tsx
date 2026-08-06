@@ -30,6 +30,10 @@ type DraftPlayer = {
   notes: string | null;
 };
 
+const PLAYER_GAMEWEEK_QUERY_COLUMNS =
+  "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won";
+const PLAYER_ID_BATCH_SIZE = 100;
+
 function isMissingDraftPicksTable(error: { code?: string } | null): boolean {
   return error?.code === "PGRST205";
 }
@@ -86,17 +90,26 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
     return [];
   }
 
-  const [{ data: gameweeks, error: gameweeksError }, { data: draftPicks, error: draftPicksError }] = await Promise.all([
-    supabase
-      .from("player_gameweeks")
-      .select(
-        "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
+  const playerIdBatches = Array.from(
+    { length: Math.ceil(playerIds.length / PLAYER_ID_BATCH_SIZE) },
+    (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
+  );
+
+  const [gameweekResults, { data: draftPicks, error: draftPicksError }] = await Promise.all([
+    Promise.all(
+      playerIdBatches.map((playerIdBatch) =>
+        supabase
+          .from("player_gameweeks")
+          .select(PLAYER_GAMEWEEK_QUERY_COLUMNS)
+          .eq("season", DRAFT_STATS_SEASON)
+          .in("player_id", playerIdBatch)
+          .range(0, 40000)
       )
-      .eq("season", DRAFT_STATS_SEASON)
-      .in("player_id", playerIds)
-      .range(0, 40000),
+    ),
     supabase.from("draft_picks").select("player_id, picked, notes").eq("user_id", userId),
   ]);
+
+  const gameweeksError = gameweekResults.find((result) => result.error)?.error;
 
   if (gameweeksError) {
     throw new Error(`Unable to load ${DRAFT_STATS_SEASON} player statistics: ${gameweeksError.message}`);
@@ -106,7 +119,7 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
   }
 
   const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
-  for (const row of (gameweeks ?? []) as PlayerGameweekRow[]) {
+  for (const row of gameweekResults.flatMap((result) => (result.data ?? []) as PlayerGameweekRow[])) {
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) {
       existing.push(row);
