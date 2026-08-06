@@ -15,7 +15,7 @@ type PlayerRow = {
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
-  windows: Record<PlayerTableWindowKey, PlayerWindowStats>;
+  windows: Partial<Record<PlayerTableWindowKey, PlayerWindowStats>>;
 };
 
 type NumericColumnKey = keyof PlayerWindowStats;
@@ -23,6 +23,7 @@ type SortKey = "name" | NumericColumnKey;
 
 type PlayersTableClientProps = {
   players: PlayerRow[];
+  latestGameweek: number;
   leagueRoster: LeagueRosterData | null;
   season: string;
   availableSeasons: string[];
@@ -114,7 +115,7 @@ function positionBadgeClass(position: PlayerRow["position"]): string {
   return "bg-orange-200 text-orange-950";
 }
 
-export default function PlayersTableClient({ players, leagueRoster, season, availableSeasons }: PlayersTableClientProps) {
+export default function PlayersTableClient({ players, latestGameweek, leagueRoster, season, availableSeasons }: PlayersTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -125,6 +126,9 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
+  const [onDemandWindows, setOnDemandWindows] = useState<Partial<Record<"last5" | "last10", Record<string, PlayerWindowStats>>>>({});
+  const [isWindowLoading, setIsWindowLoading] = useState(false);
+  const [windowLoadError, setWindowLoadError] = useState<string | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<NumericColumnKey[]>(DEFAULT_SELECTED_COLUMN_KEYS);
   const [sortKey, setSortKey] = useState<SortKey>("season_pts");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -132,9 +136,20 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
 
+  const playersWithWindows = useMemo(() => {
+    return players.map((player) => ({
+      ...player,
+      windows: {
+        ...player.windows,
+        last5: onDemandWindows.last5?.[player.id],
+        last10: onDemandWindows.last10?.[player.id],
+      },
+    }));
+  }, [onDemandWindows, players]);
+
   const teams = useMemo(() => {
-    return [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b));
-  }, [players]);
+    return [...new Set(playersWithWindows.map((player) => player.team))].sort((a, b) => a.localeCompare(b));
+  }, [playersWithWindows]);
 
   const visibleColumns = useMemo(() => {
     return selectedColumns
@@ -189,12 +204,14 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
     const lowerOwnershipBound = Math.max(0, Math.min(safeOwnershipMin, safeOwnershipMax));
     const upperOwnershipBound = Math.min(100, Math.max(safeOwnershipMin, safeOwnershipMax));
 
-    const filtered = players.filter((player) => {
+    const filtered = playersWithWindows.filter((player) => {
+      const windowStats = player.windows[selectedWindow] ?? player.windows.season;
+      if (!windowStats) return false;
       const matchesPosition = positionFilter === "All" || player.position === positionFilter;
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesSearch = !normalizedSearch || player.name.toLowerCase().includes(normalizedSearch);
       const matchesOwnership = player.ownershipPct >= lowerOwnershipBound && player.ownershipPct <= upperOwnershipBound;
-      const matchesGames = player.windows[selectedWindow].games_started >= safeMinGames;
+      const matchesGames = windowStats.games_started >= safeMinGames;
       const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[player.id]) : false;
       const isMyTeam = leagueRoster ? leagueRoster.myTeamPlayerIds.includes(player.id) : false;
       const matchesAvailability =
@@ -211,8 +228,8 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
         return sortDir === "asc" ? comparison : -comparison;
       }
 
-      const aValue = a.windows[selectedWindow][sortKey];
-      const bValue = b.windows[selectedWindow][sortKey];
+      const aValue = (a.windows[selectedWindow] ?? a.windows.season)![sortKey];
+      const bValue = (b.windows[selectedWindow] ?? b.windows.season)![sortKey];
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
   }, [
@@ -222,7 +239,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
     minGames,
     ownershipMax,
     ownershipMin,
-    players,
+    playersWithWindows,
     positionFilter,
     selectedWindow,
     sortDir,
@@ -291,6 +308,32 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
   function selectSeason(nextSeason: string) {
     const params = new URLSearchParams({ tab: "players", season: nextSeason });
     router.push(`/portal/players?${params.toString()}`);
+  }
+
+  async function selectWindow(nextWindow: PlayerTableWindowKey) {
+    if (isWindowLoading || nextWindow === selectedWindow) return;
+    if (nextWindow === "season" || onDemandWindows[nextWindow]) {
+      setSelectedWindow(nextWindow);
+      return;
+    }
+
+    setIsWindowLoading(true);
+    setWindowLoadError(null);
+    try {
+      const params = new URLSearchParams({ season, window: nextWindow, latestGameweek: String(latestGameweek) });
+      const response = await fetch(`/api/portal/players/window?${params.toString()}`, { cache: "no-store" });
+      const payload = (await response.json()) as { message?: string; statsByPlayerId?: Record<string, PlayerWindowStats> };
+      if (!response.ok || !payload.statsByPlayerId) {
+        throw new Error(payload.message ?? "Unable to load player window data.");
+      }
+
+      setOnDemandWindows((current) => ({ ...current, [nextWindow]: payload.statsByPlayerId }));
+      setSelectedWindow(nextWindow);
+    } catch (error) {
+      setWindowLoadError(error instanceof Error ? error.message : "Unable to load player window data.");
+    } finally {
+      setIsWindowLoading(false);
+    }
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -461,18 +504,20 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                       <button
                         key={option.key}
                         type="button"
-                        onClick={() => setSelectedWindow(option.key)}
+                        onClick={() => void selectWindow(option.key)}
+                        disabled={isWindowLoading}
                         className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                           active
                             ? "border-brand-green bg-brand-green text-brand-cream"
                             : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
-                        }`}
+                        } disabled:cursor-wait disabled:opacity-60`}
                       >
                         {option.label}
                       </button>
                     );
                   })}
                 </div>
+                {windowLoadError ? <p className="text-[11px] font-medium text-red-700">{windowLoadError}</p> : null}
               </div>
 
               <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
@@ -606,7 +651,8 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
       </div>
 
       {/* Table — single overflow-auto container for both axes so sticky works */}
-      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        {isWindowLoading ? <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/70 text-sm font-semibold text-brand-dark backdrop-blur-[1px]">Loading window data…</div> : null}
         <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
@@ -656,6 +702,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
               const availabilityLabel = rosterTeam ? "Taken" : "Available";
               const injuryIndicator = injuryStatusIndicator(player.chanceOfPlaying, player.availabilityStatus);
               const injuryTitle = player.availabilityNews?.trim() || injuryIndicator?.label;
+              const windowStats = player.windows[selectedWindow] ?? player.windows.season!;
 
               return (
                 <tr
@@ -702,7 +749,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
                     {player.ownershipPct.toFixed(1)}%
                   </td>
                   {displayColumns.map((column) => {
-                    const value = player.windows[selectedWindow][column.key];
+                    const value = windowStats[column.key];
 
                     return (
                       <td key={column.key} className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
