@@ -141,6 +141,8 @@ export type PlayerWindowStats = {
   minutes_per_start: number;
   floor_per_start: number;
   ceiling_per_start: number;
+  tenth_percentile_per_start: number;
+  ninetieth_percentile_per_start: number;
   season_pts: number;
   avg_pts_per_gw: number;
   ghost_pts_per_gw: number;
@@ -234,6 +236,20 @@ function median(values: number[]): number {
   }
 
   return sorted[middle];
+}
+
+function percentile(values: number[], percentileValue: number): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const rank = Math.max(0, Math.min(1, percentileValue)) * (sorted.length - 1);
+  const lowerIndex = Math.floor(rank);
+  const upperIndex = Math.ceil(rank);
+  const weight = rank - lowerIndex;
+
+  return sorted[lowerIndex] * (1 - weight) + sorted[upperIndex] * weight;
 }
 
 function standardDeviation(values: number[]): number {
@@ -405,6 +421,8 @@ export function summarizePlayerWindow(rows: DecoratedGameweek[], position: "GK" 
     minutes_per_start: roundTo2(average(startedRows.map((row) => row.minutes_played))),
     floor_per_start: roundTo2(startedRows.length > 0 ? Math.min(...startedPoints) : 0),
     ceiling_per_start: roundTo2(startedRows.length > 0 ? Math.max(...startedPoints) : 0),
+    tenth_percentile_per_start: roundTo2(percentile(startedPoints, 0.1)),
+    ninetieth_percentile_per_start: roundTo2(percentile(startedPoints, 0.9)),
     season_pts: roundTo2(seasonPts),
     avg_pts_per_gw: roundTo2(average(playedRows.map((row) => row.raw_fantrax_pts))),
     ghost_pts_per_gw: roundTo2(average(playedRows.map((row) => row.ghost_pts))),
