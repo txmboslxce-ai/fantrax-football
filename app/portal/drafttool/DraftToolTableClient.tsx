@@ -2,7 +2,7 @@
 
 import type { PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import Link from "next/link";
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 type DraftToolPlayer = {
   id: string;
@@ -18,6 +18,29 @@ type DraftToolPlayer = {
   adp: number | null;
   rank: number;
 };
+
+type RoleFilter = "penalties" | "corners" | "directFreekicks";
+type SortKey =
+  | "name"
+  | "adp"
+  | "rank"
+  | "adpVsRank"
+  | "seasonPts"
+  | "fantasyPtsPerGame"
+  | "fantasyPtsPerStart"
+  | "ghostPtsPerStart"
+  | "gamesStarted"
+  | "floorPerStart"
+  | "ceilingPerStart"
+  | "tenthPercentile"
+  | "ninetiethPercentile";
+
+const POSITION_FILTERS: Array<"All" | DraftToolPlayer["position"]> = ["All", "GK", "DEF", "MID", "FWD"];
+const ROLE_FILTERS: Array<{ key: RoleFilter; label: string }> = [
+  { key: "penalties", label: "Penalties" },
+  { key: "corners", label: "Corners" },
+  { key: "directFreekicks", label: "Direct FK" },
+];
 
 function positionLetter(position: DraftToolPlayer["position"]): "G" | "D" | "M" | "F" {
   if (position === "GK") return "G";
@@ -37,11 +60,18 @@ function formatNumber(value: number, digits = 2): string {
   return Number.isFinite(value) ? value.toFixed(digits) : "0.00";
 }
 
-function formatAdpDelta(adp: number | null, rank: number): string {
-  if (adp == null) return "—";
+function adpVsRank(player: DraftToolPlayer): number | null {
+  return player.adp == null ? null : player.adp - player.rank;
+}
 
-  const delta = adp - rank;
+function formatAdpDelta(player: DraftToolPlayer): string {
+  const delta = adpVsRank(player);
+  if (delta == null) return "—";
   return `${delta > 0 ? "+" : ""}${formatNumber(delta, 1)}`;
+}
+
+function fantasyPtsPerGame(player: DraftToolPlayer): number {
+  return player.stats.games_played > 0 ? player.stats.season_pts / player.stats.games_played : 0;
 }
 
 function setPieceLabel(setPieces: DraftToolPlayer["setPieces"]): string | null {
@@ -54,103 +84,260 @@ function setPieceLabel(setPieces: DraftToolPlayer["setPieces"]): string | null {
   return labels.length > 0 ? labels.join(" · ") : null;
 }
 
+function matchesAnySelectedRole(player: DraftToolPlayer, selectedRoles: Set<RoleFilter>): boolean {
+  if (selectedRoles.size === 0) return true;
+
+  return (
+    (selectedRoles.has("penalties") && player.setPieces.penaltiesOrder != null) ||
+    (selectedRoles.has("corners") && player.setPieces.cornersOrder != null) ||
+    (selectedRoles.has("directFreekicks") && player.setPieces.directFreekicksOrder != null)
+  );
+}
+
+function sortValue(player: DraftToolPlayer, key: SortKey): string | number | null {
+  switch (key) {
+    case "name": return player.name;
+    case "adp": return player.adp;
+    case "rank": return player.rank;
+    case "adpVsRank": return adpVsRank(player);
+    case "seasonPts": return player.stats.season_pts;
+    case "fantasyPtsPerGame": return fantasyPtsPerGame(player);
+    case "fantasyPtsPerStart": return player.stats.fantasy_pts_per_start;
+    case "ghostPtsPerStart": return player.stats.ghost_pts_per_start;
+    case "gamesStarted": return player.stats.games_started;
+    case "floorPerStart": return player.stats.floor_per_start;
+    case "ceilingPerStart": return player.stats.ceiling_per_start;
+    case "tenthPercentile": return player.stats.tenth_percentile_per_start;
+    case "ninetiethPercentile": return player.stats.ninetieth_percentile_per_start;
+  }
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  onSort,
+  sortArrow,
+}: {
+  label: string;
+  sortKey: SortKey;
+  onSort: (key: SortKey) => void;
+  sortArrow: (key: SortKey) => string;
+}) {
+  return (
+    <button type="button" onClick={() => onSort(sortKey)} className="inline-flex w-full items-center justify-end gap-1">
+      <span>{label}</span>
+      <span aria-hidden="true">{sortArrow(sortKey)}</span>
+    </button>
+  );
+}
+
 export default function DraftToolTableClient({ players }: { players: DraftToolPlayer[] }) {
   const [pickedPlayerIds, setPickedPlayerIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("All");
+  const [teamFilter, setTeamFilter] = useState("All");
+  const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
+  const [hideDrafted, setHideDrafted] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const teams = useMemo(
+    () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
+    [players]
+  );
+
+  const filteredAndSortedPlayers = useMemo(() => {
+    const searchTerm = deferredSearch.trim().toLowerCase();
+    const filtered = players.filter((player) => {
+      const matchesSearch = !searchTerm || player.name.toLowerCase().includes(searchTerm);
+      const matchesPosition = positionFilter === "All" || player.position === positionFilter;
+      const matchesTeam = teamFilter === "All" || player.team === teamFilter;
+      const matchesDrafted = !hideDrafted || !pickedPlayerIds.has(player.id);
+      return matchesSearch && matchesPosition && matchesTeam && matchesAnySelectedRole(player, selectedRoles) && matchesDrafted;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const aValue = sortValue(a, sortKey);
+      const bValue = sortValue(b, sortKey);
+      if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+      if (bValue == null) return -1;
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return aValue.localeCompare(bValue) * (sortDir === "asc" ? 1 : -1);
+      }
+      return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
+    });
+  }, [deferredSearch, hideDrafted, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter]);
 
   function togglePicked(playerId: string) {
     setPickedPlayerIds((current) => {
       const next = new Set(current);
-      if (next.has(playerId)) {
-        next.delete(playerId);
-      } else {
-        next.add(playerId);
-      }
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
       return next;
     });
   }
 
-  return (
-    <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-      <table className="w-max border-separate border-spacing-0 text-left text-xs">
-        <thead>
-          <tr>
-            <th className="sticky left-0 top-0 z-30 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-              Picked?
-            </th>
-            <th className="sticky left-14 top-0 z-30 w-48 min-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-              Player
-            </th>
-            <th className="sticky left-[248px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-              Pos
-            </th>
-            <th className="sticky top-0 z-20 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">Team</th>
-            <th className="sticky top-0 z-20 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">ADP</th>
-            <th className="sticky top-0 z-20 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Rank</th>
-            <th className="sticky top-0 z-20 min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">ADP v Rank</th>
-            <th className="sticky top-0 z-20 min-w-[84px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">FPts (Season)</th>
-            <th className="sticky top-0 z-20 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">FP/G</th>
-            <th className="sticky top-0 z-20 min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">FP/Start</th>
-            <th className="sticky top-0 z-20 min-w-[100px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Ghost Pts/Start</th>
-            <th className="sticky top-0 z-20 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">GS</th>
-            <th className="sticky top-0 z-20 min-w-[82px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Floor/Start</th>
-            <th className="sticky top-0 z-20 min-w-[92px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Ceiling/Start</th>
-            <th className="sticky top-0 z-20 min-w-[96px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Floor (10th pct)</th>
-            <th className="sticky top-0 z-20 min-w-[108px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Ceiling (90th pct)</th>
-            <th className="sticky top-0 z-20 min-w-24 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">Set Pieces</th>
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((player, index) => {
-            const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
-            const position = positionLetter(player.position);
-            const setPieces = setPieceLabel(player.setPieces);
-            const fantasyPtsPerGame = player.stats.games_played > 0 ? player.stats.season_pts / player.stats.games_played : 0;
+  function toggleRole(role: RoleFilter) {
+    setSelectedRoles((current) => {
+      const next = new Set(current);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  }
 
-            return (
-              <tr key={player.id} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
-                <td className={`sticky left-0 z-20 w-14 min-w-14 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                  <input
-                    type="checkbox"
-                    checked={pickedPlayerIds.has(player.id)}
-                    onChange={() => togglePicked(player.id)}
-                    aria-label={`Mark ${player.name} as picked`}
-                    className="h-4 w-4 accent-brand-green"
-                  />
-                </td>
-                <td className={`sticky left-14 z-20 w-48 min-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
-                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                    <Link href={`/portal/players/${player.id}`} className="hover:text-brand-green">
-                      {player.name}
-                    </Link>
-                    <span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600">{player.team}</span>
-                  </span>
-                </td>
-                <td className={`sticky left-[248px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                  <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
-                    {position}
-                  </span>
-                </td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{player.rank}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatAdpDelta(player.adp, player.rank)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.season_pts)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(fantasyPtsPerGame)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.fantasy_pts_per_start)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.ghost_pts_per_start)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{player.stats.games_started}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.floor_per_start)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.ceiling_per_start)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.tenth_percentile_per_start)}</td>
-                <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.ninetieth_percentile_per_start)}</td>
-                <td className="border-b border-slate-200 px-2 py-1.5">
-                  {setPieces ? <span className="inline-flex rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-semibold text-brand-green">{setPieces}</span> : "—"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+  function handleSort(nextKey: SortKey) {
+    if (sortKey === nextKey) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDir(nextKey === "name" ? "asc" : "desc");
+  }
+
+  const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
+        <label className="min-w-[13rem] flex-1 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">Search</span>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search player…"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
+          />
+        </label>
+
+        <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">Position</span>
+          <div className="flex flex-nowrap gap-1">
+            {POSITION_FILTERS.map((position) => (
+              <button
+                key={position}
+                type="button"
+                onClick={() => setPositionFilter(position)}
+                className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                  positionFilter === position
+                    ? "border-brand-green bg-brand-green text-brand-cream"
+                    : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+                }`}
+              >
+                {position}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">Team</span>
+          <select
+            value={teamFilter}
+            onChange={(event) => setTeamFilter(event.target.value)}
+            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-24"
+          >
+            <option value="All">All</option>
+            {teams.map((team) => <option key={team} value={team}>{team}</option>)}
+          </select>
+        </label>
+
+        <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">Role / Set Pieces</span>
+          <div className="flex flex-nowrap gap-1">
+            {ROLE_FILTERS.map((role) => (
+              <button
+                key={role.key}
+                type="button"
+                onClick={() => toggleRole(role.key)}
+                className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                  selectedRoles.has(role.key)
+                    ? "border-brand-green bg-brand-green text-brand-cream"
+                    : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+                }`}
+              >
+                {role.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
+          <input
+            type="checkbox"
+            checked={hideDrafted}
+            onChange={(event) => setHideDrafted(event.target.checked)}
+            className="h-4 w-4 accent-brand-green"
+          />
+          <span>Hide Drafted</span>
+        </label>
+      </div>
+
+      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+          <thead>
+            <tr>
+              <th className="sticky left-0 top-0 z-30 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Picked?</th>
+              <th className="sticky left-14 top-0 z-30 w-48 min-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1"><span>Player</span><span aria-hidden="true">{sortArrow("name")}</span></button>
+              </th>
+              <th className="sticky left-[248px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Pos</th>
+              <th className="sticky top-0 z-20 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">Team</th>
+              <th className="sticky top-0 z-20 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="ADP" sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="Rank" sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="ADP v Rank" sortKey="adpVsRank" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[84px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="FPts (Season)" sortKey="seasonPts" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="FP/G" sortKey="fantasyPtsPerGame" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="FP/Start" sortKey="fantasyPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[100px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="Ghost Pts/Start" sortKey="ghostPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="GS" sortKey="gamesStarted" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[82px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="Floor/Start" sortKey="floorPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[92px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="Ceiling/Start" sortKey="ceilingPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[96px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="Floor (10th pct)" sortKey="tenthPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-[108px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"><SortableHeader label="Ceiling (90th pct)" sortKey="ninetiethPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className="sticky top-0 z-20 min-w-24 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">Set Pieces</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAndSortedPlayers.map((player, index) => {
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
+              const position = positionLetter(player.position);
+              const setPieces = setPieceLabel(player.setPieces);
+
+              return (
+                <tr key={player.id} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 w-14 min-w-14 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                    <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => togglePicked(player.id)} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
+                  </td>
+                  <td className={`sticky left-14 z-20 w-48 min-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><Link href={`/portal/players/${player.id}`} className="hover:text-brand-green">{player.name}</Link><span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600">{player.team}</span></span>
+                  </td>
+                  <td className={`sticky left-[248px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{player.rank}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatAdpDelta(player)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.season_pts)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(fantasyPtsPerGame(player))}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.fantasy_pts_per_start)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.ghost_pts_per_start)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{player.stats.games_started}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.floor_per_start)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.ceiling_per_start)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.tenth_percentile_per_start)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums">{formatNumber(player.stats.ninetieth_percentile_per_start)}</td>
+                  <td className="border-b border-slate-200 px-2 py-1.5">{setPieces ? <span className="inline-flex rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-semibold text-brand-green">{setPieces}</span> : "—"}</td>
+                </tr>
+              );
+            })}
+            {filteredAndSortedPlayers.length === 0 ? (
+              <tr><td colSpan={17} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">No players match the current filters.</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
