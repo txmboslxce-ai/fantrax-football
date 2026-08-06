@@ -30,6 +30,10 @@ type DraftPlayer = {
   notes: string | null;
 };
 
+function isMissingDraftPicksTable(error: { code?: string } | null): boolean {
+  return error?.code === "PGRST205";
+}
+
 async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
   const supabase = await createServerSupabaseClient();
 
@@ -78,6 +82,9 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
       | null;
   }>;
   const playerIds = playerRows.map((player) => player.id);
+  if (playerIds.length === 0) {
+    return [];
+  }
 
   const [{ data: gameweeks, error: gameweeksError }, { data: draftPicks, error: draftPicksError }] = await Promise.all([
     supabase
@@ -94,7 +101,7 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
   if (gameweeksError) {
     throw new Error(`Unable to load ${DRAFT_STATS_SEASON} player statistics: ${gameweeksError.message}`);
   }
-  if (draftPicksError) {
+  if (draftPicksError && !isMissingDraftPicksTable(draftPicksError)) {
     throw new Error(`Unable to load draft picks: ${draftPicksError.message}`);
   }
 
@@ -142,7 +149,7 @@ export default async function DraftToolPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/portal/players/draft");
+    redirect("/login?next=/portal/drafttool");
   }
 
   const players = await loadDraftPlayers(user.id);

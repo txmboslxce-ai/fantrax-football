@@ -13,11 +13,13 @@ type NavItem = {
   href: string;
   label: string;
   locked?: boolean;
+  nested?: boolean;
 };
 
 const navItems: NavItem[] = [
   { href: "/portal", label: "Dashboard" },
   { href: "/portal/players", label: "Players" },
+  { href: "/portal/drafttool", label: "Draft Tool", nested: true },
   { href: "/portal/fixtures", label: "Fixtures" },
   { href: "/portal/teams", label: "Teams" },
   { href: "/portal/compare", label: "Compare" },
@@ -40,7 +42,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
         if (item.locked) {
           return (
             <li key={item.href}>
-              <span className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-brand-cream/50">
+              <span className={`flex items-center justify-between rounded-md px-3 py-2 text-sm text-brand-cream/50 ${item.nested ? "ml-3 text-xs" : ""}`}>
                 {item.label}
                 <span aria-hidden="true">🔒</span>
               </span>
@@ -55,10 +57,10 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
             <Link
               href={item.href}
               onClick={onNavigate}
-              className={`block rounded-md px-3 py-2 text-sm font-heading font-semibold transition-colors ${
+              className={`block rounded-md px-3 py-2 font-heading transition-colors ${item.nested ? "ml-3 text-xs font-medium text-brand-cream/75" : "text-sm font-semibold"} ${
                 active
                   ? "bg-brand-green text-brand-cream"
-                  : "text-brand-cream hover:bg-brand-cream/10"
+                  : item.nested ? "hover:bg-brand-cream/10 hover:text-brand-cream" : "text-brand-cream hover:bg-brand-cream/10"
               }`}
             >
               {item.label}
