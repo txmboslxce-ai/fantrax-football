@@ -47,13 +47,15 @@ type StatsRow = {
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
+  xgPer90: number | null;
+  xaPer90: number | null;
   windows: Record<PlayerTableWindowKey, StatsWindowRow>;
 };
 
-type StatColumnKey = keyof StatsWindowRow;
+type StatColumnKey = keyof StatsWindowRow | "xgPer90" | "xaPer90";
 type SortKey = "player" | StatColumnKey;
 
-type ColumnCategory = "Attacking" | "Defensive" | "Goalkeeping" | "Discipline" | "Involvement";
+type ColumnCategory = "Attacking" | "Defensive" | "Goalkeeping" | "Discipline" | "Involvement" | "Current Form";
 
 type ColumnDefinition = {
   key: StatColumnKey;
@@ -97,9 +99,11 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "games_played", label: "Games Played", category: "Involvement", digits: 0 },
   { key: "minutes_played", label: "Minutes Played", category: "Involvement", digits: 0 },
   { key: "penalties_drawn", label: "Penalties Drawn", category: "Involvement", digits: 0 },
+  { key: "xgPer90", label: "xG/90", category: "Current Form", digits: 2 },
+  { key: "xaPer90", label: "xA/90", category: "Current Form", digits: 2 },
 ];
 
-const COLUMN_CATEGORIES: ColumnCategory[] = ["Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement"];
+const COLUMN_CATEGORIES: ColumnCategory[] = ["Attacking", "Defensive", "Goalkeeping", "Discipline", "Involvement", "Current Form"];
 const DEFAULT_SELECTED_COLUMN_KEYS: StatColumnKey[] = ["goals", "assists", "key_passes", "shots_on_target", "corner_kicks", "free_kick_shots", "clean_sheets", "tackles_won", "games_started", "games_played"];
 const COLUMN_PRESETS: Array<{ label: string; keys: StatColumnKey[] }> = [
   { label: "Essentials", keys: DEFAULT_SELECTED_COLUMN_KEYS },
@@ -108,11 +112,24 @@ const COLUMN_PRESETS: Array<{ label: string; keys: StatColumnKey[] }> = [
   { label: "Goalkeeping", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Goalkeeping").map((column) => column.key) },
   { label: "Discipline", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Discipline").map((column) => column.key) },
   { label: "Involvement", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Involvement").map((column) => column.key) },
+  { label: "Current Form", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Current Form").map((column) => column.key) },
 ];
 
-function formatValue(value: number, column: ColumnDefinition): string {
+function formatValue(value: number | null, column: ColumnDefinition): string {
+  if (value == null) {
+    return "—";
+  }
+
   const digits = column.digits ?? 2;
   return Number.isFinite(value) ? value.toFixed(digits) : (0).toFixed(digits);
+}
+
+function columnValue(row: StatsRow, selectedWindow: PlayerTableWindowKey, columnKey: StatColumnKey): number | null {
+  if (columnKey === "xgPer90" || columnKey === "xaPer90") {
+    return row[columnKey];
+  }
+
+  return row.windows[selectedWindow][columnKey];
 }
 
 function positionLetter(position: StatsRow["position"]): "G" | "D" | "M" | "F" {
@@ -232,8 +249,8 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
         return sortDir === "asc" ? comparison : -comparison;
       }
 
-      const aValue = a.windows[selectedWindow][sortKey];
-      const bValue = b.windows[selectedWindow][sortKey];
+      const aValue = columnValue(a, selectedWindow, sortKey) ?? Number.NEGATIVE_INFINITY;
+      const bValue = columnValue(b, selectedWindow, sortKey) ?? Number.NEGATIVE_INFINITY;
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
   }, [availabilityFilter, deferredSearch, leagueRoster, minGames, ownershipMax, ownershipMin, position, rows, selectedWindow, sortDir, sortKey, teamFilter]);
@@ -658,7 +675,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                     <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{row.team}</td>
                     <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">{row.ownershipPct.toFixed(1)}%</td>
                     {visibleColumns.map((column) => {
-                      const value = row.windows[selectedWindow][column.key];
+                      const value = columnValue(row, selectedWindow, column.key);
 
                       return (
                         <td key={column.key} className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">

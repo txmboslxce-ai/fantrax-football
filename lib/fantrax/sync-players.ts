@@ -17,6 +17,7 @@ type IncomingPlayer = {
   name: string;
   team: string;
   position: string;
+  isKeeper: boolean;
 };
 
 type ExistingPlayer = {
@@ -48,12 +49,21 @@ export type PlayerPoolUnmatched = {
   reason: string;
 };
 
+export type PlayerPoolFailed = {
+  fantraxId: string;
+  name: string;
+  before: { team: string | null; position: string } | null;
+  after: { team: string; position: string };
+  error: string;
+};
+
 export type SyncFantraxPlayersResult = {
   season: string;
   playersFound: number;
   poolEntriesAdded: number;
   added: PlayerPoolAdded[];
   changed: PlayerPoolChanged[];
+  failed: PlayerPoolFailed[];
   unmatched: PlayerPoolUnmatched[];
 };
 
@@ -76,6 +86,7 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
           name: row.name.trim(),
           team: row.team.trim(),
           position: row.position.trim().toUpperCase(),
+          isKeeper: type === "keeper",
         }));
     })
   );
@@ -88,6 +99,7 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
       name: row.name,
       team: row.team,
       position: row.position,
+      isKeeper: row.isKeeper,
     });
   }
 
@@ -132,6 +144,8 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
       playerId: existing.id,
     }];
   });
+  const failed: PlayerPoolFailed[] = [];
+  let successfullyAdded: PlayerPoolAdded[] = added;
 
   if (added.length > 0) {
     const { error: insertError } = await supabase.from("players").insert(
@@ -140,18 +154,46 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
         name: player.name,
         team: player.team,
         position: player.position,
-        is_keeper: player.position === "G",
+        is_keeper: player.isKeeper,
       }))
     );
-    if (insertError) throw new Error(`Unable to insert players: ${insertError.message}`);
+    if (insertError) {
+      successfullyAdded = [];
+      failed.push(
+        ...added.map((player) => ({
+          fantraxId: player.fantraxId,
+          name: player.name,
+          before: null,
+          after: { team: player.team, position: player.position },
+          error: insertError.message,
+        }))
+      );
+    }
   }
 
-  await Promise.all(
-    changed.map(async ({ playerId, after }) => {
-      const { error } = await supabase.from("players").update({ team: after.team, position: after.position }).eq("id", playerId);
-      if (error) throw new Error(`Unable to update player: ${error.message}`);
+  const changedResults = await Promise.all(
+    changed.map(async (change) => {
+      const { error } = await supabase
+        .from("players")
+        .update({ team: change.after.team, position: change.after.position })
+        .eq("id", change.playerId);
+      return { change, error };
     })
   );
+  const successfullyChanged: PlayerPoolChanged[] = [];
+  for (const { change, error } of changedResults) {
+    const player: PlayerPoolChanged = {
+      fantraxId: change.fantraxId,
+      name: change.name,
+      before: change.before,
+      after: change.after,
+    };
+    if (error) {
+      failed.push({ ...player, error: error.message });
+    } else {
+      successfullyChanged.push(player);
+    }
+  }
 
   let poolEntriesAdded = 0;
   if (fantraxIds.length > 0) {
@@ -176,8 +218,9 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
     season,
     playersFound: validPlayers.length + unmatched.length,
     poolEntriesAdded,
-    added,
-    changed: changed.map(({ playerId: _playerId, ...player }) => player),
+    added: successfullyAdded,
+    changed: successfullyChanged,
+    failed,
     unmatched,
   };
 }

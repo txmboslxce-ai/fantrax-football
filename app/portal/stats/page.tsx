@@ -46,6 +46,8 @@ type StatsPlayerRecord = {
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
   availabilityNews: string | null;
+  xgPer90: number | null;
+  xaPer90: number | null;
   windows: Record<PlayerTableWindowKey, StatsWindowRow>;
 };
 
@@ -92,6 +94,15 @@ function toNumber(value: number | string | null | undefined): number {
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
+}
+
+function toNullableNumber(value: number | string | null | undefined): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  const numeric = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(numeric) ? numeric : null;
 }
 
 function roundTo2(value: number): number {
@@ -179,7 +190,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
     poolFantraxIds.length > 0
       ? supabase
           .from("players")
-          .select("id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news)")
+          .select("id, name, team, position, ownership_pct, fpl_player_data(expected_goals_per_90, expected_assists_per_90, chance_of_playing_next_round, status, news)")
           .in("fantrax_id", poolFantraxIds)
           .order("name")
       : Promise.resolve({ data: [], error: null }),
@@ -230,11 +241,15 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
           chance_of_playing_next_round: number | null;
           status: string | null;
           news: string | null;
+          expected_goals_per_90: number | string | null;
+          expected_assists_per_90: number | string | null;
         }
       | Array<{
           chance_of_playing_next_round: number | null;
           status: string | null;
           news: string | null;
+          expected_goals_per_90: number | string | null;
+          expected_assists_per_90: number | string | null;
         }>
       | null;
   }>)
@@ -251,6 +266,8 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
         chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
         availabilityStatus: availabilityRaw?.status ?? null,
         availabilityNews: availabilityRaw?.news ?? null,
+        xgPer90: toNullableNumber(availabilityRaw?.expected_goals_per_90),
+        xaPer90: toNullableNumber(availabilityRaw?.expected_assists_per_90),
         windows: {
           last5: summarizeStatsWindow(playerRows.filter((row) => row.gameweek >= windowStarts.last5)),
           last10: summarizeStatsWindow(playerRows.filter((row) => row.gameweek >= windowStarts.last10)),

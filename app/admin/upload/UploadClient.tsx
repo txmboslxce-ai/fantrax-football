@@ -41,7 +41,21 @@ type FantraxPlayerSyncResponse = {
     before: { team: string | null; position: string };
     after: { team: string; position: string };
   }>;
+  failed?: Array<{
+    fantraxId: string;
+    name: string;
+    before: { team: string | null; position: string } | null;
+    after: { team: string; position: string };
+    error: string;
+  }>;
   unmatched?: Array<{ fantraxId: string; name: string; team: string; reason: string }>;
+  message?: string;
+};
+
+type FplSyncNowResponse = {
+  success: boolean;
+  playerData?: { synced: number; season: string; syncedAt: string };
+  fixtures?: { synced: number; skipped: number; season: string };
   message?: string;
 };
 
@@ -444,13 +458,18 @@ function FantraxPlayerSyncPanel({ seasons, defaultSeason }: { seasons: string[];
 
         {result ? (
           <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
-            {result.success ? (
+            {result.success || result.failed ? (
               <>
-                <p className="font-semibold">{result.added?.length ?? 0} added, {result.changed?.length ?? 0} team/position changes, {result.unmatched?.length ?? 0} unmatched.</p>
+                <p className="font-semibold">{result.added?.length ?? 0} added, {result.changed?.length ?? 0} team/position changes, {result.failed?.length ?? 0} failed, {result.unmatched?.length ?? 0} unmatched.</p>
                 <p className="mt-1 text-brand-creamDark">Players found: {result.playersFound ?? 0}. New season-pool entries: {result.poolEntriesAdded ?? 0}.</p>
                 {(result.changed?.length ?? 0) > 0 ? (
                   <ul className="mt-3 space-y-1 border-t border-brand-cream/15 pt-3">
                     {result.changed?.map((player) => <li key={player.fantraxId}>{player.name}: {player.before.team ?? "—"} / {player.before.position} → {player.after.team} / {player.after.position}</li>)}
+                  </ul>
+                ) : null}
+                {(result.failed?.length ?? 0) > 0 ? (
+                  <ul className="mt-3 space-y-1 border-t border-red-300/30 pt-3 text-red-100">
+                    {result.failed?.map((player) => <li key={player.fantraxId}>{player.name}: {player.before ? `${player.before.team ?? "—"} / ${player.before.position} → ` : "new player → "}{player.after.team} / {player.after.position} ({player.error})</li>)}
                   </ul>
                 ) : null}
                 {(result.unmatched?.length ?? 0) > 0 ? (
@@ -460,6 +479,61 @@ function FantraxPlayerSyncPanel({ seasons, defaultSeason }: { seasons: string[];
                 ) : null}
               </>
             ) : <p>{result.message ?? "Fantrax player sync failed."}</p>}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function FplSyncNowPanel() {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [result, setResult] = useState<FplSyncNowResponse | null>(null);
+
+  async function handleSyncFplData() {
+    setIsSyncing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/fpl-sync-now", { method: "POST" });
+      setResult((await response.json()) as FplSyncNowResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "FPL data sync failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Sync FPL Data</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Run the same current-season player-data and fixture sync as the daily scheduled job.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <button
+          type="button"
+          onClick={handleSyncFplData}
+          disabled={isSyncing}
+          className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isSyncing ? "Syncing FPL Data..." : "Sync FPL Data"}
+        </button>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <>
+                <p className="font-semibold">
+                  {result.playerData?.synced ?? 0} players updated, {result.fixtures?.synced ?? 0} fixtures synced.
+                </p>
+                <p className="mt-1 text-brand-creamDark">
+                  Season: {result.playerData?.season ?? result.fixtures?.season ?? "Unknown"}. Skipped fixtures without a gameweek: {result.fixtures?.skipped ?? 0}.
+                </p>
+              </>
+            ) : <p>{result.message ?? "FPL data sync failed."}</p>}
           </div>
         ) : null}
       </div>
@@ -478,6 +552,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
 
         <FantraxSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
         <FantraxPlayerSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
+        <FplSyncNowPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>

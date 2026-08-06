@@ -37,7 +37,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: `Unknown season: ${season}` }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, ...(await syncFantraxPlayers(season)) });
+    const result = await syncFantraxPlayers(season);
+    const success = result.failed.length === 0;
+    return NextResponse.json(
+      {
+        success,
+        ...(success ? {} : { message: `Player sync completed with ${result.failed.length} failed player write${result.failed.length === 1 ? "" : "s"}.` }),
+        ...result,
+      },
+      { status: success ? 200 : 207 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to sync Fantrax players.";
     return NextResponse.json({ success: false, message }, { status: 500 });
