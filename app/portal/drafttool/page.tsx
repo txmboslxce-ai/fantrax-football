@@ -20,13 +20,18 @@ type DraftPlayer = {
     cornersOrder: number | null;
     directFreekicksOrder: number | null;
   };
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
   stats: PlayerWindowStats;
+  corners: number;
+  freeKickShots: number;
   adp: number | null;
   rank: number;
 };
 
 const PLAYER_GAMEWEEK_QUERY_COLUMNS =
-  "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won";
+  "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won, corner_kicks, free_kick_shots";
 const PLAYER_ID_BATCH_SIZE = 100;
 
 async function loadDraftPlayers(): Promise<DraftPlayer[]> {
@@ -52,7 +57,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   const { data: players, error: playersError } = await supabase
     .from("players")
     .select(
-      "id, fantrax_id, name, team, position, fpl_player_data(penalties_order, corners_order, direct_freekicks_order)"
+      "id, fantrax_id, name, team, position, fpl_player_data(penalties_order, corners_order, direct_freekicks_order, chance_of_playing_next_round, status, news)"
     )
     .in("fantrax_id", poolFantraxIds)
     .order("name");
@@ -72,11 +77,17 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
           penalties_order: number | null;
           corners_order: number | null;
           direct_freekicks_order: number | null;
+          chance_of_playing_next_round: number | null;
+          status: string | null;
+          news: string | null;
         }
       | Array<{
           penalties_order: number | null;
           corners_order: number | null;
           direct_freekicks_order: number | null;
+          chance_of_playing_next_round: number | null;
+          status: string | null;
+          news: string | null;
         }>
       | null;
   }>;
@@ -130,7 +141,12 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
         cornersOrder: fplData?.corners_order ?? null,
         directFreekicksOrder: fplData?.direct_freekicks_order ?? null,
       },
+      chanceOfPlaying: fplData?.chance_of_playing_next_round ?? null,
+      availabilityStatus: fplData?.status ?? null,
+      availabilityNews: fplData?.news ?? null,
       stats: summarizePlayerWindow(decoratedRows, position),
+      corners: decoratedRows.reduce((sum, row) => sum + row.corner_kicks, 0),
+      freeKickShots: decoratedRows.reduce((sum, row) => sum + row.free_kick_shots, 0),
       adp: adpByFantraxId.get(player.fantrax_id) ?? null,
       rank: 0,
     };
