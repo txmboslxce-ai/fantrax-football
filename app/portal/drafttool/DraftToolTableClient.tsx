@@ -3,7 +3,8 @@
 import type { PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
 import Link from "next/link";
-import { type ReactNode, useDeferredValue, useMemo, useState } from "react";
+import { type ReactNode, useDeferredValue, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type DraftToolPlayer = {
   id: string;
@@ -128,17 +129,45 @@ function sortValue(player: DraftToolPlayer, key: SortKey): string | number | nul
 }
 
 function HeaderTooltip({ children, description }: { children: ReactNode; description?: string }) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+
   if (!description) return children;
 
+  function showTooltip() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const tooltipWidth = 224;
+    const viewportPadding = 12;
+    const left = Math.min(
+      Math.max(rect.left + rect.width / 2, viewportPadding + tooltipWidth / 2),
+      window.innerWidth - viewportPadding - tooltipWidth / 2
+    );
+
+    setPosition({ left, top: rect.bottom + 8 });
+  }
+
   return (
-    <span className="group/tooltip relative inline-flex w-full justify-center">
+    <span
+      ref={triggerRef}
+      className="inline-flex w-full justify-center"
+      onMouseEnter={showTooltip}
+      onMouseLeave={() => setPosition(null)}
+      onFocus={showTooltip}
+      onBlur={() => setPosition(null)}
+    >
       {children}
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[11px] font-medium normal-case leading-snug tracking-normal text-slate-700 shadow-lg group-hover/tooltip:block group-focus-within/tooltip:block"
-      >
-        {description}
-      </span>
+      {position ? createPortal(
+        <span
+          role="tooltip"
+          style={{ left: position.left, top: position.top }}
+          className="pointer-events-none fixed z-[100] w-56 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[11px] font-medium normal-case leading-snug tracking-normal text-slate-700 shadow-lg"
+        >
+          {description}
+        </span>,
+        document.body
+      ) : null}
     </span>
   );
 }
@@ -312,7 +341,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </label>
       </div>
 
-      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+      <div className="max-w-full overflow-x-auto">
+        <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         <table className="w-[1480px] table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
             <col style={{ width: "56px" }} />
@@ -346,7 +376,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               <th className={`sticky top-0 z-20 h-16 ${SET_PIECES_COLUMN_WIDTH} border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><HeaderTooltip description="Current 2026-27 set-piece duty order at the player's club — P = penalties, C = corners, FK = direct free kicks. Lower number = higher priority."><span className="leading-tight">Set<br />Pieces</span></HeaderTooltip></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="[&>tr>td]:!py-1">
             {filteredAndSortedPlayers.map((player, index) => {
               const isPicked = pickedPlayerIds.has(player.id);
               const rowShade = isPicked ? "bg-slate-100" : index % 2 === 0 ? "bg-white" : "bg-slate-50";
@@ -386,10 +416,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               );
             })}
             {filteredAndSortedPlayers.length === 0 ? (
-              <tr><td colSpan={18} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">No players match the current filters.</td></tr>
+              <tr><td colSpan={18} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
             ) : null}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
