@@ -59,6 +59,13 @@ type FplSyncNowResponse = {
   message?: string;
 };
 
+type AdpRefreshResponse = {
+  success: boolean;
+  updated?: number;
+  season?: string;
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -541,6 +548,54 @@ function FplSyncNowPanel() {
   );
 }
 
+function AdpRefreshPanel() {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [result, setResult] = useState<AdpRefreshResponse | null>(null);
+
+  async function handleRefreshAdp() {
+    setIsRefreshing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/sync-adp-now", { method: "POST" });
+      setResult((await response.json()) as AdpRefreshResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "ADP refresh failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Refresh ADP</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Refresh Fantrax average draft position for existing 2026-27 player-pool rows only.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <button
+          type="button"
+          onClick={handleRefreshAdp}
+          disabled={isRefreshing}
+          className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isRefreshing ? "Refreshing ADP..." : "Refresh ADP"}
+        </button>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <p className="font-semibold">Updated ADP for {result.updated ?? 0} players in {result.season ?? "2026-27"}.</p>
+            ) : <p>{result.message ?? "ADP refresh failed."}</p>}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function UploadClient({ defaultSeason, seasons }: { defaultSeason: string; seasons: string[] }) {
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
@@ -552,6 +607,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
 
         <FantraxSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
         <FantraxPlayerSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
+        <AdpRefreshPanel />
         <FplSyncNowPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />

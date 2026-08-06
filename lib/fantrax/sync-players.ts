@@ -18,6 +18,7 @@ type IncomingPlayer = {
   team: string;
   position: string;
   isKeeper: boolean;
+  adp: number | null;
 };
 
 type ExistingPlayer = {
@@ -87,6 +88,7 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
           team: row.team.trim(),
           position: row.position.trim().toUpperCase(),
           isKeeper: type === "keeper",
+          adp: row.adp,
         }));
     })
   );
@@ -100,6 +102,7 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
       team: row.team,
       position: row.position,
       isKeeper: row.isKeeper,
+      adp: row.adp,
     });
   }
 
@@ -208,8 +211,8 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
     poolEntriesAdded = fantraxIds.filter((fantraxId) => !existingPoolIds.has(fantraxId)).length;
 
     const { error: poolError } = await supabase.from("season_player_pool").upsert(
-      fantraxIds.map((fantraxId) => ({ season, fantrax_id: fantraxId })),
-      { onConflict: "season,fantrax_id", ignoreDuplicates: true }
+      validPlayers.map((player) => ({ season, fantrax_id: player.fantraxId, adp: player.adp })),
+      { onConflict: "season,fantrax_id" }
     );
     if (poolError) throw new Error(`Unable to update the ${season} season player pool: ${poolError.message}`);
   }

@@ -105,6 +105,7 @@ export type NormalizedRow = {
   position: string;
   gameweek: number;
   raw_fantrax_pts: number;
+  adp: number | null;
   games_played: number;
   games_started: number;
   minutes_played: number;
@@ -219,6 +220,7 @@ export function mapFantraxCsvRow(row: CsvRow, type: UploadType, fallbackGameweek
     team: "",
     position: type === "keeper" ? "G" : "",
     raw_fantrax_pts: 0,
+    adp: null,
     games_played: 0,
     games_started: 0,
     minutes_played: 0,
@@ -276,6 +278,12 @@ export function mapFantraxCsvRow(row: CsvRow, type: UploadType, fallbackGameweek
 
     if (internalColumn === "ownership_pct" || internalColumn === "ownership_change") {
       normalized[internalColumn] = String(value ?? "").trim();
+      continue;
+    }
+
+    if (internalColumn === "adp") {
+      const rawAdp = String(value ?? "").trim();
+      normalized.adp = rawAdp ? coerceNumber(rawAdp) : null;
       continue;
     }
 
