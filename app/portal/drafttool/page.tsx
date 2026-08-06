@@ -8,12 +8,7 @@ import {
 import { DRAFT_POOL_SEASON, DRAFT_STATS_SEASON } from "@/lib/season/draft";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-
-type DraftPickRow = {
-  player_id: string;
-  picked: boolean;
-  notes: string | null;
-};
+import DraftToolTableClient from "./DraftToolTableClient";
 
 type DraftPlayer = {
   id: string;
@@ -26,31 +21,30 @@ type DraftPlayer = {
     directFreekicksOrder: number | null;
   };
   stats: PlayerWindowStats;
-  picked: boolean;
-  notes: string | null;
+  adp: number | null;
+  rank: number;
 };
 
 const PLAYER_GAMEWEEK_QUERY_COLUMNS =
   "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won";
 const PLAYER_ID_BATCH_SIZE = 100;
 
-function isMissingDraftPicksTable(error: { code?: string } | null): boolean {
-  return error?.code === "PGRST205";
-}
-
-async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
+async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   const supabase = await createServerSupabaseClient();
 
   const { data: poolRows, error: poolError } = await supabase
     .from("season_player_pool")
-    .select("fantrax_id")
+    .select("fantrax_id, adp")
     .eq("season", DRAFT_POOL_SEASON);
 
   if (poolError) {
     throw new Error(`Unable to load the ${DRAFT_POOL_SEASON} draft pool: ${poolError.message}`);
   }
 
-  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+  const adpByFantraxId = new Map(
+    (poolRows ?? []).map((row) => [row.fantrax_id as string, row.adp == null ? null : Number(row.adp)])
+  );
+  const poolFantraxIds = Array.from(adpByFantraxId.keys());
   if (poolFantraxIds.length === 0) {
     return [];
   }
@@ -58,7 +52,7 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
   const { data: players, error: playersError } = await supabase
     .from("players")
     .select(
-      "id, name, team, position, fpl_player_data(penalties_order, corners_order, direct_freekicks_order)"
+      "id, fantrax_id, name, team, position, fpl_player_data(penalties_order, corners_order, direct_freekicks_order)"
     )
     .in("fantrax_id", poolFantraxIds)
     .order("name");
@@ -69,6 +63,7 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
 
   const playerRows = (players ?? []) as Array<{
     id: string;
+    fantrax_id: string;
     name: string;
     team: string;
     position: string;
@@ -95,29 +90,22 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
     (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
   );
 
-  const [gameweekResults, { data: draftPicks, error: draftPicksError }] = await Promise.all([
-    Promise.all(
-      playerIdBatches.map((playerIdBatch) =>
-        supabase
-          .from("player_gameweeks")
-          .select(PLAYER_GAMEWEEK_QUERY_COLUMNS)
-          .eq("season", DRAFT_STATS_SEASON)
-          .in("player_id", playerIdBatch)
-          .range(0, 40000)
-      )
-    ),
-    supabase.from("draft_picks").select("player_id, picked, notes").eq("user_id", userId),
-  ]);
+  const gameweekResults = await Promise.all(
+    playerIdBatches.map((playerIdBatch) =>
+      supabase
+        .from("player_gameweeks")
+        .select(PLAYER_GAMEWEEK_QUERY_COLUMNS)
+        .eq("season", DRAFT_STATS_SEASON)
+        .in("player_id", playerIdBatch)
+        .range(0, 40000)
+    )
+  );
 
   const gameweeksError = gameweekResults.find((result) => result.error)?.error;
 
   if (gameweeksError) {
     throw new Error(`Unable to load ${DRAFT_STATS_SEASON} player statistics: ${gameweeksError.message}`);
   }
-  if (draftPicksError && !isMissingDraftPicksTable(draftPicksError)) {
-    throw new Error(`Unable to load draft picks: ${draftPicksError.message}`);
-  }
-
   const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
   for (const row of gameweekResults.flatMap((result) => (result.data ?? []) as PlayerGameweekRow[])) {
     const existing = rowsByPlayer.get(row.player_id);
@@ -128,16 +116,10 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
     }
   }
 
-  const picksByPlayer = new Map(
-    ((draftPicks ?? []) as DraftPickRow[]).map((pick) => [pick.player_id, pick])
-  );
-
-  return playerRows.map((player) => {
+  const unrankedPlayers = playerRows.map((player) => {
     const fplData = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
     const position = mapPosition(player.position);
     const decoratedRows = decorateGameweeks(rowsByPlayer.get(player.id) ?? [], player.team, []);
-    const draftPick = picksByPlayer.get(player.id);
-
     return {
       id: player.id,
       name: player.name,
@@ -149,10 +131,14 @@ async function loadDraftPlayers(userId: string): Promise<DraftPlayer[]> {
         directFreekicksOrder: fplData?.direct_freekicks_order ?? null,
       },
       stats: summarizePlayerWindow(decoratedRows, position),
-      picked: draftPick?.picked ?? false,
-      notes: draftPick?.notes ?? null,
+      adp: adpByFantraxId.get(player.fantrax_id) ?? null,
+      rank: 0,
     };
   });
+
+  return unrankedPlayers
+    .sort((a, b) => b.stats.season_pts - a.stats.season_pts || a.name.localeCompare(b.name))
+    .map((player, index) => ({ ...player, rank: index + 1 }));
 }
 
 export default async function DraftToolPage() {
@@ -165,8 +151,7 @@ export default async function DraftToolPage() {
     redirect("/login?next=/portal/drafttool");
   }
 
-  const players = await loadDraftPlayers(user.id);
-  const samplePlayer = players[0];
+  const players = await loadDraftPlayers();
 
   return (
     <div className="space-y-4">
@@ -177,11 +162,7 @@ export default async function DraftToolPage() {
         </p>
       </div>
 
-      {samplePlayer ? (
-        <p className="text-sm text-brand-dark/70">
-          Sample: {samplePlayer.name} — {samplePlayer.stats.fantasy_pts_per_start} FP/Start, {samplePlayer.stats.ghost_pts_per_start} Ghost Pts/Start.
-        </p>
-      ) : null}
+      <DraftToolTableClient players={players} />
     </div>
   );
 }
