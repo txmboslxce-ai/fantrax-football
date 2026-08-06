@@ -83,8 +83,6 @@ const DEFAULT_SELECTED_COLUMN_KEYS: NumericColumnKey[] = [
   "floor_per_start",
   "ceiling_per_start",
 ];
-const PAGE_SIZE = 150;
-
 const COLUMN_PRESETS: Array<{ label: string; keys: NumericColumnKey[] }> = [
   { label: "Essentials", keys: DEFAULT_SELECTED_COLUMN_KEYS },
   { label: "Scoring", keys: COLUMN_DEFINITIONS.filter((column) => column.category === "Scoring").map((column) => column.key) },
@@ -147,7 +145,6 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [page, setPage] = useState(1);
   const columnPickerRef = useRef<HTMLDivElement>(null);
 
   const teams = useMemo(() => {
@@ -195,11 +192,6 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
       setSortDir("desc");
     }
   }, [sortKey, visibleColumns]);
-
-  // Reset to page 1 whenever filters or sort change
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearch, positionFilter, availabilityFilter, teamFilter, minGames, ownershipMin, ownershipMax, selectedWindow, sortKey, sortDir]);
 
   const filteredAndSorted = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
@@ -278,10 +270,6 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
     );
   }, [positionFilter, availabilityFilter, teamFilter, search, ownershipMin, ownershipMax, selectedColumns]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / PAGE_SIZE));
-  const pageStart = (page - 1) * PAGE_SIZE;
-  const pageRows = filteredAndSorted.slice(pageStart, pageStart + PAGE_SIZE);
-
   // On mobile, only show the first stat column to avoid horizontal scroll
   const displayColumns = visibleColumns;
 
@@ -330,7 +318,7 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search player…"
-          className="min-w-0 flex-1 rounded-xl border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
         />
         <button
           type="button"
@@ -674,10 +662,10 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((player, index) => {
+            {filteredAndSorted.map((player, index) => {
               const rowHref = `/portal/players/${player.id}`;
               const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
-              const overallRank = pageStart + index + 1;
+              const overallRank = index + 1;
               const posKey = positionLetter(player.position);
               const rosterTeam = leagueRoster?.teamByPlayerId[player.id];
               const availabilityLabel = rosterTeam ? "Taken" : "Available";
@@ -754,30 +742,6 @@ export default function PlayersTableClient({ players, leagueRoster, season, avai
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between px-1 py-2">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="rounded border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream disabled:opacity-40"
-          >
-            ← Prev
-          </button>
-          <span className="text-xs text-brand-creamDark">
-            Page {page} of {totalPages} · {filteredAndSorted.length} players
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="rounded border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream disabled:opacity-40"
-          >
-            Next →
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -1,0 +1,3178 @@
+[
+  {
+    "storedName": "David Raya",
+    "storedTeam": "ARS",
+    "fplId": 1,
+    "fplName": "David Raya Martín",
+    "webName": "Raya",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Gabriel Magalhaes",
+    "storedTeam": "ARS",
+    "fplId": 4,
+    "fplName": "Gabriel dos Santos Magalhães",
+    "webName": "Gabriel",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Jurrien Timber",
+    "storedTeam": "ARS",
+    "fplId": 5,
+    "fplName": "Jurriën Timber",
+    "webName": "J.Timber",
+    "team": "ARS"
+  },
+  {
+    "storedName": "William Saliba",
+    "storedTeam": "ARS",
+    "fplId": 6,
+    "fplName": "William Saliba",
+    "webName": "Saliba",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Myles Lewis-Skelly",
+    "storedTeam": "ARS",
+    "fplId": 7,
+    "fplName": "Myles Lewis-Skelly",
+    "webName": "Lewis-Skelly",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Riccardo Calafiori",
+    "storedTeam": "ARS",
+    "fplId": 8,
+    "fplName": "Riccardo Calafiori",
+    "webName": "Calafiori",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Piero Hincapie",
+    "storedTeam": "ARS",
+    "fplId": 9,
+    "fplName": "Piero Hincapié",
+    "webName": "Hincapie",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Cristhian Mosquera",
+    "storedTeam": "ARS",
+    "fplId": 11,
+    "fplName": "Cristhian Mosquera",
+    "webName": "Mosquera",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Bukayo Saka",
+    "storedTeam": "ARS",
+    "fplId": 12,
+    "fplName": "Bukayo Saka",
+    "webName": "Saka",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Declan Rice",
+    "storedTeam": "ARS",
+    "fplId": 13,
+    "fplName": "Declan Rice",
+    "webName": "Rice",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Eberechi Eze",
+    "storedTeam": "ARS",
+    "fplId": 14,
+    "fplName": "Eberechi Eze",
+    "webName": "Eze",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Noni Madueke",
+    "storedTeam": "ARS",
+    "fplId": 16,
+    "fplName": "Noni Madueke",
+    "webName": "Madueke",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Mikel Merino",
+    "storedTeam": "ARS",
+    "fplId": 17,
+    "fplName": "Mikel Merino Zazón",
+    "webName": "Merino",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Gabriel Martinelli",
+    "storedTeam": "ARS",
+    "fplId": 18,
+    "fplName": "Gabriel Martinelli Silva",
+    "webName": "Martinelli",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Martin Zubimendi",
+    "storedTeam": "ARS",
+    "fplId": 19,
+    "fplName": "Martín Zubimendi Ibáñez",
+    "webName": "Zubimendi",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Max Dowman",
+    "storedTeam": "ARS",
+    "fplId": 20,
+    "fplName": "Max Dowman",
+    "webName": "Dowman",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Ethan Nwaneri",
+    "storedTeam": "ARS",
+    "fplId": 22,
+    "fplName": "Ethan Nwaneri",
+    "webName": "Nwaneri",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Fabio Vieira",
+    "storedTeam": "ARS",
+    "fplId": 23,
+    "fplName": "Fábio Ferreira Vieira",
+    "webName": "Fábio Vieira",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Viktor Gyokeres",
+    "storedTeam": "ARS",
+    "fplId": 25,
+    "fplName": "Viktor Gyökeres",
+    "webName": "Gyökeres",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Kai Havertz",
+    "storedTeam": "ARS",
+    "fplId": 26,
+    "fplName": "Kai Havertz",
+    "webName": "Havertz",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Gabriel Jesus",
+    "storedTeam": "ARS",
+    "fplId": 27,
+    "fplName": "Gabriel Fernando de Jesus",
+    "webName": "G.Jesus",
+    "team": "ARS"
+  },
+  {
+    "storedName": "Emiliano Martinez",
+    "storedTeam": "AVL",
+    "fplId": 28,
+    "fplName": "Emiliano Martínez Romero",
+    "webName": "Martinez",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Marco Bizot",
+    "storedTeam": "AVL",
+    "fplId": 29,
+    "fplName": "Marco Bizot",
+    "webName": "M.Bizot",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Lucas Digne",
+    "storedTeam": "AVL",
+    "fplId": 30,
+    "fplName": "Lucas Digne",
+    "webName": "Digne",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Ezri Konsa",
+    "storedTeam": "AVL",
+    "fplId": 31,
+    "fplName": "Ezri Konsa Ngoyo",
+    "webName": "Konsa",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Matty Cash",
+    "storedTeam": "AVL",
+    "fplId": 32,
+    "fplName": "Matty Cash",
+    "webName": "Cash",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Tyrone Mings",
+    "storedTeam": "AVL",
+    "fplId": 33,
+    "fplName": "Tyrone Mings",
+    "webName": "Mings",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Pau Torres",
+    "storedTeam": "AVL",
+    "fplId": 34,
+    "fplName": "Pau Torres",
+    "webName": "Pau",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Lamare Bogarde",
+    "storedTeam": "AVL",
+    "fplId": 35,
+    "fplName": "Lamare Bogarde",
+    "webName": "Bogarde",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Ian Maatsen",
+    "storedTeam": "AVL",
+    "fplId": 36,
+    "fplName": "Ian Maatsen",
+    "webName": "Maatsen",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Victor Lindelof",
+    "storedTeam": "AVL",
+    "fplId": 37,
+    "fplName": "Victor Lindelöf",
+    "webName": "Lindelöf",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Andres Garcia",
+    "storedTeam": "AVL",
+    "fplId": 38,
+    "fplName": "Andrés García",
+    "webName": "A.García",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Emiliano Buendia",
+    "storedTeam": "AVL",
+    "fplId": 41,
+    "fplName": "Emiliano Buendía Stati",
+    "webName": "Buendía",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Leon Bailey",
+    "storedTeam": "AVL",
+    "fplId": 44,
+    "fplName": "Leon Bailey",
+    "webName": "Bailey",
+    "team": "AVL"
+  },
+  {
+    "storedName": "John McGinn",
+    "storedTeam": "AVL",
+    "fplId": 45,
+    "fplName": "John McGinn",
+    "webName": "McGinn",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Ross Barkley",
+    "storedTeam": "AVL",
+    "fplId": 46,
+    "fplName": "Ross Barkley",
+    "webName": "Barkley",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Boubacar Kamara",
+    "storedTeam": "AVL",
+    "fplId": 47,
+    "fplName": "Boubacar Kamara",
+    "webName": "Kamara",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Amadou Onana",
+    "storedTeam": "AVL",
+    "fplId": 48,
+    "fplName": "Amadou Onana",
+    "webName": "Onana",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Samuel Iling-Junior",
+    "storedTeam": "AVL",
+    "fplId": 49,
+    "fplName": "Samuel Iling-Junior",
+    "webName": "Iling Jr",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Bradley Burrowes",
+    "storedTeam": "AVL",
+    "fplId": 50,
+    "fplName": "Bradley Burrowes",
+    "webName": "Burrowes",
+    "team": "AVL"
+  },
+  {
+    "storedName": "George Hemmings",
+    "storedTeam": "AVL",
+    "fplId": 51,
+    "fplName": "George Hemmings",
+    "webName": "George Hemmings",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Alysson Edward Franco da Rocha dos Santos",
+    "storedTeam": "AVL",
+    "fplId": 52,
+    "fplName": "Alysson Edward Franco da Rocha dos Santos",
+    "webName": "Alysson",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Ollie Watkins",
+    "storedTeam": "AVL",
+    "fplId": 55,
+    "fplName": "Ollie Watkins",
+    "webName": "Watkins",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Tammy Abraham",
+    "storedTeam": "AVL",
+    "fplId": 56,
+    "fplName": "Tammy Abraham",
+    "webName": "Abraham",
+    "team": "AVL"
+  },
+  {
+    "storedName": "Fraser Forster",
+    "storedTeam": "BOU",
+    "fplId": 58,
+    "fplName": "Fraser Forster",
+    "webName": "Forster",
+    "team": "BOU"
+  },
+  {
+    "storedName": "James Hill",
+    "storedTeam": "BOU",
+    "fplId": 60,
+    "fplName": "James Hill",
+    "webName": "Hill",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Adrien Truffert",
+    "storedTeam": "BOU",
+    "fplId": 61,
+    "fplName": "Adrien Truffert",
+    "webName": "Truffert",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Bafode Diakite",
+    "storedTeam": "BOU",
+    "fplId": 62,
+    "fplName": "Bafodé Diakité",
+    "webName": "Diakité",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Veljko Milosavljevic",
+    "storedTeam": "BOU",
+    "fplId": 63,
+    "fplName": "Veljko Milosavljevic",
+    "webName": "Milosavljević",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Adam Smith",
+    "storedTeam": "BOU",
+    "fplId": 64,
+    "fplName": "Adam Smith",
+    "webName": "Smith",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Julian Araujo",
+    "storedTeam": "BOU",
+    "fplId": 65,
+    "fplName": "Julián Araujo Zúñiga",
+    "webName": "J.Araujo",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Julio Soler",
+    "storedTeam": "BOU",
+    "fplId": 66,
+    "fplName": "Julio Soler Barreto",
+    "webName": "Soler",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Rayan Vitor Simplicio Rocha",
+    "storedTeam": "BOU",
+    "fplId": 67,
+    "fplName": "Rayan Vitor Simplício Rocha",
+    "webName": "Rayan",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Marcus Tavernier",
+    "storedTeam": "BOU",
+    "fplId": 68,
+    "fplName": "Marcus Tavernier",
+    "webName": "Tavernier",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Alex Scott",
+    "storedTeam": "BOU",
+    "fplId": 69,
+    "fplName": "Alex Scott",
+    "webName": "Scott",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Justin Kluivert",
+    "storedTeam": "BOU",
+    "fplId": 70,
+    "fplName": "Justin Kluivert",
+    "webName": "Kluivert",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Lewis Cook",
+    "storedTeam": "BOU",
+    "fplId": 71,
+    "fplName": "Lewis Cook",
+    "webName": "Cook",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Ben Doak",
+    "storedTeam": "BOU",
+    "fplId": 72,
+    "fplName": "Ben Gannon-Doak",
+    "webName": "Gannon-Doak",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Tyler Adams",
+    "storedTeam": "BOU",
+    "fplId": 73,
+    "fplName": "Tyler Adams",
+    "webName": "Adams",
+    "team": "BOU"
+  },
+  {
+    "storedName": "David Brooks",
+    "storedTeam": "BOU",
+    "fplId": 74,
+    "fplName": "David Brooks",
+    "webName": "Brooks",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Ryan Christie",
+    "storedTeam": "BOU",
+    "fplId": 75,
+    "fplName": "Ryan Christie",
+    "webName": "Christie",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Alex Toth",
+    "storedTeam": "BOU",
+    "fplId": 76,
+    "fplName": "Alex Tóth",
+    "webName": "Tóth.A",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Amine Adli",
+    "storedTeam": "BOU",
+    "fplId": 77,
+    "fplName": "Amine Adli",
+    "webName": "Adli",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Evanilson",
+    "storedTeam": "BOU",
+    "fplId": 79,
+    "fplName": "Francisco Evanilson de Lima Barbosa",
+    "webName": "Evanilson",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Enes Unal",
+    "storedTeam": "BOU",
+    "fplId": 80,
+    "fplName": "Enes Ünal",
+    "webName": "Enes Ünal",
+    "team": "BOU"
+  },
+  {
+    "storedName": "Caoimhin Kelleher",
+    "storedTeam": "BRF",
+    "fplId": 82,
+    "fplName": "Caoimhín Kelleher",
+    "webName": "Kelleher",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Hakon Valdimarsson",
+    "storedTeam": "BRF",
+    "fplId": 83,
+    "fplName": "Hákon Rafn Valdimarsson",
+    "webName": "Valdimarsson",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Nathan Collins",
+    "storedTeam": "BRF",
+    "fplId": 84,
+    "fplName": "Nathan Collins",
+    "webName": "Collins",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Sepp van den Berg",
+    "storedTeam": "BRF",
+    "fplId": 85,
+    "fplName": "Sepp van den Berg",
+    "webName": "Van den Berg",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Keane Lewis-Potter",
+    "storedTeam": "BRF",
+    "fplId": 86,
+    "fplName": "Keane Lewis-Potter",
+    "webName": "Lewis-Potter",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Kristoffer Ajer",
+    "storedTeam": "BRF",
+    "fplId": 87,
+    "fplName": "Kristoffer Ajer",
+    "webName": "Ajer",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Michael Kayode",
+    "storedTeam": "BRF",
+    "fplId": 88,
+    "fplName": "Michael Kayode",
+    "webName": "Kayode",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Rico Henry",
+    "storedTeam": "BRF",
+    "fplId": 89,
+    "fplName": "Rico Henry",
+    "webName": "Henry",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Aaron Hickey",
+    "storedTeam": "BRF",
+    "fplId": 90,
+    "fplName": "Aaron Hickey",
+    "webName": "Hickey",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Ethan Pinnock",
+    "storedTeam": "BRF",
+    "fplId": 91,
+    "fplName": "Ethan Pinnock",
+    "webName": "Pinnock",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Kevin Schade",
+    "storedTeam": "BRF",
+    "fplId": 94,
+    "fplName": "Kevin Schade",
+    "webName": "Schade",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Dango Ouattara",
+    "storedTeam": "BRF",
+    "fplId": 95,
+    "fplName": "Dango Ouattara",
+    "webName": "O.Dango",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Mikkel Damsgaard",
+    "storedTeam": "BRF",
+    "fplId": 96,
+    "fplName": "Mikkel Damsgaard",
+    "webName": "Damsgaard",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Mathias Jensen",
+    "storedTeam": "BRF",
+    "fplId": 97,
+    "fplName": "Mathias Jensen",
+    "webName": "Jensen",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Vitaly Janelt",
+    "storedTeam": "BRF",
+    "fplId": 98,
+    "fplName": "Vitaly Janelt",
+    "webName": "Janelt",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Antoni Milambo",
+    "storedTeam": "BRF",
+    "fplId": 99,
+    "fplName": "Antoni Milambo",
+    "webName": "Milambo",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Fabio Carvalho",
+    "storedTeam": "BRF",
+    "fplId": 100,
+    "fplName": "Fábio Freitas Gouveia Carvalho",
+    "webName": "Carvalho",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Josh Dasilva",
+    "storedTeam": "BRF",
+    "fplId": 103,
+    "fplName": "Josh Dasilva",
+    "webName": "Dasilva",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Igor Thiago",
+    "storedTeam": "BRF",
+    "fplId": 106,
+    "fplName": "Igor Thiago Nascimento Rodrigues",
+    "webName": "Thiago",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Kaye Furo",
+    "storedTeam": "BRF",
+    "fplId": 107,
+    "fplName": "Kaye Furo",
+    "webName": "Furo",
+    "team": "BRF"
+  },
+  {
+    "storedName": "Bart Verbruggen",
+    "storedTeam": "BHA",
+    "fplId": 109,
+    "fplName": "Bart Verbruggen",
+    "webName": "Verbruggen",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Jason Steele",
+    "storedTeam": "BHA",
+    "fplId": 111,
+    "fplName": "Jason Steele",
+    "webName": "Steele",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Olivier Boscagli",
+    "storedTeam": "BHA",
+    "fplId": 114,
+    "fplName": "Olivier Boscagli",
+    "webName": "Boscagli",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Maxim De Cuyper",
+    "storedTeam": "BHA",
+    "fplId": 115,
+    "fplName": "Maxim De Cuyper",
+    "webName": "De Cuyper",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Lewis Dunk",
+    "storedTeam": "BHA",
+    "fplId": 116,
+    "fplName": "Lewis Dunk",
+    "webName": "Dunk",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Diego Coppola",
+    "storedTeam": "BHA",
+    "fplId": 117,
+    "fplName": "Diego Coppola",
+    "webName": "Coppola",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Igor Julio",
+    "storedTeam": "BHA",
+    "fplId": 118,
+    "fplName": "Igor Julio dos Santos de Paulo",
+    "webName": "Igor",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Kaoru Mitoma",
+    "storedTeam": "BHA",
+    "fplId": 121,
+    "fplName": "Mitoma Kaoru",
+    "webName": "Mitoma",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Yankuba Minteh",
+    "storedTeam": "BHA",
+    "fplId": 122,
+    "fplName": "Yankuba Minteh",
+    "webName": "Minteh",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Jack Hinshelwood",
+    "storedTeam": "BHA",
+    "fplId": 123,
+    "fplName": "Jack Hinshelwood",
+    "webName": "Hinshelwood",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Georginio Rutter",
+    "storedTeam": "BHA",
+    "fplId": 125,
+    "fplName": "Georginio Rutter",
+    "webName": "Georginio",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Matt O'Riley",
+    "storedTeam": "BHA",
+    "fplId": 126,
+    "fplName": "Matt O'Riley",
+    "webName": "O'Riley",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Diego Gomez",
+    "storedTeam": "BHA",
+    "fplId": 127,
+    "fplName": "Diego Gómez Amarilla",
+    "webName": "Gomez",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Yasin Ayari",
+    "storedTeam": "BHA",
+    "fplId": 129,
+    "fplName": "Yasin Ayari",
+    "webName": "Ayari",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Mats Wieffer",
+    "storedTeam": "BHA",
+    "fplId": 130,
+    "fplName": "Mats Wieffer",
+    "webName": "Wieffer",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Carlos Baleba",
+    "storedTeam": "BHA",
+    "fplId": 131,
+    "fplName": "Carlos Baleba",
+    "webName": "Baleba",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Harry Howell",
+    "storedTeam": "BHA",
+    "fplId": 132,
+    "fplName": "Harry Howell",
+    "webName": "Howell",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Tom Watson",
+    "storedTeam": "BHA",
+    "fplId": 133,
+    "fplName": "Tom Watson",
+    "webName": "Watson",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Nehemiah Oriola",
+    "storedTeam": "BHA",
+    "fplId": 134,
+    "fplName": "Nehemiah Oriola",
+    "webName": "Oriola",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Stefanos Tzimas",
+    "storedTeam": "BHA",
+    "fplId": 137,
+    "fplName": "Stefanos Tzimas",
+    "webName": "Tzimas",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Charalampos Kostoulas",
+    "storedTeam": "BHA",
+    "fplId": 138,
+    "fplName": "Charalampos Kostoulas",
+    "webName": "Kostoulas",
+    "team": "BHA"
+  },
+  {
+    "storedName": "Robert Sanchez",
+    "storedTeam": "CHE",
+    "fplId": 140,
+    "fplName": "Robert Lynch Sánchez",
+    "webName": "Sánchez",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Filip Jorgensen",
+    "storedTeam": "CHE",
+    "fplId": 141,
+    "fplName": "Filip Jörgensen",
+    "webName": "Jörgensen",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Reece James",
+    "storedTeam": "CHE",
+    "fplId": 142,
+    "fplName": "Reece James",
+    "webName": "James",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Trevoh Chalobah",
+    "storedTeam": "CHE",
+    "fplId": 143,
+    "fplName": "Trevoh Chalobah",
+    "webName": "Chalobah",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Malo Gusto",
+    "storedTeam": "CHE",
+    "fplId": 144,
+    "fplName": "Malo Gusto",
+    "webName": "Gusto",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Wesley Fofana",
+    "storedTeam": "CHE",
+    "fplId": 145,
+    "fplName": "Wesley Fofana",
+    "webName": "Fofana",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Benoit Badiashile",
+    "storedTeam": "CHE",
+    "fplId": 146,
+    "fplName": "Benoît Badiashile Mukinayi",
+    "webName": "B.Badiashile",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Tosin Adarabioyo",
+    "storedTeam": "CHE",
+    "fplId": 147,
+    "fplName": "Tosin Adarabioyo",
+    "webName": "Tosin",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Jorrel Hato",
+    "storedTeam": "CHE",
+    "fplId": 148,
+    "fplName": "Jorrel Hato",
+    "webName": "Hato",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Levi Colwill",
+    "storedTeam": "CHE",
+    "fplId": 149,
+    "fplName": "Levi Samuels Colwill",
+    "webName": "Colwill",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Mamadou Sarr",
+    "storedTeam": "CHE",
+    "fplId": 150,
+    "fplName": "Mamadou Sarr",
+    "webName": "M.Sarr",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Josh Acheampong",
+    "storedTeam": "CHE",
+    "fplId": 151,
+    "fplName": "Josh Acheampong",
+    "webName": "Acheampong",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Cole Palmer",
+    "storedTeam": "CHE",
+    "fplId": 154,
+    "fplName": "Cole Palmer",
+    "webName": "Palmer",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Enzo Fernandez",
+    "storedTeam": "CHE",
+    "fplId": 155,
+    "fplName": "Enzo Fernández",
+    "webName": "Enzo",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Pedro Neto",
+    "storedTeam": "CHE",
+    "fplId": 156,
+    "fplName": "Pedro Lomba Neto",
+    "webName": "Neto",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Estevao Willian Almeida de Oliveira Goncalves",
+    "storedTeam": "CHE",
+    "fplId": 157,
+    "fplName": "Estêvão Almeida de Oliveira Gonçalves",
+    "webName": "Estêvão",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Jamie Gittens",
+    "storedTeam": "CHE",
+    "fplId": 158,
+    "fplName": "Jamie Bynoe-Gittens",
+    "webName": "Gittens",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Moises Caicedo",
+    "storedTeam": "CHE",
+    "fplId": 159,
+    "fplName": "Moisés Caicedo Corozo",
+    "webName": "Caicedo",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Romeo Lavia",
+    "storedTeam": "CHE",
+    "fplId": 161,
+    "fplName": "Roméo Lavia",
+    "webName": "Lavia",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Dario Essugo",
+    "storedTeam": "CHE",
+    "fplId": 163,
+    "fplName": "Dário Luís Essugo",
+    "webName": "D.Essugo",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Joao Pedro",
+    "storedTeam": "CHE",
+    "fplId": 165,
+    "fplName": "João Pedro Junqueira de Jesus",
+    "webName": "João Pedro",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Liam Delap",
+    "storedTeam": "CHE",
+    "fplId": 167,
+    "fplName": "Liam Delap",
+    "webName": "Delap",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Marc Guiu",
+    "storedTeam": "CHE",
+    "fplId": 168,
+    "fplName": "Marc Guiu Paz",
+    "webName": "Marc Guiu",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Shumaira Mheuka",
+    "storedTeam": "CHE",
+    "fplId": 169,
+    "fplName": "Shumaira Mheuka",
+    "webName": "Mheuka",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Mike Penders",
+    "storedTeam": "CHE",
+    "fplId": 560,
+    "fplName": "Mike Penders",
+    "webName": "Penders",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Aaron Anselmino",
+    "storedTeam": "CHE",
+    "fplId": 561,
+    "fplName": "Aaron Anselmino",
+    "webName": "Anselmino",
+    "team": "CHE"
+  },
+  {
+    "storedName": "Dean Henderson",
+    "storedTeam": "CRY",
+    "fplId": 198,
+    "fplName": "Dean Henderson",
+    "webName": "Henderson",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Walter Benitez",
+    "storedTeam": "CRY",
+    "fplId": 199,
+    "fplName": "Walter Benítez",
+    "webName": "Benitez",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Daniel Munoz",
+    "storedTeam": "CRY",
+    "fplId": 201,
+    "fplName": "Daniel Muñoz Mejía",
+    "webName": "Muñoz",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Chris Richards",
+    "storedTeam": "CRY",
+    "fplId": 202,
+    "fplName": "Chris Richards",
+    "webName": "Richards",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Jaydee Canvot",
+    "storedTeam": "CRY",
+    "fplId": 203,
+    "fplName": "Jaydee Canvot",
+    "webName": "Canvot",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Tyrick Mitchell",
+    "storedTeam": "CRY",
+    "fplId": 204,
+    "fplName": "Tyrick Mitchell",
+    "webName": "Mitchell",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Borna Sosa",
+    "storedTeam": "CRY",
+    "fplId": 205,
+    "fplName": "Borna Sosa",
+    "webName": "Sosa",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Chadi Riad",
+    "storedTeam": "CRY",
+    "fplId": 206,
+    "fplName": "Chadi Riad Dnanou",
+    "webName": "Chadi Riad",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Ismaila Sarr",
+    "storedTeam": "CRY",
+    "fplId": 208,
+    "fplName": "Ismaïla Sarr",
+    "webName": "Sarr",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Brennan Johnson",
+    "storedTeam": "CRY",
+    "fplId": 209,
+    "fplName": "Brennan Johnson",
+    "webName": "Johnson",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Adam Wharton",
+    "storedTeam": "CRY",
+    "fplId": 210,
+    "fplName": "Adam Wharton",
+    "webName": "Wharton",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Yeremy Pino",
+    "storedTeam": "CRY",
+    "fplId": 211,
+    "fplName": "Yéremy Pino Santos",
+    "webName": "Yeremy",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Will Hughes",
+    "storedTeam": "CRY",
+    "fplId": 212,
+    "fplName": "Will Hughes",
+    "webName": "Hughes",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Jefferson Lerma",
+    "storedTeam": "CRY",
+    "fplId": 213,
+    "fplName": "Jefferson Lerma Solís",
+    "webName": "Lerma",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Daichi Kamada",
+    "storedTeam": "CRY",
+    "fplId": 214,
+    "fplName": "Daichi Kamada",
+    "webName": "Kamada",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Justin Devenny",
+    "storedTeam": "CRY",
+    "fplId": 215,
+    "fplName": "Justin Devenny",
+    "webName": "Devenny",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Romain Esse",
+    "storedTeam": "CRY",
+    "fplId": 216,
+    "fplName": "Romain Esse",
+    "webName": "Esse",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Matheus Franca",
+    "storedTeam": "CRY",
+    "fplId": 217,
+    "fplName": "Matheus França de Oliveira",
+    "webName": "M.França",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Cheick Doucoure",
+    "storedTeam": "CRY",
+    "fplId": 218,
+    "fplName": "Cheick Doucouré",
+    "webName": "Doucouré",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Jesurun Rak-Sakyi",
+    "storedTeam": "CRY",
+    "fplId": 219,
+    "fplName": "Jesurun Rak-Sakyi",
+    "webName": "J.Rak-Sakyi",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Rio Cardines",
+    "storedTeam": "CRY",
+    "fplId": 220,
+    "fplName": "Rio Cardines",
+    "webName": "Cardines",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Joel Drakes-Thomas",
+    "storedTeam": "CRY",
+    "fplId": 221,
+    "fplName": "Joél Drakes-Thomas",
+    "webName": "Drakes-Thomas",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Jorgen Strand Larsen",
+    "storedTeam": "CRY",
+    "fplId": 222,
+    "fplName": "Jørgen Strand Larsen",
+    "webName": "Strand Larsen",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Jean-Philippe Mateta",
+    "storedTeam": "CRY",
+    "fplId": 223,
+    "fplName": "Jean-Philippe Mateta",
+    "webName": "Mateta",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Eddie Nketiah",
+    "storedTeam": "CRY",
+    "fplId": 224,
+    "fplName": "Eddie Nketiah",
+    "webName": "Nketiah",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Christantus Uche",
+    "storedTeam": "CRY",
+    "fplId": 225,
+    "fplName": "Christantus Uche",
+    "webName": "Uche",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Remi Matthews",
+    "storedTeam": "CRY",
+    "fplId": 555,
+    "fplName": "Remi Matthews",
+    "webName": "Matthews",
+    "team": "CRY"
+  },
+  {
+    "storedName": "Jordan Pickford",
+    "storedTeam": "EVE",
+    "fplId": 226,
+    "fplName": "Jordan Pickford",
+    "webName": "Pickford",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Mark Travers",
+    "storedTeam": "EVE",
+    "fplId": 227,
+    "fplName": "Mark Travers",
+    "webName": "Travers",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Tom King",
+    "storedTeam": "EVE",
+    "fplId": 228,
+    "fplName": "Tom King",
+    "webName": "King",
+    "team": "EVE"
+  },
+  {
+    "storedName": "James Tarkowski",
+    "storedTeam": "EVE",
+    "fplId": 229,
+    "fplName": "James Tarkowski",
+    "webName": "Tarkowski",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Jarrad Branthwaite",
+    "storedTeam": "EVE",
+    "fplId": 230,
+    "fplName": "Jarrad Branthwaite",
+    "webName": "Branthwaite",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Michael Keane",
+    "storedTeam": "EVE",
+    "fplId": 231,
+    "fplName": "Michael Keane",
+    "webName": "Keane",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Jake O'Brien",
+    "storedTeam": "EVE",
+    "fplId": 232,
+    "fplName": "Jake O'Brien",
+    "webName": "O'Brien",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Vitalii Mykolenko",
+    "storedTeam": "EVE",
+    "fplId": 233,
+    "fplName": "Vitalii Mykolenko",
+    "webName": "Mykolenko",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Nathan Patterson",
+    "storedTeam": "EVE",
+    "fplId": 234,
+    "fplName": "Nathan Patterson",
+    "webName": "Patterson",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Adam Aznou",
+    "storedTeam": "EVE",
+    "fplId": 235,
+    "fplName": "Adam Aznou",
+    "webName": "Aznou",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Kiernan Dewsbury-Hall",
+    "storedTeam": "EVE",
+    "fplId": 236,
+    "fplName": "Kiernan Dewsbury-Hall",
+    "webName": "Dewsbury-Hall",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Iliman Ndiaye",
+    "storedTeam": "EVE",
+    "fplId": 237,
+    "fplName": "Iliman Ndiaye",
+    "webName": "Ndiaye",
+    "team": "EVE"
+  },
+  {
+    "storedName": "James Garner",
+    "storedTeam": "EVE",
+    "fplId": 239,
+    "fplName": "James Garner",
+    "webName": "Garner",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Tim Iroegbunam",
+    "storedTeam": "EVE",
+    "fplId": 240,
+    "fplName": "Tim Iroegbunam",
+    "webName": "Iroegbunam",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Dwight McNeil",
+    "storedTeam": "EVE",
+    "fplId": 241,
+    "fplName": "Dwight McNeil",
+    "webName": "McNeil",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Tyrique George",
+    "storedTeam": "EVE",
+    "fplId": 242,
+    "fplName": "Tyrique George",
+    "webName": "George",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Carlos Alcaraz",
+    "storedTeam": "EVE",
+    "fplId": 243,
+    "fplName": "Carlos Alcaraz Durán",
+    "webName": "Alcaraz",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Harrison Armstrong",
+    "storedTeam": "EVE",
+    "fplId": 244,
+    "fplName": "Harrison Armstrong",
+    "webName": "Armstrong",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Tyler Dibling",
+    "storedTeam": "EVE",
+    "fplId": 245,
+    "fplName": "Tyler Dibling",
+    "webName": "Dibling",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Merlin Rohl",
+    "storedTeam": "EVE",
+    "fplId": 246,
+    "fplName": "Merlin Röhl",
+    "webName": "Röhl",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Beto",
+    "storedTeam": "EVE",
+    "fplId": 248,
+    "fplName": "Norberto Bercique Gomes Betuncal",
+    "webName": "Beto",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Thierno Barry",
+    "storedTeam": "EVE",
+    "fplId": 249,
+    "fplName": "Thierno Barry",
+    "webName": "Barry",
+    "team": "EVE"
+  },
+  {
+    "storedName": "Bernd Leno",
+    "storedTeam": "FUL",
+    "fplId": 250,
+    "fplName": "Bernd Leno",
+    "webName": "Leno",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Benjamin Lecomte",
+    "storedTeam": "FUL",
+    "fplId": 251,
+    "fplName": "Benjamin Lecomte",
+    "webName": "Lecomte",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Alfie McNally",
+    "storedTeam": "FUL",
+    "fplId": 252,
+    "fplName": "Alfie McNally",
+    "webName": "McNally",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Joachim Andersen",
+    "storedTeam": "FUL",
+    "fplId": 253,
+    "fplName": "Joachim Andersen",
+    "webName": "Andersen",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Antonee Robinson",
+    "storedTeam": "FUL",
+    "fplId": 254,
+    "fplName": "Antonee Robinson",
+    "webName": "Robinson",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Jorge Cuenca",
+    "storedTeam": "FUL",
+    "fplId": 255,
+    "fplName": "Jorge Cuenca Barreno",
+    "webName": "J.Cuenca",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Kenny Tete",
+    "storedTeam": "FUL",
+    "fplId": 256,
+    "fplName": "Kenny Tete",
+    "webName": "Tete",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Calvin Bassey",
+    "storedTeam": "FUL",
+    "fplId": 257,
+    "fplName": "Calvin Bassey",
+    "webName": "Bassey",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Timothy Castagne",
+    "storedTeam": "FUL",
+    "fplId": 258,
+    "fplName": "Timothy Castagne",
+    "webName": "Castagne",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Alex Iwobi",
+    "storedTeam": "FUL",
+    "fplId": 261,
+    "fplName": "Alex Iwobi",
+    "webName": "Iwobi",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Emile Smith Rowe",
+    "storedTeam": "FUL",
+    "fplId": 262,
+    "fplName": "Emile Smith Rowe",
+    "webName": "Smith Rowe",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Kevin Santos Lopes de Macedo",
+    "storedTeam": "FUL",
+    "fplId": 263,
+    "fplName": "Kevin Santos Lopes de Macedo",
+    "webName": "Kevin",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Oscar Bobb",
+    "storedTeam": "FUL",
+    "fplId": 264,
+    "fplName": "Oscar Bobb",
+    "webName": "Bobb",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Sander Berge",
+    "storedTeam": "FUL",
+    "fplId": 265,
+    "fplName": "Sander Berge",
+    "webName": "Berge",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Tom Cairney",
+    "storedTeam": "FUL",
+    "fplId": 266,
+    "fplName": "Tom Cairney",
+    "webName": "Cairney",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Sasa Lukic",
+    "storedTeam": "FUL",
+    "fplId": 267,
+    "fplName": "Saša Lukić",
+    "webName": "Lukić",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Ryan Sessegnon",
+    "storedTeam": "FUL",
+    "fplId": 269,
+    "fplName": "Ryan Sessegnon",
+    "webName": "Sessegnon",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Harrison Reed",
+    "storedTeam": "FUL",
+    "fplId": 270,
+    "fplName": "Harrison Reed",
+    "webName": "Reed",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Rodrigo Muniz",
+    "storedTeam": "FUL",
+    "fplId": 271,
+    "fplName": "Rodrigo Muniz Carvalho",
+    "webName": "Muniz",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Jonah Kusi-Asare",
+    "storedTeam": "FUL",
+    "fplId": 272,
+    "fplName": "Jonah Kusi-Asare",
+    "webName": "Kusi-Asare",
+    "team": "FUL"
+  },
+  {
+    "storedName": "Lucas Perri",
+    "storedTeam": "LEE",
+    "fplId": 326,
+    "fplName": "Lucas Estella Perri",
+    "webName": "Perri",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Jaka Bijol",
+    "storedTeam": "LEE",
+    "fplId": 327,
+    "fplName": "Jaka Bijol",
+    "webName": "Bijol",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Joe Rodon",
+    "storedTeam": "LEE",
+    "fplId": 329,
+    "fplName": "Joe Rodon",
+    "webName": "Rodon",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Jayden Bogle",
+    "storedTeam": "LEE",
+    "fplId": 330,
+    "fplName": "Jayden Bogle",
+    "webName": "Bogle",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Gabriel Gudmundsson",
+    "storedTeam": "LEE",
+    "fplId": 331,
+    "fplName": "Gabriel Gudmundsson",
+    "webName": "Gudmundsson",
+    "team": "LEE"
+  },
+  {
+    "storedName": "James Justin",
+    "storedTeam": "LEE",
+    "fplId": 332,
+    "fplName": "James Justin",
+    "webName": "Justin",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Sebastiaan Bornauw",
+    "storedTeam": "LEE",
+    "fplId": 333,
+    "fplName": "Sebastiaan Bornauw",
+    "webName": "Bornauw",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Anton Stach",
+    "storedTeam": "LEE",
+    "fplId": 335,
+    "fplName": "Anton Stach",
+    "webName": "Stach",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Noah Okafor",
+    "storedTeam": "LEE",
+    "fplId": 336,
+    "fplName": "Noah Okafor",
+    "webName": "Okafor",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Brenden Aaronson",
+    "storedTeam": "LEE",
+    "fplId": 337,
+    "fplName": "Brenden Aaronson",
+    "webName": "Aaronson",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Ethan Ampadu",
+    "storedTeam": "LEE",
+    "fplId": 338,
+    "fplName": "Ethan Ampadu",
+    "webName": "Ampadu",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Sean Longstaff",
+    "storedTeam": "LEE",
+    "fplId": 339,
+    "fplName": "Sean Longstaff",
+    "webName": "Longstaff",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Joe Gelhardt",
+    "storedTeam": "LEE",
+    "fplId": 340,
+    "fplName": "Joe Gelhardt",
+    "webName": "Gelhardt",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Wilfried Gnonto",
+    "storedTeam": "LEE",
+    "fplId": 341,
+    "fplName": "Wilfried Gnonto",
+    "webName": "Gnonto",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Jack Harrison",
+    "storedTeam": "LEE",
+    "fplId": 342,
+    "fplName": "Jack Harrison",
+    "webName": "Harrison",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Daniel James",
+    "storedTeam": "LEE",
+    "fplId": 343,
+    "fplName": "Daniel James",
+    "webName": "James",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Ilia Gruev",
+    "storedTeam": "LEE",
+    "fplId": 344,
+    "fplName": "Ilia Gruev",
+    "webName": "Gruev",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Ao Tanaka",
+    "storedTeam": "LEE",
+    "fplId": 345,
+    "fplName": "Tanaka Ao",
+    "webName": "Tanaka",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Dominic Calvert-Lewin",
+    "storedTeam": "LEE",
+    "fplId": 346,
+    "fplName": "Dominic Calvert-Lewin",
+    "webName": "Calvert-Lewin",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Lukas Nmecha",
+    "storedTeam": "LEE",
+    "fplId": 347,
+    "fplName": "Lukas Nmecha",
+    "webName": "Nmecha",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Joel Piroe",
+    "storedTeam": "LEE",
+    "fplId": 348,
+    "fplName": "Joël Piroe",
+    "webName": "Piroe",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Mateo Joseph",
+    "storedTeam": "LEE",
+    "fplId": 349,
+    "fplName": "Mateo Joseph Fernández-Regatillo",
+    "webName": "Mateo Joseph",
+    "team": "LEE"
+  },
+  {
+    "storedName": "Giorgi Mamardashvili",
+    "storedTeam": "LIV",
+    "fplId": 351,
+    "fplName": "Giorgi Mamardashvili",
+    "webName": "Mamardashvili",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Freddie Woodman",
+    "storedTeam": "LIV",
+    "fplId": 352,
+    "fplName": "Freddie Woodman",
+    "webName": "Woodman",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Armin Pecsi",
+    "storedTeam": "LIV",
+    "fplId": 353,
+    "fplName": "Armin Pecsi",
+    "webName": "Pecsi",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Harvey Davies",
+    "storedTeam": "LIV",
+    "fplId": 355,
+    "fplName": "Harvey Davies",
+    "webName": "Davies",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Virgil van Dijk",
+    "storedTeam": "LIV",
+    "fplId": 356,
+    "fplName": "Virgil van Dijk",
+    "webName": "Virgil",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Jeremie Frimpong",
+    "storedTeam": "LIV",
+    "fplId": 357,
+    "fplName": "Jeremie Frimpong",
+    "webName": "Frimpong",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Milos Kerkez",
+    "storedTeam": "LIV",
+    "fplId": 358,
+    "fplName": "Milos Kerkez",
+    "webName": "Kerkez",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Conor Bradley",
+    "storedTeam": "LIV",
+    "fplId": 360,
+    "fplName": "Conor Bradley",
+    "webName": "Bradley",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Wellity Lucky",
+    "storedTeam": "LIV",
+    "fplId": 361,
+    "fplName": "Wellity Lucky",
+    "webName": "Lucky",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Giovanni Leoni",
+    "storedTeam": "LIV",
+    "fplId": 363,
+    "fplName": "Giovanni Leoni",
+    "webName": "Leoni",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Calvin Ramsay",
+    "storedTeam": "LIV",
+    "fplId": 365,
+    "fplName": "Calvin Ramsay",
+    "webName": "Ramsay",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Florian Wirtz",
+    "storedTeam": "LIV",
+    "fplId": 366,
+    "fplName": "Florian Wirtz",
+    "webName": "Wirtz",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Cody Gakpo",
+    "storedTeam": "LIV",
+    "fplId": 367,
+    "fplName": "Cody Gakpo",
+    "webName": "Gakpo",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Dominik Szoboszlai",
+    "storedTeam": "LIV",
+    "fplId": 368,
+    "fplName": "Dominik Szoboszlai",
+    "webName": "Szoboszlai",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Rio Ngumoha",
+    "storedTeam": "LIV",
+    "fplId": 369,
+    "fplName": "Rio Ngumoha",
+    "webName": "Ngumoha",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Federico Chiesa",
+    "storedTeam": "LIV",
+    "fplId": 370,
+    "fplName": "Federico Chiesa",
+    "webName": "Chiesa",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Ryan Gravenberch",
+    "storedTeam": "LIV",
+    "fplId": 371,
+    "fplName": "Ryan Gravenberch",
+    "webName": "Gravenberch",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Alexis Mac Allister",
+    "storedTeam": "LIV",
+    "fplId": 372,
+    "fplName": "Alexis Mac Allister",
+    "webName": "Mac Allister",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Curtis Jones",
+    "storedTeam": "LIV",
+    "fplId": 373,
+    "fplName": "Curtis Jones",
+    "webName": "C.Jones",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Wataru Endo",
+    "storedTeam": "LIV",
+    "fplId": 374,
+    "fplName": "Endo Wataru",
+    "webName": "Endo",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Stefan Bajcetic",
+    "storedTeam": "LIV",
+    "fplId": 376,
+    "fplName": "Stefan Bajčetić Maquieira",
+    "webName": "Bajcetic",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Alexander Isak",
+    "storedTeam": "LIV",
+    "fplId": 379,
+    "fplName": "Alexander Isak",
+    "webName": "Isak",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Hugo Ekitike",
+    "storedTeam": "LIV",
+    "fplId": 380,
+    "fplName": "Hugo Ekitiké",
+    "webName": "Ekitiké",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Jayden Danns",
+    "storedTeam": "LIV",
+    "fplId": 382,
+    "fplName": "Jayden Danns",
+    "webName": "Danns",
+    "team": "LIV"
+  },
+  {
+    "storedName": "Gianluigi Donnarumma",
+    "storedTeam": "MCI",
+    "fplId": 384,
+    "fplName": "Gianluigi Donnarumma",
+    "webName": "Donnarumma",
+    "team": "MCI"
+  },
+  {
+    "storedName": "James Trafford",
+    "storedTeam": "MCI",
+    "fplId": 385,
+    "fplName": "James Trafford",
+    "webName": "Trafford",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Marcus Bettinelli",
+    "storedTeam": "MCI",
+    "fplId": 386,
+    "fplName": "Marcus Bettinelli",
+    "webName": "Bettinelli",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Nico O'Reilly",
+    "storedTeam": "MCI",
+    "fplId": 387,
+    "fplName": "Nico O'Reilly",
+    "webName": "O'Reilly",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Marc Guehi",
+    "storedTeam": "MCI",
+    "fplId": 388,
+    "fplName": "Marc Guéhi",
+    "webName": "Guéhi",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Matheus Nunes",
+    "storedTeam": "MCI",
+    "fplId": 389,
+    "fplName": "Matheus Nunes",
+    "webName": "Matheus N.",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Ruben Dias",
+    "storedTeam": "MCI",
+    "fplId": 390,
+    "fplName": "Rúben dos Santos Gato Alves Dias",
+    "webName": "Rúben",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Josko Gvardiol",
+    "storedTeam": "MCI",
+    "fplId": 391,
+    "fplName": "Joško Gvardiol",
+    "webName": "Gvardiol",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Rayan Ait-Nouri",
+    "storedTeam": "MCI",
+    "fplId": 392,
+    "fplName": "Rayan Aït-Nouri",
+    "webName": "Aït-Nouri",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Abdukodir Khusanov",
+    "storedTeam": "MCI",
+    "fplId": 393,
+    "fplName": "Abdukodir Khusanov",
+    "webName": "Khusanov",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Max Alleyne",
+    "storedTeam": "MCI",
+    "fplId": 394,
+    "fplName": "Max Alleyne",
+    "webName": "Alleyne",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Rico Lewis",
+    "storedTeam": "MCI",
+    "fplId": 395,
+    "fplName": "Rico Lewis",
+    "webName": "Lewis",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Vitor Reis",
+    "storedTeam": "MCI",
+    "fplId": 396,
+    "fplName": "Vitor de Oliveira Nunes dos Reis",
+    "webName": "Vitor Reis",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Antoine Semenyo",
+    "storedTeam": "MCI",
+    "fplId": 397,
+    "fplName": "Antoine Semenyo",
+    "webName": "Semenyo",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Phil Foden",
+    "storedTeam": "MCI",
+    "fplId": 398,
+    "fplName": "Phil Foden",
+    "webName": "Foden",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Rayan Cherki",
+    "storedTeam": "MCI",
+    "fplId": 399,
+    "fplName": "Rayan Cherki",
+    "webName": "Cherki",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Jeremy Doku",
+    "storedTeam": "MCI",
+    "fplId": 400,
+    "fplName": "Jérémy Doku",
+    "webName": "Doku",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Omar Marmoush",
+    "storedTeam": "MCI",
+    "fplId": 401,
+    "fplName": "Omar Marmoush",
+    "webName": "Marmoush",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Tijjani Reijnders",
+    "storedTeam": "MCI",
+    "fplId": 404,
+    "fplName": "Tijjani Reijnders",
+    "webName": "Reijnders",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Nico Gonzalez",
+    "storedTeam": "MCI",
+    "fplId": 405,
+    "fplName": "Nico González Iglesias",
+    "webName": "N.Gonzalez",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Mateo Kovacic",
+    "storedTeam": "MCI",
+    "fplId": 406,
+    "fplName": "Mateo Kovačić",
+    "webName": "Kovačić",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Claudio Echeverri",
+    "storedTeam": "MCI",
+    "fplId": 407,
+    "fplName": "Claudio Echeverri",
+    "webName": "Echeverri",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Kalvin Phillips",
+    "storedTeam": "MCI",
+    "fplId": 408,
+    "fplName": "Kalvin Phillips",
+    "webName": "Phillips",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Divine Mukasa",
+    "storedTeam": "MCI",
+    "fplId": 409,
+    "fplName": "Divine Mukasa",
+    "webName": "Mukasa",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Erling Haaland",
+    "storedTeam": "MCI",
+    "fplId": 411,
+    "fplName": "Erling Haaland",
+    "webName": "Haaland",
+    "team": "MCI"
+  },
+  {
+    "storedName": "Senne Lammens",
+    "storedTeam": "MUN",
+    "fplId": 412,
+    "fplName": "Senne Lammens",
+    "webName": "Lammens",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Tom Heaton",
+    "storedTeam": "MUN",
+    "fplId": 414,
+    "fplName": "Tom Heaton",
+    "webName": "Heaton",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Patrick Dorgu",
+    "storedTeam": "MUN",
+    "fplId": 415,
+    "fplName": "Patrick Dorgu",
+    "webName": "Dorgu",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Matthijs de Ligt",
+    "storedTeam": "MUN",
+    "fplId": 416,
+    "fplName": "Matthijs de Ligt",
+    "webName": "De Ligt",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Diogo Dalot",
+    "storedTeam": "MUN",
+    "fplId": 417,
+    "fplName": "Diogo Dalot Teixeira",
+    "webName": "Dalot",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Harry Maguire",
+    "storedTeam": "MUN",
+    "fplId": 418,
+    "fplName": "Harry Maguire",
+    "webName": "Maguire",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Lisandro Martinez",
+    "storedTeam": "MUN",
+    "fplId": 419,
+    "fplName": "Lisandro Martínez",
+    "webName": "Martinez",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Leny Yoro",
+    "storedTeam": "MUN",
+    "fplId": 420,
+    "fplName": "Leny Yoro",
+    "webName": "Yoro",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Ayden Heaven",
+    "storedTeam": "MUN",
+    "fplId": 421,
+    "fplName": "Ayden Heaven",
+    "webName": "Heaven",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Noussair Mazraoui",
+    "storedTeam": "MUN",
+    "fplId": 422,
+    "fplName": "Noussair Mazraoui",
+    "webName": "Mazraoui",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Luke Shaw",
+    "storedTeam": "MUN",
+    "fplId": 423,
+    "fplName": "Luke Shaw",
+    "webName": "Shaw",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Harry Amass",
+    "storedTeam": "MUN",
+    "fplId": 424,
+    "fplName": "Harry Amass",
+    "webName": "Amass",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Tyler Fredricson",
+    "storedTeam": "MUN",
+    "fplId": 425,
+    "fplName": "Tyler Fredricson",
+    "webName": "Fredricson",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Bruno Fernandes",
+    "storedTeam": "MUN",
+    "fplId": 426,
+    "fplName": "Bruno Borges Fernandes",
+    "webName": "B.Fernandes",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Bryan Mbeumo",
+    "storedTeam": "MUN",
+    "fplId": 427,
+    "fplName": "Bryan Mbeumo",
+    "webName": "Mbeumo",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Matheus Cunha",
+    "storedTeam": "MUN",
+    "fplId": 428,
+    "fplName": "Matheus Santos Carneiro da Cunha",
+    "webName": "Cunha",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Mason Mount",
+    "storedTeam": "MUN",
+    "fplId": 430,
+    "fplName": "Mason Mount",
+    "webName": "Mount",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Amad Diallo",
+    "storedTeam": "MUN",
+    "fplId": 431,
+    "fplName": "Amad Diallo",
+    "webName": "Amad",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Kobbie Mainoo",
+    "storedTeam": "MUN",
+    "fplId": 432,
+    "fplName": "Kobbie Mainoo",
+    "webName": "Mainoo",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Manuel Ugarte",
+    "storedTeam": "MUN",
+    "fplId": 433,
+    "fplName": "Manuel Ugarte Ribeiro",
+    "webName": "Ugarte",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Jack Fletcher",
+    "storedTeam": "MUN",
+    "fplId": 434,
+    "fplName": "Jack Fletcher",
+    "webName": "J.Fletcher",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Shea Lacey",
+    "storedTeam": "MUN",
+    "fplId": 435,
+    "fplName": "Shea Lacey",
+    "webName": "Lacey",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Toby Collyer",
+    "storedTeam": "MUN",
+    "fplId": 436,
+    "fplName": "Toby Collyer",
+    "webName": "Collyer",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Bendito Mantato",
+    "storedTeam": "MUN",
+    "fplId": 437,
+    "fplName": "Bendito Mantato",
+    "webName": "Bendito Mantato",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Tyler Fletcher",
+    "storedTeam": "MUN",
+    "fplId": 438,
+    "fplName": "Tyler Fletcher",
+    "webName": "Fletcher",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Benjamin Sesko",
+    "storedTeam": "MUN",
+    "fplId": 439,
+    "fplName": "Benjamin Sesko",
+    "webName": "Šeško",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Joshua Zirkzee",
+    "storedTeam": "MUN",
+    "fplId": 440,
+    "fplName": "Joshua Zirkzee",
+    "webName": "Zirkzee",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Chido Obi-Martin",
+    "storedTeam": "MUN",
+    "fplId": 441,
+    "fplName": "Chido Obi",
+    "webName": "Obi",
+    "team": "MUN"
+  },
+  {
+    "storedName": "Nick Pope",
+    "storedTeam": "NEW",
+    "fplId": 442,
+    "fplName": "Nick Pope",
+    "webName": "Pope",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Mark Gillespie",
+    "storedTeam": "NEW",
+    "fplId": 443,
+    "fplName": "Mark Gillespie",
+    "webName": "Gillespie",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Malick Thiaw",
+    "storedTeam": "NEW",
+    "fplId": 445,
+    "fplName": "Malick Thiaw",
+    "webName": "Thiaw",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Fabian Schar",
+    "storedTeam": "NEW",
+    "fplId": 446,
+    "fplName": "Fabian Schär",
+    "webName": "Schär",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Sven Botman",
+    "storedTeam": "NEW",
+    "fplId": 447,
+    "fplName": "Sven Botman",
+    "webName": "Botman",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Dan Burn",
+    "storedTeam": "NEW",
+    "fplId": 448,
+    "fplName": "Dan Burn",
+    "webName": "Burn",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Lewis Hall",
+    "storedTeam": "NEW",
+    "fplId": 449,
+    "fplName": "Lewis Hall",
+    "webName": "Hall",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Alex Murphy",
+    "storedTeam": "NEW",
+    "fplId": 451,
+    "fplName": "Alex Murphy",
+    "webName": "A.Murphy",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Bruno Guimaraes",
+    "storedTeam": "NEW",
+    "fplId": 452,
+    "fplName": "Bruno Guimarães Rodriguez Moura",
+    "webName": "Bruno G.",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Harvey Barnes",
+    "storedTeam": "NEW",
+    "fplId": 453,
+    "fplName": "Harvey Barnes",
+    "webName": "Barnes",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Anthony Elanga",
+    "storedTeam": "NEW",
+    "fplId": 454,
+    "fplName": "Anthony Elanga",
+    "webName": "Elanga",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Jacob Ramsey",
+    "storedTeam": "NEW",
+    "fplId": 456,
+    "fplName": "Jacob Ramsey",
+    "webName": "J.Ramsey",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Jacob Murphy",
+    "storedTeam": "NEW",
+    "fplId": 457,
+    "fplName": "Jacob Murphy",
+    "webName": "J.Murphy",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Joelinton",
+    "storedTeam": "NEW",
+    "fplId": 458,
+    "fplName": "Joelinton Cássio Apolinário de Lira",
+    "webName": "Joelinton",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Lewis Miley",
+    "storedTeam": "NEW",
+    "fplId": 459,
+    "fplName": "Lewis Miley",
+    "webName": "L.Miley",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Joe Willock",
+    "storedTeam": "NEW",
+    "fplId": 460,
+    "fplName": "Joe Willock",
+    "webName": "Willock",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Nick Woltemade",
+    "storedTeam": "NEW",
+    "fplId": 463,
+    "fplName": "Nick Woltemade",
+    "webName": "Woltemade",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Yoane Wissa",
+    "storedTeam": "NEW",
+    "fplId": 464,
+    "fplName": "Yoane Wissa",
+    "webName": "Wissa",
+    "team": "NEW"
+  },
+  {
+    "storedName": "William Osula",
+    "storedTeam": "NEW",
+    "fplId": 465,
+    "fplName": "William Osula",
+    "webName": "Osula",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Sean Neave",
+    "storedTeam": "NEW",
+    "fplId": 466,
+    "fplName": "Sean Neave",
+    "webName": "Neave",
+    "team": "NEW"
+  },
+  {
+    "storedName": "Matz Sels",
+    "storedTeam": "NOT",
+    "fplId": 467,
+    "fplName": "Matz Sels",
+    "webName": "Sels",
+    "team": "NOT"
+  },
+  {
+    "storedName": "John Victor Maciel Furtado",
+    "storedTeam": "NOT",
+    "fplId": 468,
+    "fplName": "John Victor Maciel Furtado",
+    "webName": "John",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Neco Williams",
+    "storedTeam": "NOT",
+    "fplId": 469,
+    "fplName": "Neco Williams",
+    "webName": "N.Williams",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Morato",
+    "storedTeam": "NOT",
+    "fplId": 470,
+    "fplName": "Felipe Rodrigues da Silva",
+    "webName": "Morato",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Nikola Milenkovic",
+    "storedTeam": "NOT",
+    "fplId": 471,
+    "fplName": "Nikola Milenković",
+    "webName": "Milenković",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Murillo",
+    "storedTeam": "NOT",
+    "fplId": 472,
+    "fplName": "Murillo Costa dos Santos",
+    "webName": "Murillo",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Ola Aina",
+    "storedTeam": "NOT",
+    "fplId": 473,
+    "fplName": "Ola Aina",
+    "webName": "Aina",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Jair Paula da Cunha Filho",
+    "storedTeam": "NOT",
+    "fplId": 474,
+    "fplName": "Jair Paula da Cunha Filho",
+    "webName": "Jair Cunha",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Nicolo Savona",
+    "storedTeam": "NOT",
+    "fplId": 475,
+    "fplName": "Nicolò Savona",
+    "webName": "Savona",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Omar Richards",
+    "storedTeam": "NOT",
+    "fplId": 476,
+    "fplName": "Omar Richards",
+    "webName": "O.Richards",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Zach Abbott",
+    "storedTeam": "NOT",
+    "fplId": 477,
+    "fplName": "Zach Abbott",
+    "webName": "Abbott",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Luca Netz",
+    "storedTeam": "NOT",
+    "fplId": 478,
+    "fplName": "Luca Netz",
+    "webName": "Netz",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Morgan Gibbs-White",
+    "storedTeam": "NOT",
+    "fplId": 480,
+    "fplName": "Morgan Gibbs-White",
+    "webName": "Gibbs-White",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Callum Hudson-Odoi",
+    "storedTeam": "NOT",
+    "fplId": 482,
+    "fplName": "Callum Hudson-Odoi",
+    "webName": "Hudson-Odoi",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Dan Ndoye",
+    "storedTeam": "NOT",
+    "fplId": 483,
+    "fplName": "Dan Ndoye",
+    "webName": "Ndoye",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Omari Hutchinson",
+    "storedTeam": "NOT",
+    "fplId": 484,
+    "fplName": "Omari Hutchinson",
+    "webName": "Hutchinson",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Dilane Bakwa",
+    "storedTeam": "NOT",
+    "fplId": 485,
+    "fplName": "Dilane Bakwa",
+    "webName": "Bakwa",
+    "team": "NOT"
+  },
+  {
+    "storedName": "James Mcatee",
+    "storedTeam": "NOT",
+    "fplId": 486,
+    "fplName": "James McAtee",
+    "webName": "McAtee",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Nicolas Dominguez",
+    "storedTeam": "NOT",
+    "fplId": 487,
+    "fplName": "Nicolás Domínguez",
+    "webName": "Dominguez",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Ibrahim Sangare",
+    "storedTeam": "NOT",
+    "fplId": 488,
+    "fplName": "Ibrahim Sangaré",
+    "webName": "Sangaré",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Ryan Yates",
+    "storedTeam": "NOT",
+    "fplId": 489,
+    "fplName": "Ryan Yates",
+    "webName": "Yates",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Chris Wood",
+    "storedTeam": "NOT",
+    "fplId": 490,
+    "fplName": "Chris Wood",
+    "webName": "Wood",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Igor Jesus Maciel da Cruz",
+    "storedTeam": "NOT",
+    "fplId": 491,
+    "fplName": "Igor Jesus Maciel da Cruz",
+    "webName": "Igor Jesus",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Taiwo Awoniyi",
+    "storedTeam": "NOT",
+    "fplId": 492,
+    "fplName": "Taiwo Awoniyi",
+    "webName": "Awoniyi",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Arnaud Kalimuendo",
+    "storedTeam": "NOT",
+    "fplId": 493,
+    "fplName": "Arnaud Kalimuendo",
+    "webName": "Kalimuendo",
+    "team": "NOT"
+  },
+  {
+    "storedName": "Guglielmo Vicario",
+    "storedTeam": "TOT",
+    "fplId": 494,
+    "fplName": "Guglielmo Vicario",
+    "webName": "Vicario",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Brandon Austin",
+    "storedTeam": "TOT",
+    "fplId": 495,
+    "fplName": "Brandon Austin",
+    "webName": "Austin",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Antonin Kinsky",
+    "storedTeam": "TOT",
+    "fplId": 496,
+    "fplName": "Antonín Kinský",
+    "webName": "Kinsky",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Pedro Porro",
+    "storedTeam": "TOT",
+    "fplId": 499,
+    "fplName": "Pedro Porro Sauceda",
+    "webName": "Pedro Porro",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Cristian Romero",
+    "storedTeam": "TOT",
+    "fplId": 500,
+    "fplName": "Cristian Romero",
+    "webName": "Romero",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Kevin Danso",
+    "storedTeam": "TOT",
+    "fplId": 501,
+    "fplName": "Kevin Danso",
+    "webName": "Danso",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Micky van de Ven",
+    "storedTeam": "TOT",
+    "fplId": 503,
+    "fplName": "Micky van de Ven",
+    "webName": "Van de Ven",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Djed Spence",
+    "storedTeam": "TOT",
+    "fplId": 505,
+    "fplName": "Djed Spence",
+    "webName": "Spence",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Destiny Udogie",
+    "storedTeam": "TOT",
+    "fplId": 506,
+    "fplName": "Destiny Udogie",
+    "webName": "Udogie",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Ben Davies",
+    "storedTeam": "TOT",
+    "fplId": 508,
+    "fplName": "Ben Davies",
+    "webName": "Davies",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Jun'ai Byfield",
+    "storedTeam": "TOT",
+    "fplId": 509,
+    "fplName": "Jun'ai Byfield",
+    "webName": "Byfield",
+    "team": "TOT"
+  },
+  {
+    "storedName": "James Rowswell",
+    "storedTeam": "TOT",
+    "fplId": 510,
+    "fplName": "James Rowswell",
+    "webName": "Rowswell",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Joao Victor de Souza Menezes",
+    "storedTeam": "TOT",
+    "fplId": 511,
+    "fplName": "João Victor de Souza Menezes",
+    "webName": "Souza",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Mohammed Kudus",
+    "storedTeam": "TOT",
+    "fplId": 512,
+    "fplName": "Mohammed Kudus",
+    "webName": "Kudus",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Xavi Simons",
+    "storedTeam": "TOT",
+    "fplId": 513,
+    "fplName": "Xavi Simons",
+    "webName": "Xavi",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Mathys Tel",
+    "storedTeam": "TOT",
+    "fplId": 514,
+    "fplName": "Mathys Tel",
+    "webName": "Tel",
+    "team": "TOT"
+  },
+  {
+    "storedName": "James Maddison",
+    "storedTeam": "TOT",
+    "fplId": 515,
+    "fplName": "James Maddison",
+    "webName": "Maddison",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Rodrigo Bentancur",
+    "storedTeam": "TOT",
+    "fplId": 516,
+    "fplName": "Rodrigo Bentancur",
+    "webName": "Bentancur",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Wilson Odobert",
+    "storedTeam": "TOT",
+    "fplId": 517,
+    "fplName": "Wilson Odobert",
+    "webName": "Odobert",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Pape Sarr",
+    "storedTeam": "TOT",
+    "fplId": 518,
+    "fplName": "Pape Matar Sarr",
+    "webName": "P.M.Sarr",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Conor Gallagher",
+    "storedTeam": "TOT",
+    "fplId": 519,
+    "fplName": "Conor Gallagher",
+    "webName": "Gallagher",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Lucas Bergvall",
+    "storedTeam": "TOT",
+    "fplId": 520,
+    "fplName": "Lucas Bergvall",
+    "webName": "Bergvall",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Dejan Kulusevski",
+    "storedTeam": "TOT",
+    "fplId": 521,
+    "fplName": "Dejan Kulusevski",
+    "webName": "Kulusevski",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Archie Gray",
+    "storedTeam": "TOT",
+    "fplId": 522,
+    "fplName": "Archie Gray",
+    "webName": "Gray",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Mikey Moore",
+    "storedTeam": "TOT",
+    "fplId": 523,
+    "fplName": "Mikey Moore",
+    "webName": "Moore",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Callum Olusesi",
+    "storedTeam": "TOT",
+    "fplId": 524,
+    "fplName": "Callum Olusesi",
+    "webName": "Olusesi",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Dominic Solanke",
+    "storedTeam": "TOT",
+    "fplId": 526,
+    "fplName": "Dominic Solanke-Mitchell",
+    "webName": "Solanke",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Richarlison",
+    "storedTeam": "TOT",
+    "fplId": 527,
+    "fplName": "Richarlison de Andrade",
+    "webName": "Richarlison",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Dane Scarlett",
+    "storedTeam": "TOT",
+    "fplId": 528,
+    "fplName": "Dane Scarlett",
+    "webName": "Scarlett",
+    "team": "TOT"
+  },
+  {
+    "storedName": "Robin Roefs",
+    "storedTeam": "SUN",
+    "fplId": 529,
+    "fplName": "Robin Roefs",
+    "webName": "Roefs",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Anthony Patterson",
+    "storedTeam": "SUN",
+    "fplId": 530,
+    "fplName": "Anthony Patterson",
+    "webName": "Patterson",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Melker Ellborg",
+    "storedTeam": "SUN",
+    "fplId": 531,
+    "fplName": "Melker Ellborg",
+    "webName": "Ellborg",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Nordi Mukiele",
+    "storedTeam": "SUN",
+    "fplId": 533,
+    "fplName": "Nordi Mukiele",
+    "webName": "Mukiele",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Trai Hume",
+    "storedTeam": "SUN",
+    "fplId": 534,
+    "fplName": "Trai Hume",
+    "webName": "Hume",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Omar Alderete",
+    "storedTeam": "SUN",
+    "fplId": 535,
+    "fplName": "Omar Alderete",
+    "webName": "Alderete",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Reinildo Isnard Mandava",
+    "storedTeam": "SUN",
+    "fplId": 536,
+    "fplName": "Reinildo Mandava",
+    "webName": "Reinildo",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Jenson Seelt",
+    "storedTeam": "SUN",
+    "fplId": 537,
+    "fplName": "Jenson Seelt",
+    "webName": "Seelt",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Leo Fuhr Hjelde",
+    "storedTeam": "SUN",
+    "fplId": 538,
+    "fplName": "Leo Fuhr Hjelde",
+    "webName": "Hjelde",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Luke O'Nien",
+    "storedTeam": "SUN",
+    "fplId": 539,
+    "fplName": "Luke O'Nien",
+    "webName": "O'Nien",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Arthur Masuaku",
+    "storedTeam": "SUN",
+    "fplId": 540,
+    "fplName": "Arthur Masuaku",
+    "webName": "Masuaku",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Enzo Le Fee",
+    "storedTeam": "SUN",
+    "fplId": 542,
+    "fplName": "Enzo Le Fée",
+    "webName": "E.Le Fée",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Habib Diarra",
+    "storedTeam": "SUN",
+    "fplId": 543,
+    "fplName": "Habib Diarra",
+    "webName": "Diarra",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Granit Xhaka",
+    "storedTeam": "SUN",
+    "fplId": 544,
+    "fplName": "Granit Xhaka",
+    "webName": "Xhaka",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Noah Sadiki",
+    "storedTeam": "SUN",
+    "fplId": 545,
+    "fplName": "Noah Sadiki",
+    "webName": "Sadiki",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Simon Adingra",
+    "storedTeam": "SUN",
+    "fplId": 546,
+    "fplName": "Simon Adingra",
+    "webName": "Adingra",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Romaine Mundle",
+    "storedTeam": "SUN",
+    "fplId": 547,
+    "fplName": "Romaine Mundle",
+    "webName": "Mundle",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Chris Rigg",
+    "storedTeam": "SUN",
+    "fplId": 548,
+    "fplName": "Chris Rigg",
+    "webName": "Rigg",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Chemsdine Talbi",
+    "storedTeam": "SUN",
+    "fplId": 549,
+    "fplName": "Chemsdine Talbi",
+    "webName": "Talbi",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Djiamgone Jocelin Ta Bi",
+    "storedTeam": "SUN",
+    "fplId": 550,
+    "fplName": "Djiamgone Jocelin Ta Bi",
+    "webName": "Jocelin.T",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Nilson Angulo",
+    "storedTeam": "SUN",
+    "fplId": 551,
+    "fplName": "Nilson Angulo",
+    "webName": "Angulo",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Brian Brobbey",
+    "storedTeam": "SUN",
+    "fplId": 552,
+    "fplName": "Brian Brobbey",
+    "webName": "Brobbey",
+    "team": "SUN"
+  },
+  {
+    "storedName": "Wilson Isidor",
+    "storedTeam": "SUN",
+    "fplId": 553,
+    "fplName": "Wilson Isidor",
+    "webName": "Isidor",
+    "team": "SUN"
+  }
+]

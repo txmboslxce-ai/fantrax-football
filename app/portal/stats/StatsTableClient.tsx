@@ -1,7 +1,5 @@
 "use client";
 
-import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
-import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import type { PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
@@ -138,11 +136,24 @@ function positionBadgeClass(position: StatsRow["position"]): string {
   return "bg-orange-200 text-orange-950";
 }
 
-const MOBILE_ROW_CAP = 150;
+type InjuryStatusIndicator = {
+  className: string;
+  label: string;
+};
+
+function injuryStatusIndicator(chanceOfPlaying: number | null, status: string | null): InjuryStatusIndicator | null {
+  if (chanceOfPlaying == null || chanceOfPlaying === 100) return null;
+  if (chanceOfPlaying === 75) return { className: "bg-amber-400 ring-amber-700", label: "Doubtful (75%)" };
+  if (chanceOfPlaying === 50) return { className: "bg-amber-500 ring-amber-800", label: "Doubtful (50%)" };
+  if (chanceOfPlaying === 25) return { className: "bg-orange-500 ring-orange-800", label: "Doubtful (25%)" };
+  if (chanceOfPlaying === 0 && status === "i") return { className: "bg-red-600 ring-red-900", label: "Injured" };
+  if (chanceOfPlaying === 0 && status === "s") return { className: "bg-fuchsia-600 ring-fuchsia-900", label: "Suspended" };
+  if (chanceOfPlaying === 0 && status === "u") return { className: "bg-slate-500 ring-slate-800", label: "Unavailable" };
+  return null;
+}
 
 export default function StatsTableClient({ rows, leagueRoster, season, availableSeasons }: { rows: StatsRow[]; leagueRoster: LeagueRosterData | null; season: string; availableSeasons: string[] }) {
   const router = useRouter();
-  const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [position, setPosition] = useState<(typeof positions)[number]>("All");
@@ -157,14 +168,8 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<ColumnCategory, boolean>>({
-    Attacking: false,
-    Defensive: false,
-    Goalkeeping: false,
-    Discipline: false,
-    Involvement: false,
-  });
   const columnPickerRef = useRef<HTMLDivElement>(null);
+  const columnPopoverRef = useRef<HTMLDivElement>(null);
 
   const teams = useMemo(() => {
     return [...new Set(rows.map((row) => row.team))].sort((a, b) => a.localeCompare(b));
@@ -185,20 +190,16 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
   useEffect(() => {
     if (!isColumnPanelOpen) return;
     const closeOutside = (event: PointerEvent) => {
-      if (columnPickerRef.current && !columnPickerRef.current.contains(event.target as Node)) setIsColumnPanelOpen(false);
+      const target = event.target as Node;
+      if (!columnPickerRef.current?.contains(target) && !columnPopoverRef.current?.contains(target)) {
+        setIsColumnPanelOpen(false);
+      }
     };
     const closeEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setIsColumnPanelOpen(false); };
     document.addEventListener("pointerdown", closeOutside);
     document.addEventListener("keydown", closeEscape);
     return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeEscape); };
   }, [isColumnPanelOpen]);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const filteredSorted = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
@@ -302,13 +303,6 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
     router.push(`/portal/stats?season=${encodeURIComponent(nextSeason)}`);
   }
 
-  function toggleCategory(category: ColumnCategory) {
-    setExpandedCategories((current) => ({
-      ...current,
-      [category]: !current[category],
-    }));
-  }
-
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
 
   return (
@@ -334,20 +328,14 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
           </div>
         ) : null}
 
-      <div ref={columnPickerRef} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-        <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
-          <label className="space-y-1 md:shrink-0">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Player"
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none md:w-40"
-            />
-          </label>
+      <div className="flex items-center gap-2">
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search player…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none" />
+      </div>
 
-          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
+      <div ref={columnPickerRef} className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap items-end gap-2 text-xs">
+          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Position</span>
             <div className="flex flex-nowrap gap-1">
               {positions.map((filter) => {
                 const active = position === filter;
@@ -359,7 +347,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                     className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
-                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                        : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                     }`}
                   >
                     {filter}
@@ -370,8 +358,8 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
           </div>
 
           {leagueRoster ? (
-            <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+            <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <span className="block font-semibold uppercase tracking-wide text-slate-500">Availability</span>
               <div className="flex flex-nowrap gap-1">
                 {(["All", "Available", "Taken"] as const).map((option) => {
                   const active = availabilityFilter === option;
@@ -383,7 +371,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                       className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                         active
                           ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                          : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                       }`}
                     >
                       {option}
@@ -397,7 +385,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                     className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       availabilityFilter === "My Team"
                         ? "border-brand-green bg-brand-green text-brand-cream"
-                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                        : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                     }`}
                   >
                     My Team
@@ -407,12 +395,13 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
             </div>
           ) : null}
 
-          <label className="space-y-1 md:shrink-0">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+          <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <label className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Team</span>
             <select
               value={teamFilter}
               onChange={(event) => setTeamFilter(event.target.value)}
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-24"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-24"
             >
               <option value="All">All</option>
               {teams.map((team) => (
@@ -424,18 +413,18 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
           </label>
 
           <label className="space-y-1 md:shrink-0">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Min games</span>
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Min games</span>
             <input
               type="number"
               min={0}
               value={minGames}
               onChange={(event) => setMinGames(event.target.value)}
-              className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-16"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-16"
             />
           </label>
 
-          <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
+          <div className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Ownership %</span>
             <div className="grid grid-cols-2 gap-1 md:flex">
               <input
                 type="number"
@@ -445,7 +434,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                 value={ownershipMin}
                 onChange={(event) => setOwnershipMin(event.target.value)}
                 placeholder="Min"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
+                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark md:w-16"
               />
               <input
                 type="number"
@@ -455,15 +444,16 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                 value={ownershipMax}
                 onChange={(event) => setOwnershipMax(event.target.value)}
                 placeholder="Max"
-                className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
+                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark md:w-16"
               />
             </div>
           </div>
+          </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-2 border-t border-brand-cream/10 pt-2">
-          <div className="space-y-1">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Window</span>
+        <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-2">
+          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Window</span>
             <div className="flex flex-nowrap gap-1">
               {WINDOW_OPTIONS.map((option) => {
                 const active = selectedWindow === option.key;
@@ -475,7 +465,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                     className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
-                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                        : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                     }`}
                   >
                     {option.label}
@@ -485,32 +475,35 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
             </div>
           </div>
 
-          <label className="space-y-1">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Season</span>
-            <select value={season} onChange={(event) => selectSeason(event.target.value)} className="rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none">
+          <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Season</span>
+            <select value={season} onChange={(event) => selectSeason(event.target.value)} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none">
               {availableSeasons.map((availableSeason) => <option key={availableSeason} value={availableSeason}>{availableSeason}</option>)}
             </select>
           </label>
 
-          <button
-            type="button"
-            onClick={() => setIsColumnPanelOpen((current) => !current)}
-            className={`rounded border px-2 py-1 text-xs font-semibold ${
-              isColumnPanelOpen
-                ? "border-brand-green bg-brand-green text-brand-cream"
-                : "border-brand-cream/35 bg-brand-dark text-brand-cream"
-            }`}
-          >
-            {isColumnPanelOpen ? "Hide columns" : "Add / Remove columns"}
-          </button>
+          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
+            <button
+              type="button"
+              onClick={() => setIsColumnPanelOpen((current) => !current)}
+              className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                isColumnPanelOpen
+                  ? "border-brand-green bg-brand-green text-brand-cream"
+                  : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+              }`}
+            >
+              {isColumnPanelOpen ? "Hide columns" : "+/- Data"}
+            </button>
+          </div>
         </div>
       </div>
 
       {isColumnPanelOpen ? (
-        <div className="absolute right-4 z-40 mt-[-0.5rem] w-[30rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-cream/20 bg-[#102116] p-4 shadow-xl sm:p-5">
+        <div ref={columnPopoverRef} className="absolute right-4 z-40 mt-[-0.5rem] w-[30rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-cream/20 bg-[#102116] p-4 shadow-xl sm:p-5">
           <div className="mb-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
-            <p className="mt-1 text-sm text-brand-creamDark">Expand a category to add or remove columns.</p>
+            <p className="mt-1 text-sm text-brand-creamDark">Choose the stats to show in the table.</p>
             {hasReachedColumnLimit ? (
               <p className="mt-2 text-xs font-semibold text-amber-300">Maximum columns selected</p>
             ) : null}
@@ -523,53 +516,26 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
             <button type="button" onClick={clearAllColumns} className="rounded-md border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream">Clear all</button>
           </div>
 
-          <div className="space-y-3">
+          <div className="max-h-96 space-y-4 overflow-y-auto pr-1">
             {COLUMN_CATEGORIES.map((category) => {
-              const expanded = expandedCategories[category];
               const categoryColumns = columnsByCategory[category];
 
               return (
-                <section key={category} className="rounded-xl border border-brand-cream/15 bg-brand-dark/40">
-                  <button
-                    type="button"
-                    onClick={() => toggleCategory(category)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-left"
-                  >
-                    <div>
-                      <div className="text-sm font-bold text-brand-cream">{category}</div>
-                      <div className="text-xs text-brand-creamDark">{categoryColumns.length} columns</div>
-                    </div>
-                    <span className="text-lg text-brand-cream">{expanded ? "−" : "+"}</span>
-                  </button>
+                <section key={category}>
+                  <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-brand-creamDark">{category}</h3>
+                  <div className="grid gap-x-5 sm:grid-cols-2">
+                    {categoryColumns.map((column) => {
+                      const checked = selectedColumns.includes(column.key);
+                      const disabled = !checked && hasReachedColumnLimit;
 
-                  {expanded ? (
-                    <div className="grid gap-3 border-t border-brand-cream/10 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
-                      {categoryColumns.map((column) => {
-                        const checked = selectedColumns.includes(column.key);
-                        const disabled = !checked && hasReachedColumnLimit;
-
-                        return (
-                          <label
-                            key={`${category}:${column.key}`}
-                            className={`flex items-start gap-3 rounded-lg border px-3 py-3 text-sm ${
-                              disabled
-                                ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/50"
-                                : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={disabled}
-                              onChange={() => toggleColumn(column.key)}
-                              className="mt-0.5 h-5 w-5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
-                            />
-                            <span className="leading-snug">{column.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                      return (
+                        <label key={column.key} className={`flex items-center gap-2 border-b border-brand-cream/10 py-2 text-sm ${disabled ? "cursor-not-allowed text-brand-creamDark/50" : "text-brand-cream hover:bg-brand-cream/5"}`}>
+                          <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggleColumn(column.key)} className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green" />
+                          <span className="leading-snug">{column.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </section>
               );
             })}
@@ -578,34 +544,22 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
       ) : null}
 
         {/* Active columns — visible inside drawer and on desktop */}
-        <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Active Columns</span>
-            <button
-              type="button"
-              onClick={clearAllColumns}
-              disabled={visibleColumns.length === 0}
-              className={`rounded border px-2 py-1 text-[11px] font-semibold ${
-                visibleColumns.length === 0
-                  ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
-                  : "border-brand-cream/35 text-brand-cream"
-              }`}
-            >
-              Clear all
-            </button>
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+          <div className="mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Columns</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {visibleColumns.length > 0 ? (
               visibleColumns.map((column) => (
                 <span
                   key={column.key}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
                 >
                   <span>{column.label}</span>
                   <button
                     type="button"
                     onClick={() => toggleColumn(column.key)}
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream"
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-dark/60 hover:bg-brand-green/20 hover:text-brand-dark"
                     aria-label={`Remove ${column.label}`}
                   >
                     ×
@@ -613,7 +567,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                 </span>
               ))
             ) : (
-              <span className="text-xs text-brand-creamDark">No columns selected.</span>
+              <span className="text-xs text-slate-500">No optional columns selected.</span>
             )}
           </div>
         </div>
@@ -634,33 +588,33 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
         Filters
       </button>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20 [scrollbar-gutter:stable]">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="sticky top-0 z-20 text-brand-creamDark">
+      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+          <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 #
               </th>
-              <th className="sticky left-[48px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-greenDark px-1.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <th className="sticky left-9 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="sticky left-[88px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-[76px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => onSort("player")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("player")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Team</th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-right text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Own%</th>
+              <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">Team</th>
+              <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Own%</th>
               {visibleColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="sticky top-0 z-20 border-b border-r border-brand-cream/35 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
                     onClick={() => onSort(column.key)}
-                    className="inline-flex items-center justify-center gap-1"
+                    className="inline-flex w-full items-center justify-end gap-1"
                   >
                     <span>{column.label}</span>
                     <span aria-hidden="true">{sortArrow(column.key)}</span>
@@ -670,20 +624,20 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
             </tr>
           </thead>
           <tbody>
-            {(() => {
-              const visibleRows = isMobile ? filteredSorted.slice(0, MOBILE_ROW_CAP) : filteredSorted;
-              return visibleRows.map((row, index) => {
+            {filteredSorted.map((row, index) => {
                 const rowHref = `/portal/players/${row.id}`;
                 const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                 const overallRank = index + 1;
                 const posKey = positionLetter(row.position);
                 const rosterTeam = leagueRoster?.teamByPlayerId[row.id];
                 const availabilityLabel = rosterTeam ? "Taken" : "Available";
+                const injuryIndicator = injuryStatusIndicator(row.chanceOfPlaying, row.availabilityStatus);
+                const injuryTitle = row.availabilityNews?.trim() || injuryIndicator?.label;
 
                 return (
                   <tr
                     key={row.id}
-                    className={`${rowShade} group cursor-pointer text-brand-dark hover:bg-brand-green/10`}
+                    className={`group ${rowShade} cursor-pointer text-brand-dark transition-colors hover:bg-brand-green/10`}
                     onClick={() => router.push(rowHref)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -694,47 +648,45 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                     role="link"
                     tabIndex={0}
                   >
-                    <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-slate-200 px-1.5 py-1.5 text-center ${rowShade}`}>
-                      <div className="text-sm font-bold text-brand-dark">{overallRank}</div>
+                    <td className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
+                      {overallRank}
                     </td>
-                    <td className={`sticky left-[48px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1.5 py-1.5 text-center ${rowShade}`}>
+                    <td className={`sticky left-9 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                       <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>{posKey}</span>
                     </td>
-                    <td className={`sticky left-[88px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade}`}>
-                      <div className="truncate text-sm leading-tight md:overflow-visible md:whitespace-normal">
-                        <span className="inline-flex flex-wrap items-center gap-1">
+                    <td className={`sticky left-[76px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                           <span>{row.player}</span>
-                          {leagueRoster ? <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>{availabilityLabel}</span> : null}
+                          {leagueRoster ? (
+                            <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>
+                              {availabilityLabel}
+                            </span>
+                          ) : null}
                           {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
-                          <AvailabilityIcon
-                            chanceOfPlaying={row.chanceOfPlaying}
-                            status={row.availabilityStatus}
-                            news={row.availabilityNews}
-                          />
-                          <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
+                          {injuryIndicator ? (
+                            <span title={injuryTitle} aria-label={injuryTitle} className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`} />
+                          ) : null}
                         </span>
-                      </div>
                     </td>
-                    <td className={`border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600 ${rowShade}`}>{row.team}</td>
-                    <td className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600 ${rowShade}`}>{row.ownershipPct.toFixed(1)}%</td>
+                    <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{row.team}</td>
+                    <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">{row.ownershipPct.toFixed(1)}%</td>
                     {visibleColumns.map((column) => {
                       const value = row.windows[selectedWindow][column.key];
 
                       return (
-                        <td key={column.key} className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark ${rowShade}`}>
+                        <td key={column.key} className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                           {formatValue(value, column)}
                         </td>
                       );
                     })}
                   </tr>
                 );
-              });
-            })()}
+              })}
             {filteredSorted.length === 0 ? (
               <tr>
                 <td
                   colSpan={visibleColumns.length + 5}
-                  className="border-b border-brand-cream/10 bg-brand-dark/90 px-4 py-6 text-center text-brand-creamDark"
+                  className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500"
                 >
                   No players match the current filters.
                 </td>
@@ -743,11 +695,6 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
           </tbody>
         </table>
       </div>
-      {isMobile && filteredSorted.length > MOBILE_ROW_CAP ? (
-        <p className="px-1 py-2 text-center text-xs text-brand-creamDark/60">
-          Showing {MOBILE_ROW_CAP} of {filteredSorted.length} players. Use filters to narrow results.
-        </p>
-      ) : null}
     </div>
   );
 }
