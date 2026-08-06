@@ -133,7 +133,7 @@ function SortableHeader({
   sortArrow: (key: SortKey) => string;
 }) {
   return (
-    <button type="button" onClick={() => onSort(sortKey)} className="inline-flex w-full items-center justify-end gap-1 leading-tight">
+    <button type="button" onClick={() => onSort(sortKey)} className="inline-flex w-full items-center justify-center gap-1 text-center leading-tight">
       <span>{label}{subLabel ? <><br />{subLabel}</> : null}</span>
       <span aria-hidden="true">{sortArrow(sortKey)}</span>
     </button>
@@ -211,7 +211,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
-        <label className="min-w-[13rem] flex-1 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+        <label className="h-[76px] w-full space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 sm:w-64 sm:shrink-0">
           <span className="block font-semibold uppercase tracking-wide text-slate-500">Search</span>
           <input
             value={search}
@@ -221,7 +221,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           />
         </label>
 
-        <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+        <div className="h-[76px] space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
           <span className="block font-semibold uppercase tracking-wide text-slate-500">Position</span>
           <div className="flex flex-nowrap gap-1">
             {POSITION_FILTERS.map((position) => (
@@ -241,7 +241,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
-        <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+        <label className="flex h-[76px] flex-col space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
           <span className="block font-semibold uppercase tracking-wide text-slate-500">Team</span>
           <select
             value={teamFilter}
@@ -253,7 +253,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </select>
         </label>
 
-        <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+        <div className="h-[76px] space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
           <span className="block font-semibold uppercase tracking-wide text-slate-500">Role / Set Pieces</span>
           <div className="flex flex-nowrap gap-1">
             {ROLE_FILTERS.map((role) => (
@@ -285,28 +285,36 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       </div>
 
       <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-max table-fixed border-separate border-spacing-0 text-left text-xs">
+        <table className="w-[1400px] table-fixed border-separate border-spacing-0 text-left text-xs">
+          <colgroup>
+            <col style={{ width: "56px" }} />
+            <col style={{ width: "192px" }} />
+            <col style={{ width: "40px" }} />
+            <col style={{ width: "56px" }} />
+            {Array.from({ length: 12 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
+            <col style={{ width: "96px" }} />
+          </colgroup>
           <thead>
             <tr>
               <th className={`sticky left-0 top-0 z-30 h-16 ${PICKED_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}>Picked?</th>
-              <th className={`sticky left-14 top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream`}>
-                <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1"><span>Player</span><span aria-hidden="true">{sortArrow("name")}</span></button>
+              <th className={`sticky left-14 top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}>
+                <button type="button" onClick={() => handleSort("name")} className="inline-flex w-full items-center justify-center gap-1"><span>Player</span><span aria-hidden="true">{sortArrow("name")}</span></button>
               </th>
               <th className={`sticky left-[248px] top-0 z-30 h-16 ${POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}>Pos</th>
-              <th className={`sticky top-0 z-20 h-16 ${TEAM_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream`}>Team</th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="ADP" sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Rank" sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="ADP v" subLabel="Rank" sortKey="adpVsRank" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="FPts" subLabel="(Season)" sortKey="seasonPts" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="FP/G" sortKey="fantasyPtsPerGame" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="FP" subLabel="/Start" sortKey="fantasyPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Ghost Pts" subLabel="/Start" sortKey="ghostPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="GS" sortKey="gamesStarted" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Floor" subLabel="/Start" sortKey="floorPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Ceiling" subLabel="/Start" sortKey="ceilingPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Floor" subLabel="(10th pct)" sortKey="tenthPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Ceiling" subLabel="(90th pct)" sortKey="ninetiethPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${SET_PIECES_COLUMN_WIDTH} border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><span className="leading-tight">Set<br />Pieces</span></th>
+              <th className={`sticky top-0 z-20 h-16 ${TEAM_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}>Team</th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="ADP" sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Rank" sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="ADP v" subLabel="Rank" sortKey="adpVsRank" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="FPts" subLabel="(Season)" sortKey="seasonPts" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="FP/G" sortKey="fantasyPtsPerGame" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="FP" subLabel="/Start" sortKey="fantasyPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Ghost Pts" subLabel="/Start" sortKey="ghostPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="GS" sortKey="gamesStarted" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Floor" subLabel="/Start" sortKey="floorPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Ceiling" subLabel="/Start" sortKey="ceilingPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Floor" subLabel="(10th pct)" sortKey="tenthPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><SortableHeader label="Ceiling" subLabel="(90th pct)" sortKey="ninetiethPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${SET_PIECES_COLUMN_WIDTH} border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream`}><span className="leading-tight">Set<br />Pieces</span></th>
             </tr>
           </thead>
           <tbody>
