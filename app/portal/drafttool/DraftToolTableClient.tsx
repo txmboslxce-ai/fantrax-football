@@ -439,17 +439,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <span>Hide Drafted</span>
           </label>
         </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/60 p-3">
-        <div>
-          <p className="text-xs font-semibold text-red-950">Start over</p>
-          <p className="mt-0.5 text-[11px] text-red-800">Clear all of your Picked and Watchlist marks.</p>
-        </div>
         <button
           type="button"
           onClick={() => setIsResetDialogOpen(true)}
-          className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
+          className="ml-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
         >
           New Draft
         </button>
