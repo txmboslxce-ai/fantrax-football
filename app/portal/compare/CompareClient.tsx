@@ -66,6 +66,20 @@ const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["compa
 
 const radarColors = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
 
+function radarValueForRank(rank: number): number {
+  const scaleWithinBand = (startRank: number, endRank: number, minimum: number, maximum: number) =>
+    maximum - ((rank - startRank) / (endRank - startRank)) * (maximum - minimum);
+
+  if (rank <= 10) return scaleWithinBand(1, 10, 92, 100);
+  if (rank <= 30) return scaleWithinBand(11, 30, 75, 92);
+  if (rank <= 60) return scaleWithinBand(31, 60, 58, 75);
+  if (rank <= 100) return scaleWithinBand(61, 100, 42, 58);
+  if (rank <= 150) return scaleWithinBand(101, 150, 25, 42);
+  if (rank <= 200) return scaleWithinBand(151, 200, 12, 25);
+  if (rank <= 300) return scaleWithinBand(201, 300, 2, 12);
+  return 0;
+}
+
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
 }
@@ -192,8 +206,8 @@ export default function CompareClient({ players }: CompareClientProps) {
         const dataPoint: Record<string, string | number> = { stat: label };
 
         radarPlayers.forEach((player) => {
-          const rank = radarRanksByPlayerId.get(player.id)?.[key] ?? 201;
-          dataPoint[player.name] = Math.min(100, Math.max(0, 100 - ((rank - 1) / 199) * 100));
+          const rank = radarRanksByPlayerId.get(player.id)?.[key] ?? 301;
+          dataPoint[player.name] = radarValueForRank(rank);
         });
 
         return dataPoint;
@@ -284,7 +298,7 @@ export default function CompareClient({ players }: CompareClientProps) {
             <div>
               <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
               {radarPlayers.length >= 2 ? (
-                <p className="mt-1 text-sm text-slate-500">Outfield players ranked 1st to 200th, scaled from center (200th or lower) to the outer edge (1st).</p>
+                <p className="mt-1 text-sm text-slate-500">Outfield players ranked 1st to 300th, banded from elite (outer edge) to below-average (center).</p>
               ) : null}
             </div>
             {radarPlayers.length >= 2 ? (
