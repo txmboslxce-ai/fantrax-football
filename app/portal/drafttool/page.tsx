@@ -43,6 +43,7 @@ function normalizeAdp(value: unknown): number | null {
 }
 
 function normalizeCustomRank(value: unknown): number | null {
+  if (value == null) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
