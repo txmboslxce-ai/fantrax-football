@@ -3,6 +3,9 @@
 import type { PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
 import { createClient } from "@/lib/supabase";
+import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { type ReactNode, useDeferredValue, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -133,8 +136,8 @@ function sortValue(player: DraftToolPlayer, key: SortKey): string | number | nul
   }
 }
 
-function myRankValue(player: DraftToolPlayer): number | null {
-  return player.customRank ?? player.adp;
+function myRankValue(player: DraftToolPlayer, customRanks: Map<string, number>): number | null {
+  return customRanks.get(player.id) ?? player.adp;
 }
 
 function HeaderTooltip({ children, description }: { children: ReactNode; description?: string }) {
@@ -206,7 +209,26 @@ function SortableHeader({
   );
 }
 
+function SortableRow({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled: boolean;
+  children: (sortable: ReturnType<typeof useSortable>) => ReactNode;
+}) {
+  const sortable = useSortable({ id, disabled });
+  return <>{children(sortable)}</>;
+}
+
 export default function DraftToolTableClient({ players }: { players: DraftToolPlayer[] }) {
+  const [customRanks, setCustomRanks] = useState<Map<string, number>>(() => new Map(
+    players.flatMap((player) => player.customRank == null ? [] : [[player.id, player.customRank] as const])
+  ));
+  const customRanksRef = useRef(new Map(
+    players.flatMap((player) => player.customRank == null ? [] : [[player.id, player.customRank] as const])
+  ));
   const [pickedPlayerIds, setPickedPlayerIds] = useState<Set<string>>(() => new Set(players.filter((player) => player.picked).map((player) => player.id)));
   const [watchlistedPlayerIds, setWatchlistedPlayerIds] = useState<Set<string>>(() => new Set(players.filter((player) => player.watchlisted).map((player) => player.id)));
   const boardStateRef = useRef({
@@ -224,6 +246,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [isMyRankMode, setIsMyRankMode] = useState(false);
+  const [isSavingCustomRank, setIsSavingCustomRank] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -232,6 +255,17 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
     [players]
   );
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+    positionFilter !== "All" ||
+    teamFilter !== "All" ||
+    selectedRoles.size > 0 ||
+    hideDrafted ||
+    watchlistOnly
+  );
+  const dragEnabled = isMyRankMode && !hasActiveFilters && !isSavingCustomRank;
 
   const filteredAndSortedPlayers = useMemo(() => {
     const searchTerm = deferredSearch.trim().toLowerCase();
@@ -246,8 +280,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
     return [...filtered].sort((a, b) => {
       if (isMyRankMode) {
-        const aValue = myRankValue(a);
-        const bValue = myRankValue(b);
+        const aValue = myRankValue(a, customRanks);
+        const bValue = myRankValue(b, customRanks);
         if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
         if (bValue == null) return -1;
         return aValue - bValue || a.name.localeCompare(b.name);
@@ -262,12 +296,84 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [deferredSearch, hideDrafted, isMyRankMode, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
+  }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
+
+  function applyCustomRanks(next: Map<string, number>) {
+    customRanksRef.current = next;
+    setCustomRanks(next);
+  }
 
   function applyBoardState(picked: Set<string>, watchlisted: Set<string>) {
     boardStateRef.current = { picked, watchlisted };
     setPickedPlayerIds(picked);
     setWatchlistedPlayerIds(watchlisted);
+  }
+
+  async function handleRankDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!dragEnabled || !over || active.id === over.id) return;
+
+    const currentOrder = filteredAndSortedPlayers;
+    const oldIndex = currentOrder.findIndex((player) => player.id === active.id);
+    const newIndex = currentOrder.findIndex((player) => player.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(currentOrder, oldIndex, newIndex);
+    const previousRanks = new Map(customRanksRef.current);
+    const needsMaterialization = players.some((player) => !previousRanks.has(player.id));
+    const materializedRanks = needsMaterialization
+      ? new Map(currentOrder.map((player, index) => [player.id, (index + 1) * 10]))
+      : new Map(previousRanks);
+    const movedPlayer = reordered[newIndex];
+    const aboveRank = newIndex > 0 ? materializedRanks.get(reordered[newIndex - 1].id) : undefined;
+    const belowRank = newIndex < reordered.length - 1 ? materializedRanks.get(reordered[newIndex + 1].id) : undefined;
+    const nextCustomRank = aboveRank == null
+      ? (belowRank == null ? 10 : belowRank - 10)
+      : (belowRank == null ? aboveRank + 10 : (aboveRank + belowRank) / 2);
+    const nextRanks = new Map(materializedRanks);
+    nextRanks.set(movedPlayer.id, nextCustomRank);
+
+    applyCustomRanks(nextRanks);
+    setIsSavingCustomRank(true);
+    setSaveError(null);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      if (needsMaterialization) {
+        const { error: materializationError } = await supabase.from("draft_picks").upsert(
+          currentOrder.map((player) => ({
+            user_id: user.id,
+            player_id: player.id,
+            custom_rank: materializedRanks.get(player.id),
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: "user_id,player_id" }
+        );
+        if (materializationError) throw materializationError;
+      }
+
+      const { error: rankError } = await supabase.from("draft_picks").upsert(
+        {
+          user_id: user.id,
+          player_id: movedPlayer.id,
+          custom_rank: nextCustomRank,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,player_id" }
+      );
+      if (rankError) throw rankError;
+    } catch (error) {
+      applyCustomRanks(previousRanks);
+      setSaveError(error instanceof Error ? error.message : "Unable to save your custom ranking.");
+    } finally {
+      setIsSavingCustomRank(false);
+    }
   }
 
   async function persistBoardState(
@@ -525,6 +631,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             </tr>
           </thead>
           <tbody className="[&>tr>td]:!py-1">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRankDragEnd}>
+            <SortableContext items={filteredAndSortedPlayers.map((player) => player.id)} strategy={verticalListSortingStrategy}>
             {filteredAndSortedPlayers.map((player, index) => {
               const isPicked = pickedPlayerIds.has(player.id);
               const isWatchlisted = watchlistedPlayerIds.has(player.id);
@@ -535,11 +643,29 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               const injuryTitle = player.availabilityNews?.trim() || injuryIndicator?.label;
 
               return (
-                <tr key={player.id} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} transition-colors hover:bg-brand-green/10`}>
+                <SortableRow key={player.id} id={player.id} disabled={!dragEnabled}>
+                  {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
+                <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
                   <td className={`sticky left-0 z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                    <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
-                      <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
-                    </button>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
+                        <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
+                      </button>
+                      {isMyRankMode ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          type="button"
+                          {...attributes}
+                          {...listeners}
+                          disabled={!dragEnabled}
+                          aria-label={dragEnabled ? `Drag ${player.name} to reorder` : "Clear filters to reorder players"}
+                          title={dragEnabled ? "Drag to reorder" : "Clear filters to reorder"}
+                          className={`touch-none text-sm leading-none ${dragEnabled ? "cursor-grab text-slate-500 active:cursor-grabbing" : "cursor-not-allowed text-slate-300"}`}
+                        >
+                          <span aria-hidden="true">⠿</span>
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                   <td className={`sticky left-10 z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => toggleBoardFlag(player.id, "picked")} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
@@ -567,11 +693,15 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.freeKickShots}</td>
                   <td className={`${SET_PIECES_COLUMN_WIDTH} border-b border-slate-200 px-2 py-1.5`}>{setPieces ? <span className="inline-flex max-w-full truncate rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-semibold text-brand-green">{setPieces}</span> : "—"}</td>
                 </tr>
+                  )}
+                </SortableRow>
               );
             })}
             {filteredAndSortedPlayers.length === 0 ? (
               <tr><td colSpan={19} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
             ) : null}
+            </SortableContext>
+            </DndContext>
           </tbody>
         </table>
         </div>
