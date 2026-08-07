@@ -28,6 +28,7 @@ type ComparePlayerSnapshot = {
   nextOpponent: string;
   homePct: number;
   awayPct: number;
+  hasRecordedStats: boolean;
   comparison: {
     seasonPts: number;
     avgGw: number;
@@ -67,14 +68,16 @@ export default async function ComparePage() {
       .from("players")
       .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
       .in("fantrax_id", poolFantraxIds)
-      .order("name"),
+      .order("name")
+      .range(0, 40000),
     supabase
       .from("player_gameweeks")
       .select(
         "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
       )
       .eq("season", SEASON)
-      .gt("games_played", 0),
+      .gt("games_played", 0)
+      .range(0, 40000),
     supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
     supabase.from("teams").select("abbrev, name, full_name"),
   ]);
@@ -151,6 +154,7 @@ export default async function ComparePage() {
       nextOpponent: next ? `${next.opponentName} ${next.isHome ? "(H)" : "(A)"}` : "TBD",
       homePct: summary.home_pct,
       awayPct: summary.away_pct,
+      hasRecordedStats: playerRows.length > 0,
       comparison: {
         seasonPts: summary.season_total_pts,
         avgGw: summary.avg_pts_per_gameweek,

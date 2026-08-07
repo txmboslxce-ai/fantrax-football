@@ -19,6 +19,7 @@ type ComparePlayerSnapshot = {
   nextOpponent: string;
   homePct: number;
   awayPct: number;
+  hasRecordedStats: boolean;
   comparison: {
     seasonPts: number;
     avgGw: number;
@@ -154,40 +155,37 @@ export default function CompareClient({ players }: CompareClientProps) {
     [players, slots]
   );
 
-  const radarPercentilesByPlayerId = useMemo(() => {
-    const percentilesByPlayerId = new Map<string, Partial<Record<keyof ComparePlayerSnapshot["comparison"], number>>>();
+  const radarBoundsByPositionGroup = useMemo(() => {
     const playersByPositionGroup = new Map<"goalkeepers" | "outfield", ComparePlayerSnapshot[]>([
       ["goalkeepers", []],
       ["outfield", []],
     ]);
+    const boundsByPositionGroup = new Map<
+      "goalkeepers" | "outfield",
+      Partial<Record<keyof ComparePlayerSnapshot["comparison"], { floor: number; ceiling: number }>>
+    >();
 
     for (const player of players) {
       playersByPositionGroup.get(radarPositionGroup(player.position))?.push(player);
-      percentilesByPlayerId.set(player.id, {});
     }
 
-    for (const groupPlayers of playersByPositionGroup.values()) {
+    for (const [positionGroup, groupPlayers] of playersByPositionGroup) {
+      const recordedPlayers = groupPlayers.filter((player) => player.hasRecordedStats);
+      const floorRank = positionGroup === "goalkeepers" ? 15 : 200;
+      const bounds: Partial<Record<keyof ComparePlayerSnapshot["comparison"], { floor: number; ceiling: number }>> = {};
+
       for (const { key } of radarStats) {
-        const denominator = groupPlayers.length - 1;
-        const lowerPeerCountByValue = new Map<number, number>();
-
-        [...groupPlayers]
-          .sort((a, b) => a.comparison[key] - b.comparison[key])
-          .forEach((player, index) => {
-            const value = player.comparison[key];
-            if (!lowerPeerCountByValue.has(value)) {
-              lowerPeerCountByValue.set(value, index);
-            }
-          });
-
-        for (const player of groupPlayers) {
-          const lowerPeerCount = lowerPeerCountByValue.get(player.comparison[key]) ?? 0;
-          percentilesByPlayerId.get(player.id)![key] = denominator > 0 ? (lowerPeerCount / denominator) * 100 : 100;
-        }
+        const sortedValues = recordedPlayers.map((player) => player.comparison[key]).sort((a, b) => b - a);
+        bounds[key] = {
+          ceiling: sortedValues[0] ?? 0,
+          floor: sortedValues[Math.min(floorRank, sortedValues.length) - 1] ?? 0,
+        };
       }
+
+      boundsByPositionGroup.set(positionGroup, bounds);
     }
 
-    return percentilesByPlayerId;
+    return boundsByPositionGroup;
   }, [players]);
 
   const radarData = useMemo(
@@ -200,13 +198,18 @@ export default function CompareClient({ players }: CompareClientProps) {
         const dataPoint: Record<string, string | number> = { stat: label };
 
         selectedPlayers.forEach((player) => {
-          dataPoint[player.name] = radarPercentilesByPlayerId.get(player.id)?.[key] ?? 0;
+          const bounds = radarBoundsByPositionGroup.get(radarPositionGroup(player.position))?.[key];
+          const playerValue = player.comparison[key];
+          const range = bounds ? bounds.ceiling - bounds.floor : 0;
+          dataPoint[player.name] = bounds && range !== 0
+            ? Math.min(100, Math.max(0, ((playerValue - bounds.floor) / range) * 100))
+            : 100;
         });
 
         return dataPoint;
       });
     },
-    [radarPercentilesByPlayerId, selectedPlayers]
+    [radarBoundsByPositionGroup, selectedPlayers]
   );
 
   function updateSlot(index: number, nextSlot: CompareSlot) {
@@ -290,7 +293,7 @@ export default function CompareClient({ players }: CompareClientProps) {
           <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5">
             <div>
               <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
-              <p className="mt-1 text-sm text-slate-500">Stats shown as percentile rank within position group (GK vs GK, D/M/F vs D/M/F).</p>
+              <p className="mt-1 text-sm text-slate-500">Stats scaled from typical waiver-wire level (top 200 D/M/F, top 15 GK) to this season&apos;s leader.</p>
             </div>
             <div className="h-96 w-full">
               <ResponsiveContainer width="100%" height="100%">
