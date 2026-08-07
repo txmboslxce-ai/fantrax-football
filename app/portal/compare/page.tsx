@@ -28,7 +28,6 @@ type ComparePlayerSnapshot = {
   nextOpponent: string;
   homePct: number;
   awayPct: number;
-  last5: Array<{ gameweek: number; points: number }>;
   comparison: {
     seasonPts: number;
     avgGw: number;
@@ -47,6 +46,17 @@ export default async function ComparePage() {
   const supabase = await createServerSupabaseClient();
   const SEASON = await getCurrentSeason(supabase);
 
+  const { data: poolRows, error: poolError } = await supabase
+    .from("season_player_pool")
+    .select("fantrax_id")
+    .eq("season", SEASON);
+
+  if (poolError) {
+    throw new Error(`Unable to load the ${SEASON} player pool: ${poolError.message}`);
+  }
+
+  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+
   const [
     { data: players, error: playersError },
     { data: gameweeks, error: gameweeksError },
@@ -56,6 +66,7 @@ export default async function ComparePage() {
     supabase
       .from("players")
       .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
+      .in("fantrax_id", poolFantraxIds)
       .order("name"),
     supabase
       .from("player_gameweeks")
@@ -122,11 +133,6 @@ export default async function ComparePage() {
     const playerFixtures = fixturesByTeam.get(player.team) ?? [];
     const decorated = decorateGameweeks(playerRows, player.team, playerFixtures);
     const summary = summarizePlayerSeason(decorated);
-    const last5 = decorated
-      .filter((row) => row.games_played > 0)
-      .slice(-5)
-      .map((row) => ({ gameweek: row.gameweek, points: row.raw_fantrax_pts }));
-
     const next = nextFixtures(player.team, playerFixtures, summary.current_gameweek, teamNames, 1)[0];
     const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
 
@@ -145,7 +151,6 @@ export default async function ComparePage() {
       nextOpponent: next ? `${next.opponentName} ${next.isHome ? "(H)" : "(A)"}` : "TBD",
       homePct: summary.home_pct,
       awayPct: summary.away_pct,
-      last5,
       comparison: {
         seasonPts: summary.season_total_pts,
         avgGw: summary.avg_pts_per_gameweek,

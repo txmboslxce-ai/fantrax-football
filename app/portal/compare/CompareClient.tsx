@@ -1,6 +1,5 @@
 "use client";
 
-import MiniSparkline from "@/components/portal/charts/MiniSparkline";
 import { useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import { Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
@@ -20,7 +19,6 @@ type ComparePlayerSnapshot = {
   nextOpponent: string;
   homePct: number;
   awayPct: number;
-  last5: Array<{ gameweek: number; points: number }>;
   comparison: {
     seasonPts: number;
     avgGw: number;
@@ -67,6 +65,10 @@ const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["compa
 ];
 
 const radarColors = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
+
+function radarPositionGroup(position: ComparePlayerSnapshot["position"]): "goalkeepers" | "outfield" {
+  return position === "GK" ? "goalkeepers" : "outfield";
+}
 
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
@@ -152,6 +154,42 @@ export default function CompareClient({ players }: CompareClientProps) {
     [players, slots]
   );
 
+  const radarPercentilesByPlayerId = useMemo(() => {
+    const percentilesByPlayerId = new Map<string, Partial<Record<keyof ComparePlayerSnapshot["comparison"], number>>>();
+    const playersByPositionGroup = new Map<"goalkeepers" | "outfield", ComparePlayerSnapshot[]>([
+      ["goalkeepers", []],
+      ["outfield", []],
+    ]);
+
+    for (const player of players) {
+      playersByPositionGroup.get(radarPositionGroup(player.position))?.push(player);
+      percentilesByPlayerId.set(player.id, {});
+    }
+
+    for (const groupPlayers of playersByPositionGroup.values()) {
+      for (const { key } of radarStats) {
+        const denominator = groupPlayers.length - 1;
+        const lowerPeerCountByValue = new Map<number, number>();
+
+        [...groupPlayers]
+          .sort((a, b) => a.comparison[key] - b.comparison[key])
+          .forEach((player, index) => {
+            const value = player.comparison[key];
+            if (!lowerPeerCountByValue.has(value)) {
+              lowerPeerCountByValue.set(value, index);
+            }
+          });
+
+        for (const player of groupPlayers) {
+          const lowerPeerCount = lowerPeerCountByValue.get(player.comparison[key]) ?? 0;
+          percentilesByPlayerId.get(player.id)![key] = denominator > 0 ? (lowerPeerCount / denominator) * 100 : 100;
+        }
+      }
+    }
+
+    return percentilesByPlayerId;
+  }, [players]);
+
   const radarData = useMemo(
     () => {
       if (selectedPlayers.length < 2) {
@@ -159,20 +197,16 @@ export default function CompareClient({ players }: CompareClientProps) {
       }
 
       return radarStats.map(({ label, key }) => {
-        const values = selectedPlayers.map((player) => player.comparison[key]);
-        const minimum = Math.min(...values);
-        const maximum = Math.max(...values);
-        const range = maximum - minimum;
         const dataPoint: Record<string, string | number> = { stat: label };
 
-        selectedPlayers.forEach((player, index) => {
-          dataPoint[player.name] = range === 0 ? 100 : ((values[index] - minimum) / range) * 100;
+        selectedPlayers.forEach((player) => {
+          dataPoint[player.name] = radarPercentilesByPlayerId.get(player.id)?.[key] ?? 0;
         });
 
         return dataPoint;
       });
     },
-    [selectedPlayers]
+    [radarPercentilesByPlayerId, selectedPlayers]
   );
 
   function updateSlot(index: number, nextSlot: CompareSlot) {
@@ -248,9 +282,6 @@ export default function CompareClient({ players }: CompareClientProps) {
                 <p className="mt-3 text-sm text-slate-600">
                   {player.homePct.toFixed(1)}% home / {player.awayPct.toFixed(1)}% away
                 </p>
-                <div className="mt-2">
-                  <MiniSparkline data={player.last5} />
-                </div>
               </article>
             ))}
           </div>
@@ -259,14 +290,14 @@ export default function CompareClient({ players }: CompareClientProps) {
           <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5">
             <div>
               <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
-              <p className="mt-1 text-sm text-slate-500">Stats scaled 0–100 relative to the players shown.</p>
+              <p className="mt-1 text-sm text-slate-500">Stats shown as percentile rank within position group (GK vs GK, D/M/F vs D/M/F).</p>
             </div>
             <div className="h-96 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={radarData} outerRadius="68%">
                   <PolarGrid stroke="#CBD5E1" />
                   <PolarAngleAxis dataKey="stat" tick={{ fill: "#475569", fontSize: 12 }} />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 10 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} />
                   {selectedPlayers.map((player, index) => (
                     <Radar
                       key={player.id}
