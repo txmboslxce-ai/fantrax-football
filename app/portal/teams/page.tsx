@@ -19,9 +19,17 @@ type PlayerGameweekRow = {
 
 type PositionKey = "GK" | "DEF" | "MID" | "FWD";
 
+type UpNextFixture = {
+  opponent: string;
+  isHome: boolean;
+  gameweek: number;
+};
+
 type TeamTableRow = {
   abbrev: string;
   teamName: string;
+  rank: number;
+  upNext: UpNextFixture | null;
   scoredTotal: number;
   scoredFwd: number;
   scoredMid: number;
@@ -163,6 +171,8 @@ export default async function TeamsPage() {
     return {
       abbrev: team.abbrev,
       teamName: teamNames.get(team.abbrev) ?? team.abbrev,
+      rank: 0,
+      upNext: null,
       scoredTotal: stats?.scoredTotal ?? 0,
       scoredFwd: avgPerStart(stats?.scoredByPosition.FWD.points ?? 0, stats?.scoredByPosition.FWD.starts ?? 0),
       scoredMid: avgPerStart(stats?.scoredByPosition.MID.points ?? 0, stats?.scoredByPosition.MID.starts ?? 0),
@@ -175,6 +185,39 @@ export default async function TeamsPage() {
       concededGk: avgPerStart(stats?.concededByPosition.GK.points ?? 0, stats?.concededByPosition.GK.starts ?? 0),
     };
   });
+
+  const rankedByScored = [...rows].sort((a, b) => b.scoredTotal - a.scoredTotal);
+  const rankByAbbrev = new Map(rankedByScored.map((row, index) => [row.abbrev, index + 1]));
+
+  let latestPlayedGw = 0;
+  for (const row of (gameweeks ?? []) as PlayerGameweekRow[]) {
+    if (Number(row.games_played ?? 0) > 0) {
+      latestPlayedGw = Math.max(latestPlayedGw, Number(row.gameweek ?? 0));
+    }
+  }
+
+  const upNextByAbbrev = new Map<string, UpNextFixture | null>();
+  for (const team of (teams ?? []) as TeamRow[]) {
+    const next = ((fixtures ?? []) as FixtureRow[])
+      .filter((fixture) => fixture.gameweek > latestPlayedGw && (fixture.home_team === team.abbrev || fixture.away_team === team.abbrev))
+      .sort((a, b) => a.gameweek - b.gameweek)[0];
+    upNextByAbbrev.set(
+      team.abbrev,
+      next
+        ? {
+            opponent: next.home_team === team.abbrev ? next.away_team : next.home_team,
+            isHome: next.home_team === team.abbrev,
+            gameweek: next.gameweek,
+          }
+        : null
+    );
+  }
+
+  for (const row of rows) {
+    row.rank = rankByAbbrev.get(row.abbrev) ?? rows.length;
+    row.upNext = upNextByAbbrev.get(row.abbrev) ?? null;
+  }
+
   return (
     <div className="space-y-6">
       <div>
