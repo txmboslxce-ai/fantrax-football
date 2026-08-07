@@ -22,6 +22,7 @@ export default function PortalPage() {
           <Link
             key={card.title}
             href={card.href}
+            prefetch={false}
             className="rounded-xl border border-brand-cream/25 bg-brand-dark p-6 transition-colors hover:bg-brand-dark/80"
           >
             <h2 className="text-2xl font-bold text-brand-cream">{card.title}</h2>

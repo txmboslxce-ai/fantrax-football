@@ -49,7 +49,7 @@ type StatsRow = {
   availabilityNews: string | null;
   xgPer90: number | null;
   xaPer90: number | null;
-  windows: Record<PlayerTableWindowKey, StatsWindowRow>;
+  windows: Partial<Record<PlayerTableWindowKey, StatsWindowRow>>;
 };
 
 type StatColumnKey = keyof StatsWindowRow | "xgPer90" | "xaPer90";
@@ -129,7 +129,7 @@ function columnValue(row: StatsRow, selectedWindow: PlayerTableWindowKey, column
     return row[columnKey];
   }
 
-  return row.windows[selectedWindow][columnKey];
+  return (row.windows[selectedWindow] ?? row.windows.season)?.[columnKey] ?? null;
 }
 
 function positionLetter(position: StatsRow["position"]): "G" | "D" | "M" | "F" {
@@ -168,7 +168,7 @@ function injuryStatusIndicator(chanceOfPlaying: number | null, status: string | 
   return null;
 }
 
-export default function StatsTableClient({ rows, leagueRoster, season, availableSeasons }: { rows: StatsRow[]; leagueRoster: LeagueRosterData | null; season: string; availableSeasons: string[] }) {
+export default function StatsTableClient({ rows, latestGameweek, leagueRoster, season, availableSeasons }: { rows: StatsRow[]; latestGameweek: number; leagueRoster: LeagueRosterData | null; season: string; availableSeasons: string[] }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -179,6 +179,9 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
   const [ownershipMax, setOwnershipMax] = useState("100");
   const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
   const [selectedWindow, setSelectedWindow] = useState<PlayerTableWindowKey>("season");
+  const [onDemandWindows, setOnDemandWindows] = useState<Partial<Record<"last5" | "last10", Record<string, StatsWindowRow>>>>({});
+  const [isWindowLoading, setIsWindowLoading] = useState(false);
+  const [windowLoadError, setWindowLoadError] = useState<string | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<StatColumnKey[]>(DEFAULT_SELECTED_COLUMN_KEYS);
   const [sortKey, setSortKey] = useState<SortKey>("goals");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -186,6 +189,15 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const columnPopoverRef = useRef<HTMLDivElement>(null);
+
+  const rowsWithWindows = useMemo(() => rows.map((row) => ({
+    ...row,
+    windows: {
+      ...row.windows,
+      last5: onDemandWindows.last5?.[row.id],
+      last10: onDemandWindows.last10?.[row.id],
+    },
+  })), [onDemandWindows, rows]);
 
   const teams = useMemo(() => {
     return [...new Set(rows.map((row) => row.team))].sort((a, b) => a.localeCompare(b));
@@ -227,11 +239,13 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
     const lowerOwnershipBound = Math.max(0, Math.min(safeOwnershipMin, safeOwnershipMax));
     const upperOwnershipBound = Math.min(100, Math.max(safeOwnershipMin, safeOwnershipMax));
 
-    const filtered = rows.filter((row) => {
+    const filtered = rowsWithWindows.filter((row) => {
+      const windowStats = row.windows[selectedWindow] ?? row.windows.season;
+      if (!windowStats) return false;
       const matchesSearch = !term || row.player.toLowerCase().includes(term);
       const matchesPosition = position === "All" || row.position === position;
       const matchesTeam = teamFilter === "All" || row.team === teamFilter;
-      const matchesGames = row.windows[selectedWindow].games_played >= safeMinGames;
+      const matchesGames = windowStats.games_played >= safeMinGames;
       const matchesOwnership = row.ownershipPct >= lowerOwnershipBound && row.ownershipPct <= upperOwnershipBound;
       const isTaken = leagueRoster ? Boolean(leagueRoster.teamByPlayerId[row.id]) : false;
       const isMyTeam = leagueRoster ? leagueRoster.myTeamPlayerIds.includes(row.id) : false;
@@ -253,7 +267,7 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
       const bValue = columnValue(b, selectedWindow, sortKey) ?? Number.NEGATIVE_INFINITY;
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
-  }, [availabilityFilter, deferredSearch, leagueRoster, minGames, ownershipMax, ownershipMin, position, rows, selectedWindow, sortDir, sortKey, teamFilter]);
+  }, [availabilityFilter, deferredSearch, leagueRoster, minGames, ownershipMax, ownershipMin, position, rowsWithWindows, selectedWindow, sortDir, sortKey, teamFilter]);
 
   const columnsByCategory = useMemo(() => {
     return COLUMN_CATEGORIES.reduce<Record<ColumnCategory, ColumnDefinition[]>>((accumulator, category) => {
@@ -312,6 +326,30 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
 
   function selectSeason(nextSeason: string) {
     router.push(`/portal/stats?season=${encodeURIComponent(nextSeason)}`);
+  }
+
+  async function selectWindow(nextWindow: PlayerTableWindowKey) {
+    if (isWindowLoading || nextWindow === selectedWindow) return;
+    if (nextWindow === "season" || onDemandWindows[nextWindow]) {
+      setSelectedWindow(nextWindow);
+      return;
+    }
+
+    setIsWindowLoading(true);
+    setWindowLoadError(null);
+    try {
+      const params = new URLSearchParams({ season, window: nextWindow, latestGameweek: String(latestGameweek) });
+      const response = await fetch(`/api/portal/stats/window?${params.toString()}`, { cache: "no-store" });
+      const payload = (await response.json()) as { message?: string; statsByPlayerId?: Record<string, StatsWindowRow> };
+      if (!response.ok || !payload.statsByPlayerId) throw new Error(payload.message ?? "Unable to load stats window data.");
+
+      setOnDemandWindows((current) => ({ ...current, [nextWindow]: payload.statsByPlayerId }));
+      setSelectedWindow(nextWindow);
+    } catch (error) {
+      setWindowLoadError(error instanceof Error ? error.message : "Unable to load stats window data.");
+    } finally {
+      setIsWindowLoading(false);
+    }
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
@@ -470,18 +508,20 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
                   <button
                     key={option.key}
                     type="button"
-                    onClick={() => setSelectedWindow(option.key)}
+                    onClick={() => void selectWindow(option.key)}
+                    disabled={isWindowLoading}
                     className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       active
                         ? "border-brand-green bg-brand-green text-brand-cream"
                         : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
-                    }`}
+                    } disabled:cursor-wait disabled:opacity-60`}
                   >
                     {option.label}
                   </button>
                 );
               })}
             </div>
+            {windowLoadError ? <p className="text-[11px] font-medium text-red-700">{windowLoadError}</p> : null}
           </div>
 
           <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
@@ -592,7 +632,8 @@ export default function StatsTableClient({ rows, leagueRoster, season, available
         Filters
       </button>
 
-      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        {isWindowLoading ? <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/70 text-sm font-semibold text-brand-dark backdrop-blur-[1px]">Loading window data…</div> : null}
         <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>

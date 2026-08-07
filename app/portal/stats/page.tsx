@@ -48,7 +48,7 @@ type StatsPlayerRecord = {
   availabilityNews: string | null;
   xgPer90: number | null;
   xaPer90: number | null;
-  windows: Record<PlayerTableWindowKey, StatsWindowRow>;
+  windows: Partial<Record<PlayerTableWindowKey, StatsWindowRow>>;
 };
 
 type StatsPlayerGameweekRow = {
@@ -84,6 +84,10 @@ type StatsPlayerGameweekRow = {
   corner_kicks: number | null;
   free_kick_shots: number | null;
 };
+
+const PLAYER_ID_BATCH_SIZE = 100;
+const STATS_GAMEWEEK_QUERY_COLUMNS =
+  "player_id, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, clean_sheet, saves, penalty_saves, goals_against, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn, corner_kicks, free_kick_shots";
 
 function toNumber(value: number | string | null | undefined): number {
   if (typeof value === "number") {
@@ -184,7 +188,6 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
       data: { user },
     },
     { data: players, error: playersError },
-    { data: gameweeks, error: gameweeksError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     poolFantraxIds.length > 0
@@ -194,19 +197,32 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
           .in("fantrax_id", poolFantraxIds)
           .order("name")
       : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("player_gameweeks")
-      .select(
-        "player_id, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, clean_sheet, saves, penalty_saves, goals_against, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn, corner_kicks, free_kick_shots"
-      )
-      .eq("season", SEASON),
   ]);
-
-  const leagueRoster = user ? await getUserLeagueRoster(user.id) : null;
 
   if (playersError) {
     throw new Error(`Unable to load players: ${playersError.message}`);
   }
+
+  const playerIds = (players ?? []).map((player) => player.id as string);
+  const playerIdBatches = Array.from(
+    { length: Math.ceil(playerIds.length / PLAYER_ID_BATCH_SIZE) },
+    (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
+  );
+  const [gameweekResults, leagueRoster] = await Promise.all([
+    Promise.all(
+      playerIdBatches.map((playerIdBatch) =>
+        supabase
+          .from("player_gameweeks")
+          .select(STATS_GAMEWEEK_QUERY_COLUMNS)
+          .eq("season", SEASON)
+          .in("player_id", playerIdBatch)
+          .range(0, 40000)
+      )
+    ),
+    user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
+  ]);
+  const gameweeksError = gameweekResults.find((result) => result.error)?.error;
+
   if (gameweeksError) {
     throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
   }
@@ -214,7 +230,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
   const rowsByPlayer = new Map<string, StatsPlayerGameweekRow[]>();
   let latestGameweek = 0;
 
-  for (const row of (gameweeks ?? []) as StatsPlayerGameweekRow[]) {
+  for (const row of gameweekResults.flatMap((result) => (result.data ?? []) as StatsPlayerGameweekRow[])) {
     latestGameweek = Math.max(latestGameweek, Number(row.gameweek ?? 0));
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) {
@@ -223,12 +239,6 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
     }
     rowsByPlayer.set(row.player_id, [row]);
   }
-
-  const windowStarts: Record<PlayerTableWindowKey, number> = {
-    last5: Math.max(1, latestGameweek - 4),
-    last10: Math.max(1, latestGameweek - 9),
-    season: 1,
-  };
 
   const statsRows: StatsPlayerRecord[] = ((players ?? []) as Array<{
     id: string;
@@ -268,14 +278,10 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
         availabilityNews: availabilityRaw?.news ?? null,
         xgPer90: toNullableNumber(availabilityRaw?.expected_goals_per_90),
         xaPer90: toNullableNumber(availabilityRaw?.expected_assists_per_90),
-        windows: {
-          last5: summarizeStatsWindow(playerRows.filter((row) => row.gameweek >= windowStarts.last5)),
-          last10: summarizeStatsWindow(playerRows.filter((row) => row.gameweek >= windowStarts.last10)),
-          season: summarizeStatsWindow(playerRows),
-        },
+        windows: { season: summarizeStatsWindow(playerRows) },
       };
     })
-    .sort((a, b) => b.windows.season.season_pts - a.windows.season.season_pts);
+    .sort((a, b) => b.windows.season!.season_pts - a.windows.season!.season_pts);
 
   return (
     <div className="space-y-6">
@@ -283,7 +289,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Player Stats</h1>
         <p className="mt-2 text-sm text-brand-dark/70">Filterable and sortable season {SEASON} player output.</p>
       </div>
-      <StatsTableClient rows={statsRows} leagueRoster={leagueRoster} season={SEASON} availableSeasons={availableSeasons} />
+      <StatsTableClient key={SEASON} rows={statsRows} latestGameweek={latestGameweek} leagueRoster={leagueRoster} season={SEASON} availableSeasons={availableSeasons} />
     </div>
   );
 }
