@@ -44,10 +44,10 @@ const viewLabels: Record<FixtureDetailView, string> = {
 };
 
 const positionBadgeClass: Record<FixturePlayerRow["position"], string> = {
-  GK: "bg-sky-900/60 text-sky-100",
-  DEF: "bg-emerald-900/60 text-emerald-100",
-  MID: "bg-amber-900/60 text-amber-100",
-  FWD: "bg-rose-900/60 text-rose-100",
+  GK: "bg-sky-100 text-sky-900",
+  DEF: "bg-emerald-200 text-emerald-950",
+  MID: "bg-amber-100 text-amber-900",
+  FWD: "bg-rose-100 text-rose-900",
 };
 
 function formatNumber(value: number): string {
@@ -59,7 +59,7 @@ function SectionDivider({ label, colSpan }: { label: string; colSpan: number }) 
     <tr>
       <td
         colSpan={colSpan}
-        className="border-b border-brand-cream/20 bg-brand-dark/40 px-2 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-brand-creamDark/60"
+        className="border-b border-slate-200 bg-slate-50 px-2 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500"
       >
         {label}
       </td>
@@ -68,9 +68,11 @@ function SectionDivider({ label, colSpan }: { label: string; colSpan: number }) 
 }
 
 function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: FixturePlayerRow; index: number; activeView: FixtureDetailView; leagueRoster: LeagueRosterData | null }) {
+  const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
+
   return (
-    <tr className={index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90"}>
-      <td className="border-b border-r border-brand-cream/10 px-4 py-3">
+    <tr className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+      <td className={`sticky left-0 z-20 w-40 min-w-40 border-b border-r border-slate-200 px-4 py-3 ${rowShade} group-hover:bg-brand-green/10`}>
         <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
           <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green hover:underline">
             {row.name}
@@ -88,22 +90,22 @@ function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: Fixture
           </span>
         </div>
       </td>
-      <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.minutesPlayed}</td>
+      <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.minutesPlayed}</td>
       {activeView === "fantasy" ? (
         <>
-          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">
+          <td className="w-20 min-w-20 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">
             {formatNumber(row.rawFantraxPts)}
           </td>
-          <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{formatNumber(row.ghostPts)}</td>
+          <td className="w-20 min-w-20 border-b border-slate-200 px-3 py-3 text-center font-semibold">{formatNumber(row.ghostPts)}</td>
         </>
       ) : (
         <>
-          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.goals}</td>
-          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.assists}</td>
-          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.keyPasses}</td>
-          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
-          <td className="border-b border-r border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.cornerKicks}</td>
-          <td className="border-b border-brand-cream/10 px-3 py-3 text-center font-semibold">{row.freeKickShots}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.goals}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.assists}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.keyPasses}</td>
+          <td className="w-24 min-w-24 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.cornerKicks}</td>
+          <td className="w-16 min-w-16 border-b border-slate-200 px-3 py-3 text-center font-semibold">{row.freeKickShots}</td>
         </>
       )}
     </tr>
@@ -126,38 +128,38 @@ function TeamTable({
   const colSpan = activeView === "fantasy" ? 4 : 8;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-brand-cream/20 bg-brand-dark/80">
-      <div className="border-b border-brand-cream/15 px-4 py-3">
-        <h2 className="text-xl font-black text-brand-cream">{title}</h2>
-        <p className="mt-1 text-xs uppercase tracking-[0.22em] text-brand-creamDark">{rows.length} players logged minutes</p>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 px-4 py-3">
+        <h2 className="text-xl font-black text-brand-dark">{title}</h2>
+        <p className="mt-1 text-xs uppercase tracking-[0.22em] text-slate-500">{rows.length} players logged minutes</p>
       </div>
 
       {rows.length === 0 ? (
-        <div className="px-4 py-8 text-center text-sm text-brand-creamDark">No player gameweek data available for this side yet.</div>
+        <div className="px-4 py-8 text-center text-sm text-slate-500">No player gameweek data available for this side yet.</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-0 text-left text-sm text-brand-cream">
+          <table className="w-max border-separate border-spacing-0 text-left text-sm text-brand-dark">
             <thead>
-              <tr className="bg-brand-dark text-brand-creamDark">
-                <th className="border-b border-r border-brand-cream/20 px-4 py-3 text-xs font-semibold uppercase tracking-wide">Player</th>
-                <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">Min</th>
+              <tr>
+                <th className="sticky left-0 top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-cream">Player</th>
+                <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">Min</th>
                 {activeView === "fantasy" ? (
                   <>
-                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">
+                    <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                       Score
                     </th>
-                    <th className="border-b border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">
+                    <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                       Ghost
                     </th>
                   </>
                 ) : (
                   <>
-                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">G</th>
-                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">A</th>
-                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">KP</th>
-                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">Crosses</th>
-                    <th className="border-b border-r border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">CK</th>
-                    <th className="border-b border-brand-cream/20 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide">FKS</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">G</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">A</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">KP</th>
+                    <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">Crosses</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">CK</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">FKS</th>
                   </>
                 )}
               </tr>
@@ -195,12 +197,12 @@ export default function FixtureDetailClient({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-creamDark">GW {gameweek}</p>
-        <h1 className="mt-2 text-3xl font-black text-brand-cream sm:text-4xl">
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">GW {gameweek}</p>
+        <h1 className="mt-2 text-3xl font-black text-brand-dark sm:text-4xl">
           {homeTeam} vs {awayTeam}
         </h1>
-        <p className="mt-2 text-sm text-brand-creamDark">{kickoffLabel ?? "Kickoff TBD"}</p>
+        <p className="mt-2 text-sm text-slate-500">{kickoffLabel ?? "Kickoff TBD"}</p>
       </div>
 
       <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
@@ -211,8 +213,8 @@ export default function FixtureDetailClient({
             onClick={() => setActiveView(view)}
             className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
               activeView === view
-                ? "border-brand-greenLight bg-brand-green text-brand-cream"
-                : "border-brand-cream/35 bg-brand-dark text-brand-cream hover:bg-brand-greenDark"
+                ? "border-brand-green bg-brand-green text-brand-cream"
+                : "border-slate-300 bg-white text-brand-dark hover:bg-brand-green/10"
             }`}
           >
             {viewLabels[view]}
