@@ -41,16 +41,16 @@ type NumericSortKey =
 type SortKey = "teamName" | "upNext" | NumericSortKey;
 
 const metricColumns: Array<{ key: Exclude<NumericSortKey, "rank">; label: string }> = [
-  { key: "scoredTotal", label: "Scored Total" },
-  { key: "scoredFwd", label: "Scored FWD" },
-  { key: "scoredMid", label: "Scored MID" },
-  { key: "scoredDef", label: "Scored DEF" },
-  { key: "scoredGk", label: "Scored GK" },
-  { key: "concededTotal", label: "Conceded Total" },
-  { key: "concededFwd", label: "Conceded FWD" },
-  { key: "concededMid", label: "Conceded MID" },
-  { key: "concededDef", label: "Conceded DEF" },
-  { key: "concededGk", label: "Conceded GK" },
+  { key: "scoredTotal", label: "Season Pts" },
+  { key: "scoredFwd", label: "FWD Pts/Start" },
+  { key: "scoredMid", label: "MID Pts/Start" },
+  { key: "scoredDef", label: "DEF Pts/Start" },
+  { key: "scoredGk", label: "GK Pts/Start" },
+  { key: "concededTotal", label: "Season Conceded" },
+  { key: "concededFwd", label: "FWD Pts/Start" },
+  { key: "concededMid", label: "MID Pts/Start" },
+  { key: "concededDef", label: "DEF Pts/Start" },
+  { key: "concededGk", label: "GK Pts/Start" },
 ];
 
 function upNextSortValue(upNext: UpNextFixture | null): number {
@@ -94,24 +94,35 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
     <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
       <table className="w-max border-separate border-spacing-0 text-left text-xs">
         <thead>
+          <tr className="h-8">
+            <th aria-hidden="true" className="sticky left-0 top-0 z-40 h-8 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green/70" />
+            <th aria-hidden="true" className="sticky left-9 top-0 z-40 h-8 w-64 min-w-64 border-b border-r border-brand-cream/25 bg-brand-green/70" />
+            <th aria-hidden="true" className="sticky top-0 z-30 h-8 w-32 min-w-32 border-b border-r border-brand-cream/25 bg-brand-green/70" />
+            <th colSpan={5} className="sticky top-0 z-30 h-8 border-b border-r border-brand-cream/25 bg-brand-green/70 px-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              Points Scored
+            </th>
+            <th colSpan={5} className="sticky top-0 z-30 h-8 border-b border-r border-brand-cream/25 bg-brand-green/70 px-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              Points Conceded
+            </th>
+          </tr>
           <tr>
-            <th className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+            <th className="sticky left-0 top-8 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
               #
             </th>
-            <th className="sticky left-9 top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+            <th className="sticky left-9 top-8 z-30 w-64 min-w-64 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
               <button type="button" onClick={() => handleSort("teamName")} className={headerButtonClass}>
                 <span>Team</span>
                 <span aria-hidden="true">{sortArrow("teamName")}</span>
               </button>
             </th>
-            <th className="sticky top-0 z-20 w-32 min-w-32 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+            <th className="sticky top-8 z-20 w-32 min-w-32 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
               <button type="button" onClick={() => handleSort("upNext")} className={headerButtonClass}>
                 <span>Up Next</span>
                 <span aria-hidden="true">{sortArrow("upNext")}</span>
               </button>
             </th>
             {metricColumns.map((column) => (
-              <th key={column.key} className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th key={column.key} className="sticky top-8 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort(column.key)} className={`${headerButtonClass} justify-end`}>
                   <span>{column.label}</span>
                   <span aria-hidden="true">{sortArrow(column.key)}</span>
@@ -129,8 +140,8 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
                 <td className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
                   {row.rank}
                 </td>
-                <td className={`sticky left-9 z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
-                  <Link href={`/portal/teams/${row.abbrev.toLowerCase()}`} prefetch={false} className="hover:text-brand-green hover:underline">
+                <td className={`sticky left-9 z-20 w-64 min-w-64 whitespace-nowrap border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                  <Link href={`/portal/teams/${row.abbrev.toLowerCase()}`} prefetch={false} className="whitespace-nowrap hover:text-brand-green hover:underline">
                     {row.teamName}
                   </Link>
                 </td>

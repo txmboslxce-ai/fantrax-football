@@ -1,7 +1,6 @@
 import TeamsTableClient from "@/components/portal/TeamsTableClient";
 import { mapPosition, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentSeason } from "@/lib/season/current";
 
 type PlayerRow = {
   id: string;
@@ -76,7 +75,7 @@ function avgPerStart(points: number, starts: number): number {
 
 export default async function TeamsPage() {
   const supabase = await createServerSupabaseClient();
-  const SEASON = await getCurrentSeason(supabase);
+  const SEASON = "2026-27";
 
   const [
     { data: teams, error: teamsError },
@@ -103,13 +102,17 @@ export default async function TeamsPage() {
     throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
   }
 
-  const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
+  const fixtureRows = (fixtures ?? []) as FixtureRow[];
+  const seasonTeamAbbrevs = new Set(fixtureRows.flatMap((fixture) => [fixture.home_team, fixture.away_team]));
+  const seasonTeams = ((teams ?? []) as TeamRow[]).filter((team) => seasonTeamAbbrevs.has(team.abbrev));
+
+  const teamNames = teamNameMap(seasonTeams);
   const playersById = new Map(
     ((players ?? []) as PlayerRow[]).map((player) => [player.id, { team: player.team, position: mapPosition(player.position) }])
   );
 
   const opponentsByGwAndTeam = new Map<string, Set<string>>();
-  for (const fixture of (fixtures ?? []) as FixtureRow[]) {
+  for (const fixture of fixtureRows) {
     const homeKey = `${fixture.gameweek}:${fixture.home_team}`;
     if (!opponentsByGwAndTeam.has(homeKey)) {
       opponentsByGwAndTeam.set(homeKey, new Set());
@@ -124,7 +127,7 @@ export default async function TeamsPage() {
   }
 
   const statsByTeam = new Map<string, TeamAccumulator>();
-  for (const team of (teams ?? []) as TeamRow[]) {
+  for (const team of seasonTeams) {
     statsByTeam.set(team.abbrev, {
       scoredTotal: 0,
       concededTotal: 0,
@@ -166,7 +169,7 @@ export default async function TeamsPage() {
     }
   }
 
-  const rows: TeamTableRow[] = ((teams ?? []) as TeamRow[]).map((team) => {
+  const rows: TeamTableRow[] = seasonTeams.map((team) => {
     const stats = statsByTeam.get(team.abbrev);
     return {
       abbrev: team.abbrev,
@@ -197,8 +200,8 @@ export default async function TeamsPage() {
   }
 
   const upNextByAbbrev = new Map<string, UpNextFixture | null>();
-  for (const team of (teams ?? []) as TeamRow[]) {
-    const next = ((fixtures ?? []) as FixtureRow[])
+  for (const team of seasonTeams) {
+    const next = fixtureRows
       .filter((fixture) => fixture.gameweek > latestPlayedGw && (fixture.home_team === team.abbrev || fixture.away_team === team.abbrev))
       .sort((a, b) => a.gameweek - b.gameweek)[0];
     upNextByAbbrev.set(
