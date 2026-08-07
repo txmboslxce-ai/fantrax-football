@@ -66,7 +66,7 @@ const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["compa
   { label: "Clean Sheets", key: "cleanSheets" },
 ];
 
-const radarColors = ["#005B3A", "#2563EB", "#B45309", "#7C3AED"];
+const radarColors = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
 
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
@@ -255,7 +255,8 @@ export default function CompareClient({ players }: CompareClientProps) {
             ))}
           </div>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5">
             <div>
               <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
               <p className="mt-1 text-sm text-slate-500">Stats scaled 0–100 relative to the players shown.</p>
@@ -273,7 +274,7 @@ export default function CompareClient({ players }: CompareClientProps) {
                       dataKey={player.name}
                       stroke={radarColors[index]}
                       fill={radarColors[index]}
-                      fillOpacity={0.12}
+                      fillOpacity={0.1}
                       strokeWidth={2}
                     />
                   ))}
@@ -283,7 +284,7 @@ export default function CompareClient({ players }: CompareClientProps) {
             </div>
           </section>
 
-          <div className="max-w-full overflow-x-auto">
+          <div className="min-w-0 max-w-full overflow-x-auto">
             <div className="w-max rounded-xl border border-slate-200 bg-white">
               <table className="w-max text-left text-sm text-brand-dark">
               <thead className="bg-brand-green text-brand-cream">
@@ -325,6 +326,7 @@ export default function CompareClient({ players }: CompareClientProps) {
               </tbody>
             </table>
             </div>
+          </div>
           </div>
         </>
       )}
