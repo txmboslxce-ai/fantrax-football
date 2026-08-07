@@ -86,14 +86,14 @@ function SearchablePlayerPicker({
   }, [players, query]);
 
   return (
-    <label className="relative space-y-1 text-sm text-brand-creamDark">
+    <label className="relative space-y-1 text-sm text-slate-600">
       <span className="flex items-center justify-between gap-2">
         <span>{label}</span>
         {onRemove ? (
           <button
             type="button"
             onClick={onRemove}
-            className="text-xs font-semibold text-brand-creamDark transition-colors hover:text-brand-cream"
+            className="text-xs font-semibold text-slate-500 transition-colors hover:text-brand-dark"
           >
             Remove
           </button>
@@ -103,10 +103,10 @@ function SearchablePlayerPicker({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search player"
-        className="w-full rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-2 text-brand-cream"
+        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
       />
       {filtered.length > 0 ? (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-brand-cream/25 bg-brand-dark shadow-lg">
+        <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
           {filtered.map((player) => (
             <button
               key={player.id}
@@ -116,7 +116,7 @@ function SearchablePlayerPicker({
                 setQuery(labelValue);
                 onChange(player.id, labelValue);
               }}
-              className="block w-full px-3 py-2 text-left text-sm text-brand-cream hover:bg-brand-greenDark"
+              className="block w-full px-3 py-2 text-left text-sm text-brand-dark hover:bg-brand-green/10"
             >
               {playerLabel(player)}
             </button>
@@ -181,7 +181,7 @@ export default function CompareClient({ players }: CompareClientProps) {
           <button
             type="button"
             onClick={addSlot}
-            className="rounded-full border border-brand-cream/35 bg-brand-dark px-4 py-2 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-greenDark"
+            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50"
           >
             Add player
           </button>
@@ -192,7 +192,7 @@ export default function CompareClient({ players }: CompareClientProps) {
         <>
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             {selectedPlayers.map((player) => (
-              <article key={player.id} className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-5 text-brand-cream">
+              <article key={player.id} className="rounded-xl border border-slate-200 bg-white p-5 text-brand-dark">
                 <h2 className="inline-flex items-center gap-1 text-xl font-black">
                   <span>{player.name}</span>
                   <AvailabilityIcon
@@ -201,7 +201,7 @@ export default function CompareClient({ players }: CompareClientProps) {
                     news={player.availabilityNews}
                   />
                 </h2>
-                <p className="mt-1 text-sm text-brand-creamDark">
+                <p className="mt-1 text-sm text-slate-500">
                   {player.teamName} • {player.position}
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -210,7 +210,7 @@ export default function CompareClient({ players }: CompareClientProps) {
                   <p>Ghost/Start: {player.ghostPtsPerStart.toFixed(2)}</p>
                   <p>Next: {player.nextOpponent}</p>
                 </div>
-                <p className="mt-3 text-sm text-brand-creamDark">
+                <p className="mt-3 text-sm text-slate-600">
                   {player.homePct.toFixed(1)}% home / {player.awayPct.toFixed(1)}% away
                 </p>
                 <div className="mt-2">
@@ -220,9 +220,9 @@ export default function CompareClient({ players }: CompareClientProps) {
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-brand-dark text-brand-creamDark">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table className="min-w-full text-left text-sm text-brand-dark">
+              <thead className="bg-brand-green text-brand-cream">
                 <tr>
                   <th className="px-4 py-3">Stat</th>
                   {selectedPlayers.map((player) => (
@@ -247,11 +247,11 @@ export default function CompareClient({ players }: CompareClientProps) {
                   return (
                     <tr
                       key={row.key}
-                      className={index % 2 === 0 ? "bg-brand-dark/70 text-brand-cream" : "bg-brand-dark text-brand-cream"}
+                      className={index % 2 === 0 ? "bg-white text-brand-dark" : "bg-slate-50 text-brand-dark"}
                     >
                       <td className="px-4 py-3 font-semibold">{row.label}</td>
                       {values.map((value, valueIndex) => (
-                        <td key={`${row.key}-${selectedPlayers[valueIndex].id}`} className={`px-4 py-3 ${value === bestValue ? "font-bold text-brand-greenLight" : ""}`}>
+                      <td key={`${row.key}-${selectedPlayers[valueIndex].id}`} className={`px-4 py-3 ${value === bestValue ? "font-bold text-brand-green" : ""}`}>
                           {value.toFixed(2)}
                         </td>
                       ))}

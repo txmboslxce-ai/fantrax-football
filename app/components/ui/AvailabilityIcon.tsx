@@ -18,7 +18,7 @@ function getDisplay(chanceOfPlaying: number | null, status: string | null): Avai
   if (chanceOfPlaying === 75) {
     return {
       label: "D",
-      className: "border-amber-300/35 bg-amber-500/20 text-amber-100",
+      className: "border-amber-300 bg-amber-50 text-amber-900",
       fallbackTitle: "Doubtful (75%)",
     };
   }
@@ -26,7 +26,7 @@ function getDisplay(chanceOfPlaying: number | null, status: string | null): Avai
   if (chanceOfPlaying === 50) {
     return {
       label: "D",
-      className: "border-amber-300/35 bg-amber-500/30 text-amber-100",
+      className: "border-amber-300 bg-amber-100 text-amber-900",
       fallbackTitle: "Doubtful (50%)",
     };
   }
@@ -34,7 +34,7 @@ function getDisplay(chanceOfPlaying: number | null, status: string | null): Avai
   if (chanceOfPlaying === 25) {
     return {
       label: "D",
-      className: "border-orange-300/35 bg-orange-500/30 text-orange-100",
+      className: "border-orange-300 bg-orange-100 text-orange-900",
       fallbackTitle: "Doubtful (25%)",
     };
   }
@@ -43,7 +43,7 @@ function getDisplay(chanceOfPlaying: number | null, status: string | null): Avai
     if (status === "i") {
       return {
         label: "i",
-        className: "border-red-300/35 bg-red-500/30 text-red-100",
+        className: "border-red-300 bg-red-50 text-red-900",
         fallbackTitle: "Injured",
       };
     }
@@ -51,7 +51,7 @@ function getDisplay(chanceOfPlaying: number | null, status: string | null): Avai
     if (status === "s") {
       return {
         label: "S",
-        className: "border-red-300/35 bg-red-500/30 text-red-100",
+        className: "border-red-300 bg-red-50 text-red-900",
         fallbackTitle: "Suspended",
       };
     }
@@ -59,7 +59,7 @@ function getDisplay(chanceOfPlaying: number | null, status: string | null): Avai
     if (status === "u") {
       return {
         label: "OUT",
-        className: "border-red-300/35 bg-red-500/30 text-red-100",
+        className: "border-red-300 bg-red-50 text-red-900",
         fallbackTitle: "Unavailable",
       };
     }
