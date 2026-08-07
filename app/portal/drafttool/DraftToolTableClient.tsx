@@ -58,6 +58,7 @@ const ROLE_FILTERS: Array<{ key: RoleFilter; label: string }> = [
 ];
 
 const WATCHLIST_COLUMN_WIDTH = "w-10 min-w-10";
+const MY_RANK_POSITION_COLUMN_WIDTH = "w-10 min-w-10";
 const PICKED_COLUMN_WIDTH = "w-14 min-w-14";
 const PLAYER_COLUMN_WIDTH = "w-48 min-w-48";
 const POSITION_COLUMN_WIDTH = "w-10 min-w-10";
@@ -250,6 +251,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isRankResetDialogOpen, setIsRankResetDialogOpen] = useState(false);
+  const [isResettingRank, setIsResettingRank] = useState(false);
 
   const teams = useMemo(
     () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
@@ -452,6 +455,33 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     }
   }
 
+  async function resetMyRank() {
+    setIsResettingRank(true);
+    setSaveError(null);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      const { error } = await supabase
+        .from("draft_picks")
+        .update({ custom_rank: null })
+        .eq("user_id", user.id);
+      if (error) throw error;
+
+      applyCustomRanks(new Map());
+      setIsRankResetDialogOpen(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to reset your custom ranking.");
+    } finally {
+      setIsResettingRank(false);
+    }
+  }
+
   function toggleRole(role: RoleFilter) {
     setSelectedRoles((current) => {
       const next = new Set(current);
@@ -479,6 +509,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
+  const tableWidth = isMyRankMode ? "1560px" : "1520px";
+  const stickyOffsets = isMyRankMode
+    ? { watchlist: "left-10", picked: "left-20", player: "left-[136px]", position: "left-[328px]" }
+    : { watchlist: "left-0", picked: "left-10", player: "left-24", position: "left-[288px]" };
 
   return (
     <div className="space-y-3">
@@ -570,13 +604,13 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           type="button"
           onClick={() => setIsMyRankMode((current) => !current)}
           aria-pressed={isMyRankMode}
-          className={`rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
+          className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
             isMyRankMode
               ? "border-brand-green bg-brand-green text-brand-cream"
               : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
           }`}
         >
-          My Rank
+          Rank Players
         </button>
         <button
           type="button"
@@ -593,10 +627,24 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </p>
       ) : null}
 
+      {isMyRankMode ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-green/20 bg-brand-green/10 px-3 py-1.5 text-xs font-semibold text-brand-green">
+          <span>Rank Players — drag rows to set your order</span>
+          <button
+            type="button"
+            onClick={() => setIsRankResetDialogOpen(true)}
+            className="shrink-0 rounded border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
+          >
+            Reset Rankings
+          </button>
+        </div>
+      ) : null}
+
       <div className="max-w-full overflow-x-auto">
         <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-[1520px] table-fixed border-separate border-spacing-0 text-left text-xs">
+        <table style={{ width: tableWidth }} className="table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
+            {isMyRankMode ? <col style={{ width: "40px" }} /> : null}
             <col style={{ width: "40px" }} />
             <col style={{ width: "56px" }} />
             <col style={{ width: "192px" }} />
@@ -607,12 +655,13 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </colgroup>
           <thead>
             <tr>
-              <th aria-label="Watchlist" className={`sticky left-0 top-0 z-30 h-16 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><span aria-hidden="true">★</span></th>
-              <th className={`sticky left-10 top-0 z-30 h-16 ${PICKED_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Picked?</th>
-              <th className={`sticky left-24 top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>
+              {isMyRankMode ? <th aria-label="Personal draft position" className={`sticky left-0 top-0 z-30 h-16 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>My<br />#</th> : null}
+              <th aria-label="Watchlist" className={`sticky ${stickyOffsets.watchlist} top-0 z-30 h-16 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><span aria-hidden="true">★</span></th>
+              <th className={`sticky ${stickyOffsets.picked} top-0 z-30 h-16 ${PICKED_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Picked?</th>
+              <th className={`sticky ${stickyOffsets.player} top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex w-full items-center justify-center gap-1"><span>Player</span><span aria-hidden="true">{sortArrow("name")}</span></button>
               </th>
-              <th className={`sticky left-[288px] top-0 z-30 h-16 ${POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>POS</th>
+              <th className={`sticky ${stickyOffsets.position} top-0 z-30 h-16 ${POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>POS</th>
               <th className={`sticky top-0 z-20 h-16 ${TEAM_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Team</th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="ADP" tooltip="Average draft position across current 2026-27 Fantrax drafts. Refreshed daily; lower means drafted earlier." sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Rank (25/26)" tooltip="Player's finish position among the full pool, ranked by total Fantasy Points scored in 2025-26. 1 = highest scorer." sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
@@ -646,7 +695,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                 <SortableRow key={player.id} id={player.id} disabled={!dragEnabled}>
                   {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
-                  <td className={`sticky left-0 z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  {isMyRankMode ? <td className={`sticky left-0 z-20 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums ${rowShade} group-hover:bg-brand-green/10`}>{index + 1}</td> : null}
+                  <td className={`sticky ${stickyOffsets.watchlist} z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <div className="flex items-center justify-center gap-0.5">
                       <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
                         <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
@@ -667,16 +717,16 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       ) : null}
                     </div>
                   </td>
-                  <td className={`sticky left-10 z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky ${stickyOffsets.picked} z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => toggleBoardFlag(player.id, "picked")} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
                   </td>
-                  <td className={`sticky left-24 z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky ${stickyOffsets.player} z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
                       <Link href={`/portal/players/${player.id}`} prefetch={false} className={`min-w-0 flex-1 truncate ${isPicked ? "line-through hover:text-slate-500" : "hover:text-brand-green"}`} title={player.name}>{player.name}</Link>
                       {injuryIndicator ? <span title={injuryTitle} aria-label={injuryTitle} className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`} /> : null}
                     </span>
                   </td>
-                  <td className={`sticky left-[288px] z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
+                  <td className={`sticky ${stickyOffsets.position} z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
                   <td className={`${TEAM_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-medium ${isPicked ? "text-slate-500" : "text-slate-600"}`}>{player.team}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
@@ -698,7 +748,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               );
             })}
             {filteredAndSortedPlayers.length === 0 ? (
-              <tr><td colSpan={19} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
+              <tr><td colSpan={isMyRankMode ? 20 : 19} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
             ) : null}
             </SortableContext>
             </DndContext>
@@ -706,6 +756,42 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </table>
         </div>
       </div>
+
+      {isRankResetDialogOpen ? createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-my-rank-title"
+            aria-describedby="reset-my-rank-description"
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <h2 id="reset-my-rank-title" className="text-lg font-black text-brand-dark">Reset your rankings?</h2>
+            <p id="reset-my-rank-description" className="mt-2 text-sm leading-relaxed text-slate-600">
+              This clears your personal ranking order for all players. Your Picked and Watchlist marks are NOT affected. This cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRankResetDialogOpen(false)}
+                disabled={isResettingRank}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void resetMyRank()}
+                disabled={isResettingRank}
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isResettingRank ? "Resetting…" : "Yes, reset my rankings"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      ) : null}
 
       {isResetDialogOpen ? createPortal(
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
