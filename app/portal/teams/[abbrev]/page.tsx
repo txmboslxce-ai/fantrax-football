@@ -116,31 +116,12 @@ function parseOwnership(value: string | null): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
-  const safeRatio = Math.max(0, Math.min(1, ratio));
-  const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
-  const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
-  const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
-  return `rgb(${r}, ${g}, ${blue})`;
-}
-
 function fdrBadgeClass(rank: number): string {
   if (rank <= 4) return "bg-red-800/80 text-red-100";
   if (rank <= 8) return "bg-orange-700/70 text-orange-100";
   if (rank <= 12) return "bg-yellow-600/60 text-yellow-100";
   if (rank <= 16) return "bg-lime-700/60 text-lime-100";
   return "bg-green-700/60 text-green-100";
-}
-
-function gradientCellColor(value: number, min: number, max: number): string {
-  const red: [number, number, number] = [239, 68, 68];
-  const yellow: [number, number, number] = [234, 179, 8];
-  const green: [number, number, number] = [42, 122, 59];
-  const ratio = max > min ? (value - min) / (max - min) : 0.5;
-  if (ratio <= 0.5) {
-    return mixColor(red, yellow, ratio * 2);
-  }
-  return mixColor(yellow, green, (ratio - 0.5) * 2);
 }
 
 function mapInjuryStatus(status: string | null, chance: number | null): "Injured" | "Suspended" | "Unavailable" | "Doubtful" {
@@ -193,6 +174,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
 
   const supabase = await createServerSupabaseClient();
   const SEASON = await getCurrentSeason(supabase);
+  const FIXTURES_SEASON = "2026-27";
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
     .select("abbrev, name, full_name")
@@ -589,7 +571,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       const { data: latestRows, error: latestGwError } = await supabase
         .from("player_gameweeks")
         .select("gameweek")
-        .eq("season", SEASON)
+        .eq("season", FIXTURES_SEASON)
         .in("player_id", teamPlayerIds)
         .order("gameweek", { ascending: false })
         .limit(1);
@@ -606,10 +588,14 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       supabase
         .from("fixtures")
         .select("id, season, gameweek, home_team, away_team")
-        .eq("season", SEASON)
+        .eq("season", FIXTURES_SEASON)
         .or(`home_team.eq.${teamAbbrev},away_team.eq.${teamAbbrev}`)
         .order("gameweek", { ascending: true }),
-      supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON).lte("gameweek", latestUploadedGw),
+      supabase
+        .from("fixtures")
+        .select("id, season, gameweek, home_team, away_team")
+        .eq("season", FIXTURES_SEASON)
+        .lte("gameweek", latestUploadedGw),
     ]);
     if (fixturesError) {
       throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
@@ -669,7 +655,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
         .from("player_gameweeks")
         .select("gameweek, games_started, raw_fantrax_pts, players!inner(team, position)")
-        .eq("season", SEASON)
+        .eq("season", FIXTURES_SEASON)
         .gt("games_played", 0)
         .in("gameweek", fixtureGameweeks);
       if (opponentGameweeksError) {
@@ -755,7 +741,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
               className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === tab.key
                   ? "border-brand-greenLight bg-brand-green text-brand-cream"
-                  : "border-brand-cream/35 bg-brand-dark text-brand-cream hover:bg-brand-greenDark"
+                  : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
               }`}
             >
               {tab.label}
@@ -763,21 +749,27 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           ))}
         </nav>
 
-        <section className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-6 text-brand-cream">
+        <section
+          className={`rounded-xl border p-6 ${
+            activeTab === "overview" || activeTab === "fixtures" || activeTab === "injuries"
+              ? "border-slate-200 bg-white text-brand-dark"
+              : "border-brand-cream/20 bg-brand-dark/70 text-brand-cream"
+          }`}
+        >
           {activeTab === "overview" ? (
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
-                  <p className="text-xs uppercase tracking-wide text-brand-creamDark">Team Total Points</p>
+                <article className="rounded-xl border border-slate-200 bg-white p-5">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Team Total Points</p>
                   <p className="mt-2 text-3xl font-black">{(overviewData?.totalTeamPoints ?? 0).toFixed(2)}</p>
-                  <p className="mt-1 text-xs text-brand-creamDark">Season {SEASON}</p>
+                  <p className="mt-1 text-xs text-slate-500">Season {SEASON}</p>
                 </article>
 
                 {(overviewData?.topScorers ?? []).map((player, index) => (
-                  <article key={player.id} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-5">
-                    <p className="text-xs uppercase tracking-wide text-brand-creamDark">Top Scorer #{index + 1}</p>
+                  <article key={player.id} className="rounded-xl border border-slate-200 bg-white p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Top Scorer #{index + 1}</p>
                     <p className="mt-2 text-lg font-black">{player.name}</p>
-                    <p className="mt-1 text-sm text-brand-creamDark">{player.points.toFixed(2)} pts</p>
+                    <p className="mt-1 text-sm text-slate-500">{player.points.toFixed(2)} pts</p>
                   </article>
                 ))}
               </div>
@@ -785,7 +777,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
               {hasAnySetPieces ? (
                 <div className="space-y-3">
                   <h2 className="text-2xl font-black">Set Piece Takers</h2>
-                  <article className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
+                  <article className="rounded-xl border border-slate-200 bg-white p-4">
                     {(() => {
                       const sections = [
                         {
@@ -815,16 +807,16 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                         <div className="space-y-3">
                           {sections.map((section) => (
                             <div key={section.label} className="space-y-2">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">{section.label}</p>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{section.label}</p>
                               <div className="flex flex-wrap gap-2">
                                 {section.rows.map((entry) => (
                                   <span
                                     key={`${section.label}-${entry.player.id}-${entry.order}`}
-                                    className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-100"
+                                    className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900"
                                   >
                                     <span>#{entry.order}</span>
                                     <span>{entry.player.name}</span>
-                                    <span className="inline-flex rounded-full border border-brand-cream/30 bg-brand-dark px-2 py-0.5 text-[11px] text-brand-cream">
+                                    <span className="inline-flex rounded-full border border-amber-300 bg-white px-2 py-0.5 text-[11px] text-amber-900">
                                       {entry.player.position}
                                     </span>
                                   </span>
@@ -845,17 +837,17 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                   {(["GK", "DEF", "MID", "FWD"] as const).map((position) => {
                     const fdrRank = overviewData?.fdrRankByPosition[position] ?? 10;
                     return (
-                      <article key={position} className="rounded-xl border border-brand-cream/20 bg-brand-dark p-4">
+                      <article key={position} className="rounded-xl border border-slate-200 bg-white p-4">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs uppercase tracking-wider text-brand-creamDark">{position}</p>
+                          <p className="text-xs uppercase tracking-wider text-slate-500">{position}</p>
                           <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-bold ${fdrBadgeClass(fdrRank)}`}>
                             FDR #{fdrRank}
                           </span>
                         </div>
                         <p className="mt-2 text-2xl font-black">{(overviewData?.concededByPosition[position].perGame ?? 0).toFixed(2)}</p>
-                        <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / game</p>
+                        <p className="mt-1 text-xs text-slate-500">Avg pts conceded / game</p>
                         <p className="mt-3 text-xl font-black">{(overviewData?.concededByPosition[position].perStart ?? 0).toFixed(2)}</p>
-                        <p className="mt-1 text-xs text-brand-creamDark">Avg pts conceded / start</p>
+                        <p className="mt-1 text-xs text-slate-500">Avg pts conceded / start</p>
                       </article>
                     );
                   })}
@@ -866,10 +858,10 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                 <h2 className="text-2xl font-black">Next 5 Fixtures</h2>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                   {(overviewData?.upcoming ?? []).map((fixture) => (
-                    <article key={fixture.id} className="rounded-xl border border-brand-cream/20 bg-brand-greenDark p-4 text-brand-cream">
-                      <p className="text-xs uppercase tracking-wider text-brand-creamDark">GW {fixture.gameweek}</p>
+                    <article key={fixture.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs uppercase tracking-wider text-slate-500">GW {fixture.gameweek}</p>
                       <p className="mt-2 font-bold">{fixture.opponentName}</p>
-                      <p className="mt-1 text-sm">{fixture.isHome ? "H" : "A"}</p>
+                      <p className="mt-1 text-sm text-slate-600">{fixture.isHome ? "H" : "A"}</p>
                     </article>
                   ))}
                 </div>
@@ -885,101 +877,54 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
               <h2 className="text-2xl font-black">Fixtures</h2>
               {(() => {
                 const rows = fixturesRows ?? [];
-                const rangeFor = (values: Array<number | null>) => {
-                  const numeric = values.filter((value): value is number => value != null);
-                  return {
-                    min: numeric.length > 0 ? Math.min(...numeric) : 0,
-                    max: numeric.length > 0 ? Math.max(...numeric) : 0,
-                  };
-                };
-
-                const ranges = {
-                  overall: rangeFor(rows.map((row) => row.avgPerStart)),
-                  GK: rangeFor(rows.map((row) => row.byPosition.GK)),
-                  DEF: rangeFor(rows.map((row) => row.byPosition.DEF)),
-                  MID: rangeFor(rows.map((row) => row.byPosition.MID)),
-                  FWD: rangeFor(rows.map((row) => row.byPosition.FWD)),
-                };
-
-                const leftGw = 0;
-                const leftOpponent = 72;
-                const leftHa = 312;
 
                 return (
-                  <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-                    <table className="min-w-[980px] text-left text-sm">
-                      <thead className="text-brand-creamDark">
+                  <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+                    <table className="w-max border-separate border-spacing-0 text-left text-xs">
+                      <thead>
                         <tr>
-                          <th
-                            className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-4 py-3 font-semibold"
-                            style={{ left: leftGw, minWidth: 72 }}
-                          >
+                          <th className="sticky left-0 top-0 z-30 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                             GW
                           </th>
-                          <th
-                            className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-4 py-3 font-semibold"
-                            style={{ left: leftOpponent, minWidth: 240 }}
-                          >
+                          <th className="sticky left-12 top-0 z-30 w-56 min-w-56 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                             Opponent
                           </th>
-                          <th
-                            className="sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-[#0F1F13] px-4 py-3 font-semibold"
-                            style={{ left: leftHa, minWidth: 72 }}
-                          >
+                          <th className="sticky left-[272px] top-0 z-30 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                             H/A
                           </th>
-                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">
-                            Avg/Start
-                          </th>
-                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">GK</th>
-                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">DEF</th>
-                          <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">MID</th>
-                          <th className="sticky top-0 z-20 border-b border-brand-cream/25 bg-brand-dark px-4 py-3 font-semibold">FWD</th>
+                          <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Avg/Start</th>
+                          <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">GK</th>
+                          <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">DEF</th>
+                          <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">MID</th>
+                          <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">FWD</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rows.map((row, index) => {
-                          const rowBg = index % 2 === 0 ? "bg-brand-dark/75" : "bg-brand-dark";
-
-                          const statCell = (value: number | null, min: number, max: number) => {
-                            if (value == null) {
-                              return <span className="text-brand-creamDark">-</span>;
-                            }
-                            return (
-                              <span
-                                className="inline-block min-w-14 rounded px-2 py-1 text-center font-semibold text-[#0f1f13]"
-                                style={{ backgroundColor: gradientCellColor(value, min, max) }}
-                              >
-                                {value.toFixed(2)}
-                              </span>
-                            );
-                          };
+                          const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
 
                           return (
-                            <tr key={row.id} className={`${rowBg} text-brand-cream`}>
-                              <td
-                                className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 font-semibold ${rowBg}`}
-                                style={{ left: leftGw, minWidth: 72 }}
-                              >
+                            <tr key={row.id} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                              <td className={`sticky left-0 z-20 w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
                                 {row.gameweek}
                               </td>
-                              <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftOpponent, minWidth: 240 }}>
+                              <td className={`sticky left-12 z-20 w-56 min-w-56 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
                                 <Link
                                   href={`/portal/teams/${encodeURIComponent(row.opponentAbbrev.toLowerCase())}`}
                                   prefetch={false}
-                                  className="font-semibold hover:text-brand-greenLight"
+                                  className="hover:text-brand-green hover:underline"
                                 >
                                   {row.opponentName}
                                 </Link>
                               </td>
-                              <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftHa, minWidth: 72 }}>
+                              <td className={`sticky left-[272px] z-20 w-14 min-w-14 border-b border-r border-slate-200 px-2 py-1.5 text-center font-medium text-slate-600 ${rowShade} group-hover:bg-brand-green/10`}>
                                 {row.isHome ? "H" : "A"}
                               </td>
-                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.avgPerStart, ranges.overall.min, ranges.overall.max)}</td>
-                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.GK, ranges.GK.min, ranges.GK.max)}</td>
-                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.DEF, ranges.DEF.min, ranges.DEF.max)}</td>
-                              <td className="border-b border-r border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.MID, ranges.MID.min, ranges.MID.max)}</td>
-                              <td className="border-b border-brand-cream/10 px-4 py-3">{statCell(row.byPosition.FWD, ranges.FWD.min, ranges.FWD.max)}</td>
+                              <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{row.avgPerStart?.toFixed(2) ?? "—"}</td>
+                              <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{row.byPosition.GK?.toFixed(2) ?? "—"}</td>
+                              <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{row.byPosition.DEF?.toFixed(2) ?? "—"}</td>
+                              <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{row.byPosition.MID?.toFixed(2) ?? "—"}</td>
+                              <td className="w-[88px] min-w-[88px] border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{row.byPosition.FWD?.toFixed(2) ?? "—"}</td>
                             </tr>
                           );
                         })}
@@ -993,11 +938,11 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
             <div className="space-y-3">
               <h2 className="text-2xl font-black">Injuries</h2>
               {injuriesRows.length === 0 ? (
-                <p className="text-sm text-brand-creamDark">No injury concerns for this team.</p>
+                <p className="text-sm text-slate-500">No injury concerns for this team.</p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-                  <table className="min-w-full text-left text-sm text-brand-cream">
-                    <thead className="bg-brand-dark text-brand-creamDark">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-full text-left text-sm text-brand-dark">
+                    <thead className="bg-brand-green text-brand-cream">
                       <tr>
                         <th className="px-4 py-3">Player</th>
                         <th className="px-4 py-3">Position</th>
@@ -1011,14 +956,14 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                         const statusLabel = mapInjuryStatus(row.status, row.chanceOfPlaying);
                         const statusPillClass =
                           statusLabel === "Doubtful"
-                            ? "border-amber-300/35 bg-amber-500/20 text-amber-100"
-                            : "border-red-300/35 bg-red-500/20 text-red-100";
+                            ? "border-amber-300 bg-amber-50 text-amber-900"
+                            : "border-red-300 bg-red-50 text-red-900";
 
                         return (
-                          <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/75" : "bg-brand-dark/90"}>
+                          <tr key={row.id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
                             <td className="px-4 py-3 font-semibold">
                               {row.id ? (
-                                <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-greenLight">
+                                <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green">
                                   {row.name}
                                 </Link>
                               ) : (

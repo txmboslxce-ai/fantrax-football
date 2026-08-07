@@ -24,20 +24,6 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("seasonPts");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const statRanges = useMemo(() => {
-    const rangeFor = (values: number[]) => ({
-      min: values.length > 0 ? Math.min(...values) : 0,
-      max: values.length > 0 ? Math.max(...values) : 0,
-    });
-
-    return {
-      seasonPts: rangeFor(players.map((player) => player.seasonPts)),
-      avgPtsPerGw: rangeFor(players.map((player) => player.avgPtsPerGw)),
-      avgPtsPerGame: rangeFor(players.map((player) => player.avgPtsPerGame)),
-      ghostPtsPerGw: rangeFor(players.map((player) => player.ghostPtsPerGw)),
-    };
-  }, [players]);
-
   const filteredAndSorted = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -74,102 +60,78 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
     setSortDir("desc");
   }
 
-  function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
-    const safeRatio = Math.max(0, Math.min(1, ratio));
-    const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
-    const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
-    const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
-    return `rgb(${r}, ${g}, ${blue})`;
-  }
-
-  function gradientBackground(value: number, min: number, max: number): string {
-    const red: [number, number, number] = [239, 68, 68];
-    const yellow: [number, number, number] = [234, 179, 8];
-    const green: [number, number, number] = [42, 122, 59];
-
-    const ratio = max > min ? (value - min) / (max - min) : 0.5;
-    if (ratio <= 0.5) {
-      return mixColor(red, yellow, ratio * 2);
-    }
-    return mixColor(yellow, green, (ratio - 0.5) * 2);
-  }
-
-  function renderStatBadge(value: number, min: number, max: number) {
-    return (
-      <span
-        className="inline-flex min-w-14 justify-center rounded-md px-2 py-0.5 text-xs font-bold text-white"
-        style={{ backgroundColor: gradientBackground(value, min, max) }}
-      >
-        {value.toFixed(2)}
-      </span>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {positionFilters.map((filter) => {
-          const active = positionFilter === filter;
-          return (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setPositionFilter(filter)}
-              className={`rounded-full border px-3 py-1 text-sm font-semibold transition-colors ${
-                active
-                  ? "border-brand-green bg-brand-green text-brand-cream"
-                  : "border-brand-cream/40 bg-brand-dark text-brand-cream hover:bg-brand-cream/10"
-              }`}
-            >
-              {filter}
-            </button>
-          );
-        })}
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Position</span>
+            <div className="flex flex-nowrap gap-1">
+              {positionFilters.map((filter) => {
+                const active = positionFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setPositionFilter(filter)}
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold transition-colors ${
+                      active
+                        ? "border-brand-green bg-brand-green text-brand-cream"
+                        : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search player"
-          className="ml-auto w-full max-w-sm rounded-md border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
-        />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search player"
+            className="ml-auto w-full max-w-sm rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
+          />
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-brand-dark text-brand-creamDark">
+      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+          <thead>
             <tr>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("name")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-48 min-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("name")} className="font-bold">
                   Name
                 </button>
               </th>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("position")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("position")} className="font-bold">
                   Position
                 </button>
               </th>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("seasonPts")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("seasonPts")} className="w-full text-right font-bold">
                   Season Pts
                 </button>
               </th>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("avgPtsPerGw")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("avgPtsPerGw")} className="w-full text-right font-bold">
                   Avg Pts/GW
                 </button>
               </th>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("avgPtsPerGame")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("avgPtsPerGame")} className="w-full text-right font-bold">
                   Avg Pts/Game
                 </button>
               </th>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("ghostPtsPerGw")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("ghostPtsPerGw")} className="w-full text-right font-bold">
                   Ghost Pts/GW
                 </button>
               </th>
-              <th className="px-4 py-3">
-                <button type="button" onClick={() => handleSort("ownershipPct")} className="font-semibold">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("ownershipPct")} className="w-full text-right font-bold">
                   Ownership %
                 </button>
               </th>
@@ -178,43 +140,44 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
           <tbody>
             {filteredAndSorted.map((player, index) => {
               const rowHref = `/portal/players/${player.id}`;
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               return (
                 <tr
                   key={player.id}
-                  className={index % 2 === 0 ? "bg-brand-dark/75 text-brand-cream" : "bg-brand-dark text-brand-cream"}
+                  className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}
                 >
-                  <td className="px-4 py-3 font-semibold">
-                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-greenLight">
+                  <td className="w-48 min-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green hover:underline">
                       {player.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-greenLight">
+                  <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green hover:underline">
                       {player.position}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
-                      {renderStatBadge(player.seasonPts, statRanges.seasonPts.min, statRanges.seasonPts.max)}
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.seasonPts.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
-                      {renderStatBadge(player.avgPtsPerGw, statRanges.avgPtsPerGw.min, statRanges.avgPtsPerGw.max)}
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.avgPtsPerGw.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
-                      {renderStatBadge(player.avgPtsPerGame, statRanges.avgPtsPerGame.min, statRanges.avgPtsPerGame.max)}
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.avgPtsPerGame.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
-                      {renderStatBadge(player.ghostPtsPerGw, statRanges.ghostPtsPerGw.min, statRanges.ghostPtsPerGw.max)}
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.ghostPtsPerGw.toFixed(2)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-greenLight">
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
                       {player.ownershipPct.toFixed(1)}%
                     </Link>
                   </td>
