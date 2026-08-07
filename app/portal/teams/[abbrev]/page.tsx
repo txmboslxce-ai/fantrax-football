@@ -1,5 +1,14 @@
 import TeamSquadClient from "@/components/portal/TeamSquadClient";
-import { mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
+import {
+  decorateGameweeks,
+  mapPosition,
+  nextFixtures,
+  summarizePlayerWindow,
+  teamNameMap,
+  type FixtureRow,
+  type PlayerGameweekRow,
+  type TeamRow,
+} from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 import Link from "next/link";
@@ -7,9 +16,8 @@ import { notFound } from "next/navigation";
 
 const BASE_TEAM_TABS = [
   { key: "overview", label: "Overview" },
-  { key: "squad", label: "Squad" },
+  { key: "squad", label: "Squad Stats" },
   { key: "fixtures", label: "Fixtures" },
-  { key: "stats", label: "Stats" },
 ] as const;
 
 type TeamTabKey = (typeof BASE_TEAM_TABS)[number]["key"] | "injuries";
@@ -55,6 +63,7 @@ type FixtureTabRow = {
 type MaxGameweekRow = { gameweek: number };
 type TeamPlayerWithFplRow = {
   id: string;
+  fantrax_id: string | null;
   name: string;
   position: string;
   ownership_pct: string | null;
@@ -82,6 +91,7 @@ type TeamPlayerWithFplRow = {
 
 type TeamFplPlayer = {
   id: string;
+  fantraxId: string | null;
   name: string;
   position: "GK" | "DEF" | "MID" | "FWD";
   status: string | null;
@@ -189,10 +199,19 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   }
   const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
 
+  const { data: poolRows, error: poolError } = await supabase
+    .from("season_player_pool")
+    .select("fantrax_id")
+    .eq("season", "2026-27");
+  if (poolError) {
+    throw new Error(`Unable to load the 2026-27 player pool: ${poolError.message}`);
+  }
+  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+
   const { data: teamPlayersWithFplData, error: teamPlayersWithFplError } = await supabase
     .from("players")
     .select(
-      "id, name, position, ownership_pct, fpl_player_data(status, chance_of_playing_next_round, news, news_added, penalties_order, corners_order, direct_freekicks_order)"
+      "id, fantrax_id, name, position, ownership_pct, fpl_player_data(status, chance_of_playing_next_round, news, news_added, penalties_order, corners_order, direct_freekicks_order)"
     )
     .eq("team", teamAbbrev)
     .order("position", { ascending: true })
@@ -206,6 +225,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     const fplRaw = Array.isArray(row.fpl_player_data) ? row.fpl_player_data[0] : row.fpl_player_data;
     return {
       id: row.id,
+      fantraxId: row.fantrax_id,
       name: row.name,
       position: mapPosition(row.position),
       status: fplRaw?.status ?? null,
@@ -218,6 +238,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     };
   });
 
+  const poolFantraxIdSet = new Set(poolFantraxIds);
   const hasAnyFplData = teamFplPlayers.some(
     (player) =>
       player.status != null ||
@@ -236,6 +257,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
 
   const injuriesRows = hasAnyFplData
     ? teamFplPlayers
+        .filter((player) => player.fantraxId != null && poolFantraxIdSet.has(player.fantraxId))
         .filter((player) => player.status !== "a" || (player.chanceOfPlaying != null && player.chanceOfPlaying < 100))
         .sort((a, b) => {
           const severity = severityRank(a.chanceOfPlaying) - severityRank(b.chanceOfPlaying);
@@ -265,9 +287,14 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
         name: string;
         position: "GK" | "DEF" | "MID" | "FWD";
         seasonPts: number;
-        avgPtsPerGw: number;
-        avgPtsPerGame: number;
-        ghostPtsPerGw: number;
+        fantasyPtsPerStart: number;
+        ghostPtsPerStart: number;
+        goals: number;
+        assists: number;
+        keyPasses: number;
+        shotsOnTarget: number;
+        cornerKicks: number;
+        freeKickShots: number;
         ownershipPct: number;
       }>
     | undefined;
@@ -469,16 +496,6 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   }
 
   if (activeTab === "squad") {
-    const { data: poolRows, error: poolError } = await supabase
-      .from("season_player_pool")
-      .select("fantrax_id")
-      .eq("season", SEASON);
-
-    if (poolError) {
-      throw new Error(`Unable to load the ${SEASON} player pool: ${poolError.message}`);
-    }
-
-    const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
     const { data: players, error: playersError } = poolFantraxIds.length > 0
       ? await supabase
           .from("players")
@@ -497,7 +514,9 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     const { data: playerGameweeks, error: gameweeksError } = playerIds.length
       ? await supabase
           .from("player_gameweeks")
-          .select("player_id, games_played, raw_fantrax_pts, ghost_pts")
+          .select(
+            "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, shots_on_target, tackles_won, interceptions, clearances, aerials_won, corner_kicks, free_kick_shots"
+          )
           .eq("season", SEASON)
           .in("player_id", playerIds)
       : { data: [], error: null };
@@ -505,54 +524,43 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       throw new Error(`Unable to load squad player gameweeks: ${gameweeksError.message}`);
     }
 
-    const statsByPlayer = new Map<
-      string,
-      {
-        seasonPts: number;
-        ghostPts: number;
-        gameweeksPlayed: number;
-        totalGamesPlayed: number;
+    const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
+    for (const row of (playerGameweeks ?? []) as PlayerGameweekRow[]) {
+      const existing = rowsByPlayer.get(row.player_id);
+      if (existing) {
+        existing.push(row);
+      } else {
+        rowsByPlayer.set(row.player_id, [row]);
       }
-    >();
-
-    for (const row of (playerGameweeks ?? []) as TeamGameweekRow[]) {
-      if (Number(row.games_played ?? 0) <= 0) {
-        continue;
-      }
-
-      const existing = statsByPlayer.get(row.player_id);
-      if (!existing) {
-        statsByPlayer.set(row.player_id, {
-          seasonPts: Number(row.raw_fantrax_pts ?? 0),
-          ghostPts: Number(row.ghost_pts ?? 0),
-          gameweeksPlayed: 1,
-          totalGamesPlayed: Number(row.games_played ?? 0),
-        });
-        continue;
-      }
-
-      existing.seasonPts += Number(row.raw_fantrax_pts ?? 0);
-      existing.ghostPts += Number(row.ghost_pts ?? 0);
-      existing.gameweeksPlayed += 1;
-      existing.totalGamesPlayed += Number(row.games_played ?? 0);
     }
 
     squadRows = squadPlayers
       .map((player) => {
-        const totals = statsByPlayer.get(player.id);
-        const seasonPts = totals?.seasonPts ?? 0;
-        const gameweeksPlayed = totals?.gameweeksPlayed ?? 0;
-        const totalGamesPlayed = totals?.totalGamesPlayed ?? 0;
-        const ghostPts = totals?.ghostPts ?? 0;
+        const position = mapPosition(player.position);
+        const decoratedRows = decorateGameweeks(rowsByPlayer.get(player.id) ?? [], teamAbbrev, []);
+        const windowStats = summarizePlayerWindow(decoratedRows, position);
+        const playedRows = decoratedRows.filter((row) => row.games_played > 0);
+        // This duplicates summarizeStatsWindow's season-total aggregates; extract a shared helper in a future cleanup.
+        const goals = playedRows.reduce((sum, row) => sum + Number(row.goals ?? 0), 0);
+        const assists = playedRows.reduce((sum, row) => sum + Number(row.assists ?? 0), 0);
+        const keyPasses = playedRows.reduce((sum, row) => sum + Number(row.key_passes ?? 0), 0);
+        const shotsOnTarget = playedRows.reduce((sum, row) => sum + Number(row.shots_on_target ?? 0), 0);
+        const cornerKicks = playedRows.reduce((sum, row) => sum + Number(row.corner_kicks ?? 0), 0);
+        const freeKickShots = playedRows.reduce((sum, row) => sum + Number(row.free_kick_shots ?? 0), 0);
 
         return {
           id: player.id,
           name: player.name,
-          position: mapPosition(player.position),
-          seasonPts,
-          avgPtsPerGw: gameweeksPlayed > 0 ? seasonPts / gameweeksPlayed : 0,
-          avgPtsPerGame: totalGamesPlayed > 0 ? seasonPts / totalGamesPlayed : 0,
-          ghostPtsPerGw: gameweeksPlayed > 0 ? ghostPts / gameweeksPlayed : 0,
+          position,
+          seasonPts: windowStats.season_pts,
+          fantasyPtsPerStart: windowStats.fantasy_pts_per_start,
+          ghostPtsPerStart: windowStats.ghost_pts_per_start,
+          goals,
+          assists,
+          keyPasses,
+          shotsOnTarget,
+          cornerKicks,
+          freeKickShots,
           ownershipPct: parseOwnership(player.ownership_pct),
         };
       })
@@ -712,20 +720,6 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
     });
   }
 
-  const panelContent: Record<Exclude<TeamTabKey, "overview" | "injuries">, { title: string; description: string }> = {
-    squad: {
-      title: "Squad",
-      description: "Squad depth, player roles, and position breakdowns will appear here.",
-    },
-    fixtures: {
-      title: "Fixtures",
-      description: "Upcoming fixture runs and difficulty views will appear here.",
-    },
-    stats: {
-      title: "Stats",
-      description: "Team-level performance metrics and splits will appear here.",
-    },
-  };
   return (
     <div className="space-y-6">
         <header className="rounded-xl border border-brand-cream/20 bg-brand-dark px-5 py-4">
@@ -869,7 +863,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
             </div>
           ) : activeTab === "squad" ? (
             <div className="space-y-3">
-              <h2 className="text-2xl font-black">Squad</h2>
+              <h2 className="text-2xl font-black">Squad Stats</h2>
               <TeamSquadClient players={squadRows ?? []} />
             </div>
           ) : activeTab === "fixtures" ? (
@@ -988,12 +982,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                 </div>
               )}
             </div>
-          ) : (
-            <>
-              <h2 className="text-xl font-black">{panelContent[activeTab].title}</h2>
-              <p className="mt-2 text-sm text-brand-creamDark">{panelContent[activeTab].description}</p>
-            </>
-          )}
+          ) : null}
       </section>
     </div>
   );

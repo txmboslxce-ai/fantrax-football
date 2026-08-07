@@ -8,13 +8,30 @@ type SquadRow = {
   name: string;
   position: "GK" | "DEF" | "MID" | "FWD";
   seasonPts: number;
-  avgPtsPerGw: number;
-  avgPtsPerGame: number;
-  ghostPtsPerGw: number;
+  fantasyPtsPerStart: number;
+  ghostPtsPerStart: number;
+  goals: number;
+  assists: number;
+  keyPasses: number;
+  shotsOnTarget: number;
+  cornerKicks: number;
+  freeKickShots: number;
   ownershipPct: number;
 };
 
-type SortKey = "name" | "position" | "seasonPts" | "avgPtsPerGw" | "avgPtsPerGame" | "ghostPtsPerGw" | "ownershipPct";
+type SortKey =
+  | "name"
+  | "position"
+  | "seasonPts"
+  | "fantasyPtsPerStart"
+  | "ghostPtsPerStart"
+  | "goals"
+  | "assists"
+  | "keyPasses"
+  | "shotsOnTarget"
+  | "cornerKicks"
+  | "freeKickShots"
+  | "ownershipPct";
 
 const positionFilters: Array<"All" | "GK" | "DEF" | "MID" | "FWD"> = ["All", "GK", "DEF", "MID", "FWD"];
 
@@ -96,8 +113,9 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
         </div>
       </div>
 
-      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+      <div className="max-w-full overflow-x-auto">
+        <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+          <table className="border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
               <th className="sticky top-0 z-20 w-48 min-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -116,18 +134,43 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
                 </button>
               </th>
               <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("avgPtsPerGw")} className="w-full text-right font-bold">
-                  Avg Pts/GW
+                <button type="button" onClick={() => handleSort("fantasyPtsPerStart")} className="w-full text-right font-bold">
+                  FPts/S
                 </button>
               </th>
               <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("avgPtsPerGame")} className="w-full text-right font-bold">
-                  Avg Pts/Game
+                <button type="button" onClick={() => handleSort("ghostPtsPerStart")} className="w-full text-right font-bold">
+                  GhPts/S
                 </button>
               </th>
               <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("ghostPtsPerGw")} className="w-full text-right font-bold">
-                  Ghost Pts/GW
+                <button type="button" onClick={() => handleSort("goals")} className="w-full text-right font-bold">
+                  Goals
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("assists")} className="w-full text-right font-bold">
+                  Assists
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("keyPasses")} className="w-full text-right font-bold">
+                  Key Passes
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("shotsOnTarget")} className="w-full text-right font-bold">
+                  SOT
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("cornerKicks")} className="w-full text-right font-bold">
+                  Corners
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("freeKickShots")} className="w-full text-right font-bold">
+                  FK Shots
                 </button>
               </th>
               <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -163,17 +206,42 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
                   </td>
                   <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                     <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
-                      {player.avgPtsPerGw.toFixed(2)}
+                      {player.fantasyPtsPerStart.toFixed(2)}
                     </Link>
                   </td>
                   <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                     <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
-                      {player.avgPtsPerGame.toFixed(2)}
+                      {player.ghostPtsPerStart.toFixed(2)}
                     </Link>
                   </td>
                   <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                     <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
-                      {player.ghostPtsPerGw.toFixed(2)}
+                      {player.goals.toFixed(0)}
+                    </Link>
+                  </td>
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.assists.toFixed(0)}
+                    </Link>
+                  </td>
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.keyPasses.toFixed(0)}
+                    </Link>
+                  </td>
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.shotsOnTarget.toFixed(0)}
+                    </Link>
+                  </td>
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.cornerKicks.toFixed(0)}
+                    </Link>
+                  </td>
+                  <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green">
+                      {player.freeKickShots.toFixed(0)}
                     </Link>
                   </td>
                   <td className="w-[88px] min-w-[88px] border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
@@ -186,6 +254,7 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
             })}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );
