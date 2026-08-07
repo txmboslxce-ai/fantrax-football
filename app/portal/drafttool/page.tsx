@@ -30,6 +30,7 @@ type DraftPlayer = {
   rank: number;
   picked: boolean;
   watchlisted: boolean;
+  customRank: number | null;
 };
 
 const PLAYER_GAMEWEEK_QUERY_COLUMNS =
@@ -39,6 +40,11 @@ const PLAYER_ID_BATCH_SIZE = 100;
 function normalizeAdp(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeCustomRank(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function loadDraftPlayers(): Promise<DraftPlayer[]> {
@@ -158,6 +164,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       rank: 0,
       picked: false,
       watchlisted: false,
+      customRank: null,
     };
   });
 
@@ -180,7 +187,7 @@ export default async function DraftToolPage() {
     loadDraftPlayers(),
     supabase
       .from("draft_picks")
-      .select("player_id, picked, watchlisted")
+      .select("player_id, picked, watchlisted, custom_rank")
       .eq("user_id", user.id),
   ]);
 
@@ -191,7 +198,11 @@ export default async function DraftToolPage() {
   const draftPicksByPlayerId = new Map(
     (draftPickRows ?? []).map((draftPick) => [
       draftPick.player_id as string,
-      { picked: draftPick.picked === true, watchlisted: draftPick.watchlisted === true },
+      {
+        picked: draftPick.picked === true,
+        watchlisted: draftPick.watchlisted === true,
+        customRank: normalizeCustomRank(draftPick.custom_rank),
+      },
     ])
   );
   const players = draftPlayers.map((player) => ({

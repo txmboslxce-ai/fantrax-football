@@ -27,6 +27,7 @@ type DraftToolPlayer = {
   rank: number;
   picked: boolean;
   watchlisted: boolean;
+  customRank: number | null;
 };
 
 type RoleFilter = "penalties" | "corners" | "directFreekicks";
@@ -132,6 +133,10 @@ function sortValue(player: DraftToolPlayer, key: SortKey): string | number | nul
   }
 }
 
+function myRankValue(player: DraftToolPlayer): number | null {
+  return player.customRank ?? player.adp;
+}
+
 function HeaderTooltip({ children, description }: { children: ReactNode; description?: string }) {
   const triggerRef = useRef<HTMLSpanElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
@@ -218,6 +223,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [isMyRankMode, setIsMyRankMode] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -239,6 +245,14 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     });
 
     return [...filtered].sort((a, b) => {
+      if (isMyRankMode) {
+        const aValue = myRankValue(a);
+        const bValue = myRankValue(b);
+        if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+        if (bValue == null) return -1;
+        return aValue - bValue || a.name.localeCompare(b.name);
+      }
+
       const aValue = sortValue(a, sortKey);
       const bValue = sortValue(b, sortKey);
       if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
@@ -248,7 +262,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [deferredSearch, hideDrafted, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
+  }, [deferredSearch, hideDrafted, isMyRankMode, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
 
   function applyBoardState(picked: Set<string>, watchlisted: Set<string>) {
     boardStateRef.current = { picked, watchlisted };
@@ -342,6 +356,13 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   }
 
   function handleSort(nextKey: SortKey) {
+    if (isMyRankMode) {
+      setIsMyRankMode(false);
+      setSortKey(nextKey);
+      setSortDir(nextKey === "name" ? "asc" : "desc");
+      return;
+    }
+
     if (sortKey === nextKey) {
       setSortDir((current) => (current === "asc" ? "desc" : "asc"));
       return;
@@ -439,6 +460,18 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <span>Hide Drafted</span>
           </label>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsMyRankMode((current) => !current)}
+          aria-pressed={isMyRankMode}
+          className={`rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
+            isMyRankMode
+              ? "border-brand-green bg-brand-green text-brand-cream"
+              : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+          }`}
+        >
+          My Rank
+        </button>
         <button
           type="button"
           onClick={() => setIsResetDialogOpen(true)}
