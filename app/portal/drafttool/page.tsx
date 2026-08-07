@@ -34,6 +34,11 @@ const PLAYER_GAMEWEEK_QUERY_COLUMNS =
   "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won, corner_kicks, free_kick_shots";
 const PLAYER_ID_BATCH_SIZE = 100;
 
+function normalizeAdp(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   const supabase = await createServerSupabaseClient();
 
@@ -47,7 +52,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   }
 
   const adpByFantraxId = new Map(
-    (poolRows ?? []).map((row) => [row.fantrax_id as string, row.adp == null ? null : Number(row.adp)])
+    (poolRows ?? []).map((row) => [row.fantrax_id as string, normalizeAdp(row.adp)])
   );
   const poolFantraxIds = Array.from(adpByFantraxId.keys());
   if (poolFantraxIds.length === 0) {

@@ -283,7 +283,8 @@ export function mapFantraxCsvRow(row: CsvRow, type: UploadType, fallbackGameweek
 
     if (internalColumn === "adp") {
       const rawAdp = String(value ?? "").trim();
-      normalized.adp = rawAdp ? coerceNumber(rawAdp) : null;
+      const parsedAdp = Number(rawAdp);
+      normalized.adp = Number.isFinite(parsedAdp) && parsedAdp > 0 ? parsedAdp : null;
       continue;
     }
 
