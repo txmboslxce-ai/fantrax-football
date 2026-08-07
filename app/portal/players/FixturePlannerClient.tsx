@@ -571,7 +571,7 @@ export default function FixturePlannerClient({
               return (
                 <tr key={row.id} className="text-brand-cream">
                   <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <Link href={`/portal/players/${row.id}`} className="block hover:text-brand-greenLight">
+                    <Link href={`/portal/players/${row.id}`} prefetch={false} className="block hover:text-brand-greenLight">
                       <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
                         <span>{row.name}</span>
                         {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}

@@ -72,7 +72,7 @@ function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: Fixture
     <tr className={index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90"}>
       <td className="border-b border-r border-brand-cream/10 px-4 py-3">
         <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
-          <Link href={`/portal/players/${row.id}`} className="hover:text-brand-green hover:underline">
+          <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green hover:underline">
             {row.name}
           </Link>
           <AvailabilityIcon

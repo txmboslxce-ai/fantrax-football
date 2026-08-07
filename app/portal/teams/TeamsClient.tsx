@@ -28,6 +28,7 @@ export default function TeamsClient({ teamCards }: { teamCards: TeamCard[] }) {
         <Link
           key={team.team}
           href={`/portal/teams/${encodeURIComponent(team.team.toLowerCase())}`}
+          prefetch={false}
           className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-4 text-left text-brand-cream transition-colors hover:bg-brand-greenDark"
         >
           <h2 className="text-lg font-black">{team.teamName}</h2>

@@ -93,6 +93,7 @@ export default function FixturesClient({ fixtures, defaultGameweek }: FixturesCl
           <Link
             key={fixture.id}
             href={`/portal/fixtures/${fixture.id}?gameweek=${selectedGameweek}`}
+            prefetch={false}
             className="block rounded-xl border border-brand-green/35 bg-brand-dark/80 p-4 text-brand-cream shadow-sm transition-colors hover:border-brand-greenLight hover:bg-brand-dark"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">

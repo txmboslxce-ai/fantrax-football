@@ -159,7 +159,7 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
           {sortedRows.map((row, index) => (
             <tr key={row.abbrev} className={index % 2 === 0 ? "bg-brand-dark/80 text-brand-cream" : "bg-brand-dark/60 text-brand-cream"}>
               <td className="px-4 py-3 font-semibold">
-                <Link href={`/portal/teams/${encodeURIComponent(row.abbrev.toLowerCase())}`} className="font-bold hover:text-brand-greenLight">
+                <Link href={`/portal/teams/${encodeURIComponent(row.abbrev.toLowerCase())}`} prefetch={false} className="font-bold hover:text-brand-greenLight">
                   {row.teamName}
                 </Link>
               </td>

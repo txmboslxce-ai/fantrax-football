@@ -50,6 +50,7 @@ const ROLE_FILTERS: Array<{ key: RoleFilter; label: string }> = [
   { key: "directFreekicks", label: "Direct FK" },
 ];
 
+const WATCHLIST_COLUMN_WIDTH = "w-10 min-w-10";
 const PICKED_COLUMN_WIDTH = "w-14 min-w-14";
 const PLAYER_COLUMN_WIDTH = "w-48 min-w-48";
 const POSITION_COLUMN_WIDTH = "w-10 min-w-10";
@@ -199,12 +200,14 @@ function SortableHeader({
 
 export default function DraftToolTableClient({ players }: { players: DraftToolPlayer[] }) {
   const [pickedPlayerIds, setPickedPlayerIds] = useState<Set<string>>(new Set());
+  const [watchlistedPlayerIds, setWatchlistedPlayerIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("All");
   const [teamFilter, setTeamFilter] = useState("All");
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -220,7 +223,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       const matchesPosition = positionFilter === "All" || player.position === positionFilter;
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesDrafted = !hideDrafted || !pickedPlayerIds.has(player.id);
-      return matchesSearch && matchesPosition && matchesTeam && matchesAnySelectedRole(player, selectedRoles) && matchesDrafted;
+      const matchesWatchlist = !watchlistOnly || watchlistedPlayerIds.has(player.id);
+      return matchesSearch && matchesPosition && matchesTeam && matchesAnySelectedRole(player, selectedRoles) && matchesDrafted && matchesWatchlist;
     });
 
     return [...filtered].sort((a, b) => {
@@ -233,10 +237,19 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [deferredSearch, hideDrafted, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter]);
+  }, [deferredSearch, hideDrafted, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
 
   function togglePicked(playerId: string) {
     setPickedPlayerIds((current) => {
+      const next = new Set(current);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  }
+
+  function toggleWatchlisted(playerId: string) {
+    setWatchlistedPlayerIds((current) => {
       const next = new Set(current);
       if (next.has(playerId)) next.delete(playerId);
       else next.add(playerId);
@@ -339,12 +352,23 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           />
           <span>Hide Drafted</span>
         </label>
+
+        <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
+          <input
+            type="checkbox"
+            checked={watchlistOnly}
+            onChange={(event) => setWatchlistOnly(event.target.checked)}
+            className="h-4 w-4 accent-brand-green"
+          />
+          <span>Watchlist Only</span>
+        </label>
       </div>
 
       <div className="max-w-full overflow-x-auto">
         <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-[1480px] table-fixed border-separate border-spacing-0 text-left text-xs">
+        <table className="w-[1520px] table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
+            <col style={{ width: "40px" }} />
             <col style={{ width: "56px" }} />
             <col style={{ width: "192px" }} />
             <col style={{ width: "40px" }} />
@@ -354,11 +378,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </colgroup>
           <thead>
             <tr>
-              <th className={`sticky left-0 top-0 z-30 h-16 ${PICKED_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Picked?</th>
-              <th className={`sticky left-14 top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>
+              <th aria-label="Watchlist" className={`sticky left-0 top-0 z-30 h-16 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><span aria-hidden="true">★</span></th>
+              <th className={`sticky left-10 top-0 z-30 h-16 ${PICKED_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Picked?</th>
+              <th className={`sticky left-24 top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex w-full items-center justify-center gap-1"><span>Player</span><span aria-hidden="true">{sortArrow("name")}</span></button>
               </th>
-              <th className={`sticky left-[248px] top-0 z-30 h-16 ${POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>POS</th>
+              <th className={`sticky left-[288px] top-0 z-30 h-16 ${POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>POS</th>
               <th className={`sticky top-0 z-20 h-16 ${TEAM_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Team</th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="ADP" tooltip="Average draft position across current 2026-27 Fantrax drafts. Refreshed daily; lower means drafted earlier." sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Rank (25/26)" tooltip="Player's finish position among the full pool, ranked by total Fantasy Points scored in 2025-26. 1 = highest scorer." sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
@@ -379,6 +404,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           <tbody className="[&>tr>td]:!py-1">
             {filteredAndSortedPlayers.map((player, index) => {
               const isPicked = pickedPlayerIds.has(player.id);
+              const isWatchlisted = watchlistedPlayerIds.has(player.id);
               const rowShade = isPicked ? "bg-slate-100" : index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const position = positionLetter(player.position);
               const setPieces = setPieceLabel(player.setPieces);
@@ -387,16 +413,21 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
               return (
                 <tr key={player.id} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} transition-colors hover:bg-brand-green/10`}>
-                  <td className={`sticky left-0 z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                    <button type="button" onClick={() => toggleWatchlisted(player.id)} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
+                      <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
+                    </button>
+                  </td>
+                  <td className={`sticky left-10 z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => togglePicked(player.id)} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
                   </td>
-                  <td className={`sticky left-14 z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-24 z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-                      <Link href={`/portal/players/${player.id}`} className={`min-w-0 flex-1 truncate ${isPicked ? "line-through hover:text-slate-500" : "hover:text-brand-green"}`} title={player.name}>{player.name}</Link>
+                      <Link href={`/portal/players/${player.id}`} prefetch={false} className={`min-w-0 flex-1 truncate ${isPicked ? "line-through hover:text-slate-500" : "hover:text-brand-green"}`} title={player.name}>{player.name}</Link>
                       {injuryIndicator ? <span title={injuryTitle} aria-label={injuryTitle} className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`} /> : null}
                     </span>
                   </td>
-                  <td className={`sticky left-[248px] z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
+                  <td className={`sticky left-[288px] z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
                   <td className={`${TEAM_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-medium ${isPicked ? "text-slate-500" : "text-slate-600"}`}>{player.team}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
@@ -416,7 +447,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               );
             })}
             {filteredAndSortedPlayers.length === 0 ? (
-              <tr><td colSpan={18} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
+              <tr><td colSpan={19} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
             ) : null}
           </tbody>
         </table>

@@ -341,7 +341,7 @@ export default function WaiverWireClient({
                 <tr key={`${row.id}-${index}`} className={index % 2 === 0 ? "bg-brand-dark/65" : "bg-brand-dark/85"}>
                   <td className="border-b border-r border-brand-cream/10 px-4 py-3 font-semibold">
                     <div className="flex flex-wrap items-center gap-1">
-                      <Link href={`/portal/players/${row.id}`} className="hover:text-brand-green hover:underline">
+                      <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green hover:underline">
                         {row.name}
                       </Link>
                       <RosterPill playerId={row.id} leagueRoster={leagueRoster} />

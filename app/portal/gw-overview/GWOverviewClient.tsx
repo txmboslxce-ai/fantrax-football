@@ -1270,6 +1270,7 @@ export default function GWOverviewClient({
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
+                      prefetch={false}
                       className="block truncate text-sm leading-tight hover:text-brand-greenLight md:overflow-visible md:whitespace-normal"
                       onClick={(e) => e.stopPropagation()}
                     >

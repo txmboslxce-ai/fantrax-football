@@ -966,6 +966,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                               <td className={`sticky z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowBg}`} style={{ left: leftOpponent, minWidth: 240 }}>
                                 <Link
                                   href={`/portal/teams/${encodeURIComponent(row.opponentAbbrev.toLowerCase())}`}
+                                  prefetch={false}
                                   className="font-semibold hover:text-brand-greenLight"
                                 >
                                   {row.opponentName}
@@ -1017,7 +1018,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
                           <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/75" : "bg-brand-dark/90"}>
                             <td className="px-4 py-3 font-semibold">
                               {row.id ? (
-                                <Link href={`/portal/players/${row.id}`} className="hover:text-brand-greenLight">
+                                <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-greenLight">
                                   {row.name}
                                 </Link>
                               ) : (

@@ -184,37 +184,37 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
                   className={index % 2 === 0 ? "bg-brand-dark/75 text-brand-cream" : "bg-brand-dark text-brand-cream"}
                 >
                   <td className="px-4 py-3 font-semibold">
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-greenLight">
                       {player.name}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-greenLight">
                       {player.position}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
                       {renderStatBadge(player.seasonPts, statRanges.seasonPts.min, statRanges.seasonPts.max)}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
                       {renderStatBadge(player.avgPtsPerGw, statRanges.avgPtsPerGw.min, statRanges.avgPtsPerGw.max)}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
                       {renderStatBadge(player.avgPtsPerGame, statRanges.avgPtsPerGame.min, statRanges.avgPtsPerGame.max)}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Link href={rowHref} className="inline-flex hover:brightness-110">
+                    <Link href={rowHref} prefetch={false} className="inline-flex hover:brightness-110">
                       {renderStatBadge(player.ghostPtsPerGw, statRanges.ghostPtsPerGw.min, statRanges.ghostPtsPerGw.max)}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={rowHref} className="block hover:text-brand-greenLight">
+                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-greenLight">
                       {player.ownershipPct.toFixed(1)}%
                     </Link>
                   </td>

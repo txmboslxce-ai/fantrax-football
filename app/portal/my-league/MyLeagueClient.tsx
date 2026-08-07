@@ -375,6 +375,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                       <td className={`sticky left-0 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
                         <Link
                           href={`/portal/players/${player.playerId}`}
+                          prefetch={false}
                           className="font-semibold text-brand-cream hover:text-brand-green hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
