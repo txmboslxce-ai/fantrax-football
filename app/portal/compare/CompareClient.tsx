@@ -19,7 +19,6 @@ type ComparePlayerSnapshot = {
   nextOpponent: string;
   homePct: number;
   awayPct: number;
-  hasRecordedStats: boolean;
   comparison: {
     seasonPts: number;
     avgGw: number;
@@ -66,10 +65,6 @@ const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["compa
 ];
 
 const radarColors = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
-
-function radarPositionGroup(position: ComparePlayerSnapshot["position"]): "goalkeepers" | "outfield" {
-  return position === "GK" ? "goalkeepers" : "outfield";
-}
 
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
@@ -155,61 +150,56 @@ export default function CompareClient({ players }: CompareClientProps) {
     [players, slots]
   );
 
-  const radarBoundsByPositionGroup = useMemo(() => {
-    const playersByPositionGroup = new Map<"goalkeepers" | "outfield", ComparePlayerSnapshot[]>([
-      ["goalkeepers", []],
-      ["outfield", []],
-    ]);
-    const boundsByPositionGroup = new Map<
-      "goalkeepers" | "outfield",
-      Partial<Record<keyof ComparePlayerSnapshot["comparison"], { floor: number; ceiling: number }>>
-    >();
+  const radarRanksByPlayerId = useMemo(() => {
+    const ranksByPlayerId = new Map<string, Partial<Record<keyof ComparePlayerSnapshot["comparison"], number>>>();
+    const outfieldPlayers = players.filter((player) => player.position !== "GK");
 
-    for (const player of players) {
-      playersByPositionGroup.get(radarPositionGroup(player.position))?.push(player);
+    for (const player of outfieldPlayers) {
+      ranksByPlayerId.set(player.id, {});
     }
 
-    for (const [positionGroup, groupPlayers] of playersByPositionGroup) {
-      const recordedPlayers = groupPlayers.filter((player) => player.hasRecordedStats);
-      const floorRank = positionGroup === "goalkeepers" ? 15 : 200;
-      const bounds: Partial<Record<keyof ComparePlayerSnapshot["comparison"], { floor: number; ceiling: number }>> = {};
+    for (const { key } of radarStats) {
+      let rank = 0;
+      let previousValue: number | undefined;
 
-      for (const { key } of radarStats) {
-        const sortedValues = recordedPlayers.map((player) => player.comparison[key]).sort((a, b) => b - a);
-        bounds[key] = {
-          ceiling: sortedValues[0] ?? 0,
-          floor: sortedValues[Math.min(floorRank, sortedValues.length) - 1] ?? 0,
-        };
-      }
-
-      boundsByPositionGroup.set(positionGroup, bounds);
+      [...outfieldPlayers]
+        .sort((a, b) => b.comparison[key] - a.comparison[key])
+        .forEach((player, index) => {
+          const value = player.comparison[key];
+          if (index === 0 || value !== previousValue) {
+            rank = index + 1;
+            previousValue = value;
+          }
+          ranksByPlayerId.get(player.id)![key] = rank;
+        });
     }
 
-    return boundsByPositionGroup;
+    return ranksByPlayerId;
   }, [players]);
+
+  const radarPlayers = useMemo(
+    () => selectedPlayers.filter((player) => player.position !== "GK"),
+    [selectedPlayers]
+  );
 
   const radarData = useMemo(
     () => {
-      if (selectedPlayers.length < 2) {
+      if (radarPlayers.length < 2) {
         return [];
       }
 
       return radarStats.map(({ label, key }) => {
         const dataPoint: Record<string, string | number> = { stat: label };
 
-        selectedPlayers.forEach((player) => {
-          const bounds = radarBoundsByPositionGroup.get(radarPositionGroup(player.position))?.[key];
-          const playerValue = player.comparison[key];
-          const range = bounds ? bounds.ceiling - bounds.floor : 0;
-          dataPoint[player.name] = bounds && range !== 0
-            ? Math.min(100, Math.max(0, ((playerValue - bounds.floor) / range) * 100))
-            : 100;
+        radarPlayers.forEach((player) => {
+          const rank = radarRanksByPlayerId.get(player.id)?.[key] ?? 201;
+          dataPoint[player.name] = Math.min(100, Math.max(0, 100 - ((rank - 1) / 199) * 100));
         });
 
         return dataPoint;
       });
     },
-    [radarBoundsByPositionGroup, selectedPlayers]
+    [radarPlayers, radarRanksByPlayerId]
   );
 
   function updateSlot(index: number, nextSlot: CompareSlot) {
@@ -293,29 +283,35 @@ export default function CompareClient({ players }: CompareClientProps) {
           <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5">
             <div>
               <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
-              <p className="mt-1 text-sm text-slate-500">Stats scaled from typical waiver-wire level (top 200 D/M/F, top 15 GK) to this season&apos;s leader.</p>
+              {radarPlayers.length >= 2 ? (
+                <p className="mt-1 text-sm text-slate-500">Outfield players ranked 1st to 200th, scaled from center (200th or lower) to the outer edge (1st).</p>
+              ) : null}
             </div>
-            <div className="h-96 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData} outerRadius="68%">
-                  <PolarGrid stroke="#CBD5E1" />
-                  <PolarAngleAxis dataKey="stat" tick={{ fill: "#475569", fontSize: 12 }} />
-                  <PolarRadiusAxis domain={[0, 100]} tick={false} />
-                  {selectedPlayers.map((player, index) => (
-                    <Radar
-                      key={player.id}
-                      name={player.name}
-                      dataKey={player.name}
-                      stroke={radarColors[index]}
-                      fill={radarColors[index]}
-                      fillOpacity={0.1}
-                      strokeWidth={2}
-                    />
-                  ))}
-                  <Legend />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+            {radarPlayers.length >= 2 ? (
+              <div className="h-96 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={radarData} outerRadius="68%">
+                    <PolarGrid stroke="#CBD5E1" />
+                    <PolarAngleAxis dataKey="stat" tick={{ fill: "#475569", fontSize: 12 }} />
+                    <PolarRadiusAxis domain={[0, 100]} tick={false} />
+                    {radarPlayers.map((player, index) => (
+                      <Radar
+                        key={player.id}
+                        name={player.name}
+                        dataKey={player.name}
+                        stroke={radarColors[index]}
+                        fill={radarColors[index]}
+                        fillOpacity={0.1}
+                        strokeWidth={2}
+                      />
+                    ))}
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="py-12 text-sm text-slate-500">Radar comparison isn&apos;t available for goalkeepers yet — select at least 2 outfield players to see this chart.</p>
+            )}
           </section>
 
           <div className="min-w-0 max-w-full overflow-x-auto">

@@ -28,7 +28,6 @@ type ComparePlayerSnapshot = {
   nextOpponent: string;
   homePct: number;
   awayPct: number;
-  hasRecordedStats: boolean;
   comparison: {
     seasonPts: number;
     avgGw: number;
@@ -154,7 +153,6 @@ export default async function ComparePage() {
       nextOpponent: next ? `${next.opponentName} ${next.isHome ? "(H)" : "(A)"}` : "TBD",
       homePct: summary.home_pct,
       awayPct: summary.away_pct,
-      hasRecordedStats: playerRows.length > 0,
       comparison: {
         seasonPts: summary.season_total_pts,
         avgGw: summary.avg_pts_per_gameweek,
