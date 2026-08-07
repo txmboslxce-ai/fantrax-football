@@ -1,6 +1,7 @@
 import FixturesClient from "@/app/portal/fixtures/FixturesClient";
+import { getCurrentGameweek } from "@/lib/fantrax/sync-scores";
+import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentSeason } from "@/lib/season/current";
 
 type PageProps = {
   searchParams?:
@@ -24,10 +25,6 @@ type TeamRow = {
   abbrev: string;
   full_name: string | null;
   name: string | null;
-};
-
-type LatestGameweekRow = {
-  gameweek: number;
 };
 
 async function loadFixtures(
@@ -78,20 +75,15 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
 
   const supabase = await createServerSupabaseClient();
-  const SEASON = await getCurrentSeason(supabase);
+  const SEASON = FIXTURES_SEASON;
 
-  const [{ data: fixturesData }, { data: teamsData, error: teamsError }, { data: currentGwData, error: currentGwError }] = await Promise.all([
+  const [{ data: fixturesData }, { data: teamsData, error: teamsError }] = await Promise.all([
     loadFixtures(supabase, SEASON),
     supabase.from("teams").select("abbrev, full_name, name"),
-    supabase.from("player_gameweeks").select("gameweek").eq("season", SEASON).order("gameweek", { ascending: false }).limit(1),
   ]);
 
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
-  }
-
-  if (currentGwError) {
-    throw new Error(`Unable to load current gameweek: ${currentGwError.message}`);
   }
 
   const teamNameByAbbrev = new Map<string, string>();
@@ -110,7 +102,12 @@ export default async function FixturesPage({ searchParams }: PageProps) {
   }));
 
   const gameweeks = Array.from(new Set(fixtures.map((fixture) => fixture.gameweek))).sort((a, b) => a - b);
-  const currentGameweek = Number(((currentGwData ?? []) as LatestGameweekRow[])[0]?.gameweek ?? gameweeks[0] ?? 1);
+  let currentGameweek = 1;
+  try {
+    currentGameweek = await getCurrentGameweek();
+  } catch {
+    // Keep the fixture page useful if the live FPL schedule is temporarily unavailable.
+  }
   const requestedGameweek = parseRequestedGameweek(resolvedSearchParams?.gameweek);
   const pastOrCurrentGameweeks = gameweeks.filter((gameweek) => gameweek <= currentGameweek);
   const nearestAvailableGameweek =

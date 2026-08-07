@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import FixtureDetailClient from "@/app/portal/fixtures/FixtureDetailClient";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
+import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentSeason } from "@/lib/season/current";
 
 type PageProps = {
   params:
@@ -161,7 +161,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const SEASON = await getCurrentSeason(supabase);
+  const SEASON = FIXTURES_SEASON;
 
   const [fixture, { data: teamsData, error: teamsError }, leagueRoster] = await Promise.all([
     loadFixture(supabase, resolvedParams.id, SEASON),
