@@ -39,3 +39,26 @@ export async function getFantraxLeagueIdForSeason(supabase: SupabaseClient, seas
   );
   return fallbackLeagueId;
 }
+
+export async function getFantraxSeasonProjectionCodeForSeason(supabase: SupabaseClient, season: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("seasons")
+    .select("fantrax_season_projection_code")
+    .eq("id", season)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Unable to resolve Fantrax season projection code for ${season}: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error(`Cannot resolve Fantrax season projection code: season ${season} does not exist.`);
+  }
+
+  const projectionCode = data.fantrax_season_projection_code?.trim();
+  if (!projectionCode) {
+    throw new Error(`Fantrax season projection code is not configured for ${season}.`);
+  }
+
+  return projectionCode;
+}

@@ -2,7 +2,7 @@ import Papa from "papaparse";
 import { IGNORE_COLUMNS, KEEPER_COLUMN_MAP, PLAYER_COLUMN_MAP } from "@/lib/csv/columnMap";
 import { calcGhostPts, coerceNumber } from "@/lib/csv/transform";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
-import { getFantraxLeagueIdForSeason } from "@/lib/fantrax/config";
+import { getFantraxLeagueIdForSeason, getFantraxSeasonProjectionCodeForSeason } from "@/lib/fantrax/config";
 import { getCurrentSeason } from "@/lib/season/current";
 
 const FANTRAX_DOWNLOAD_URL = "https://www.fantrax.com/fxpa/downloadPlayerStats";
@@ -315,12 +315,17 @@ export function resolveFantraxTeam(team: string, validAbbrevs: Set<string>): str
   return resolvedTeam && validAbbrevs.has(resolvedTeam) ? resolvedTeam : null;
 }
 
-function buildDownloadUrl(gameweek: number, positionOrGroup: FantraxPositionGroup, leagueId: string): string {
+function buildDownloadUrl(
+  gameweek: number,
+  positionOrGroup: FantraxPositionGroup,
+  leagueId: string,
+  seasonProjectionCode: string
+): string {
   const url = new URL(FANTRAX_DOWNLOAD_URL);
   url.searchParams.set("leagueId", leagueId);
   url.searchParams.set("view", "STATS");
   url.searchParams.set("positionOrGroup", positionOrGroup);
-  url.searchParams.set("seasonOrProjection", "SEASON_925_BY_PERIOD");
+  url.searchParams.set("seasonOrProjection", seasonProjectionCode);
   url.searchParams.set("timeframeTypeCode", "BY_PERIOD");
   url.searchParams.set("transactionPeriod", String(gameweek));
   url.searchParams.set("miscDisplayType", "1");
@@ -336,9 +341,14 @@ function buildDownloadUrl(gameweek: number, positionOrGroup: FantraxPositionGrou
   return url.toString();
 }
 
-export async function fetchFantraxCsv(gameweek: number, positionOrGroup: FantraxPositionGroup, leagueId: string) {
+export async function fetchFantraxCsv(
+  gameweek: number,
+  positionOrGroup: FantraxPositionGroup,
+  leagueId: string,
+  seasonProjectionCode: string
+) {
   const sessionCookie = getRequiredEnv("FANTRAX_SESSION_COOKIE");
-  const response = await fetch(buildDownloadUrl(gameweek, positionOrGroup, leagueId), {
+  const response = await fetch(buildDownloadUrl(gameweek, positionOrGroup, leagueId, seasonProjectionCode), {
     method: "GET",
     cache: "no-store",
     headers: {
@@ -460,7 +470,10 @@ export async function syncFantraxScores(
   }
 
   const season = seasonOverride ?? (await getCurrentSeason(supabase));
-  const leagueId = await getFantraxLeagueIdForSeason(supabase, season);
+  const [leagueId, seasonProjectionCode] = await Promise.all([
+    getFantraxLeagueIdForSeason(supabase, season),
+    getFantraxSeasonProjectionCodeForSeason(supabase, season),
+  ]);
 
   if (!Number.isInteger(gameweek) || gameweek < 1 || gameweek > 38) {
     throw new Error("Gameweek must be an integer between 1 and 38.");
@@ -470,7 +483,7 @@ export async function syncFantraxScores(
     throw new Error("Invalid Fantrax position group.");
   }
 
-  const csvText = await fetchFantraxCsv(gameweek, positionOrGroup, leagueId);
+  const csvText = await fetchFantraxCsv(gameweek, positionOrGroup, leagueId, seasonProjectionCode);
   const rawRows = parseFantraxCsv(csvText);
   const uploadType = getUploadType(positionOrGroup);
   const mappedRows = rawRows

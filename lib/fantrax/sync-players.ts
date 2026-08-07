@@ -1,5 +1,5 @@
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
-import { getFantraxLeagueIdForSeason } from "@/lib/fantrax/config";
+import { getFantraxLeagueIdForSeason, getFantraxSeasonProjectionCodeForSeason } from "@/lib/fantrax/config";
 import {
   FANTRAX_POSITIONS,
   fetchFantraxCsv,
@@ -74,10 +74,13 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for Fantrax sync.");
   }
 
-  const leagueId = await getFantraxLeagueIdForSeason(supabase, season);
+  const [leagueId, seasonProjectionCode] = await Promise.all([
+    getFantraxLeagueIdForSeason(supabase, season),
+    getFantraxSeasonProjectionCodeForSeason(supabase, season),
+  ]);
   const downloadedRows = await Promise.all(
     FANTRAX_POSITIONS.map(async (positionGroup) => {
-      const csv = await fetchFantraxCsv(POOL_DOWNLOAD_GAMEWEEK, positionGroup, leagueId);
+      const csv = await fetchFantraxCsv(POOL_DOWNLOAD_GAMEWEEK, positionGroup, leagueId, seasonProjectionCode);
       const type = getUploadType(positionGroup);
       return parseFantraxCsv(csv)
         .map((row) => mapFantraxCsvRow(row, type, POOL_DOWNLOAD_GAMEWEEK))
