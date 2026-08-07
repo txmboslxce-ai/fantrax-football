@@ -3,6 +3,7 @@
 import MiniSparkline from "@/components/portal/charts/MiniSparkline";
 import { useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import { Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 
 type ComparePlayerSnapshot = {
   id: string;
@@ -55,6 +56,17 @@ const rows: Array<{ label: string; key: keyof ComparePlayerSnapshot["comparison"
   { label: "Home Avg", key: "homeAvg" },
   { label: "Away Avg", key: "awayAvg" },
 ];
+
+const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["comparison"] }> = [
+  { label: "Season Pts", key: "seasonPts" },
+  { label: "Avg/Start", key: "avgStart" },
+  { label: "Ghost/Start", key: "ghostStart" },
+  { label: "Goals", key: "goals" },
+  { label: "Assists", key: "assists" },
+  { label: "Clean Sheets", key: "cleanSheets" },
+];
+
+const radarColors = ["#005B3A", "#2563EB", "#B45309", "#7C3AED"];
 
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
@@ -140,6 +152,29 @@ export default function CompareClient({ players }: CompareClientProps) {
     [players, slots]
   );
 
+  const radarData = useMemo(
+    () => {
+      if (selectedPlayers.length < 2) {
+        return [];
+      }
+
+      return radarStats.map(({ label, key }) => {
+        const values = selectedPlayers.map((player) => player.comparison[key]);
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const range = maximum - minimum;
+        const dataPoint: Record<string, string | number> = { stat: label };
+
+        selectedPlayers.forEach((player, index) => {
+          dataPoint[player.name] = range === 0 ? 100 : ((values[index] - minimum) / range) * 100;
+        });
+
+        return dataPoint;
+      });
+    },
+    [selectedPlayers]
+  );
+
   function updateSlot(index: number, nextSlot: CompareSlot) {
     setSlots((current) => current.map((slot, slotIndex) => (slotIndex === index ? nextSlot : slot)));
   }
@@ -220,14 +255,43 @@ export default function CompareClient({ players }: CompareClientProps) {
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full text-left text-sm text-brand-dark">
+          <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <div>
+              <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
+              <p className="mt-1 text-sm text-slate-500">Stats scaled 0–100 relative to the players shown.</p>
+            </div>
+            <div className="h-96 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData} outerRadius="68%">
+                  <PolarGrid stroke="#CBD5E1" />
+                  <PolarAngleAxis dataKey="stat" tick={{ fill: "#475569", fontSize: 12 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 10 }} />
+                  {selectedPlayers.map((player, index) => (
+                    <Radar
+                      key={player.id}
+                      name={player.name}
+                      dataKey={player.name}
+                      stroke={radarColors[index]}
+                      fill={radarColors[index]}
+                      fillOpacity={0.12}
+                      strokeWidth={2}
+                    />
+                  ))}
+                  <Legend />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <div className="max-w-full overflow-x-auto">
+            <div className="w-max rounded-xl border border-slate-200 bg-white">
+              <table className="w-max text-left text-sm text-brand-dark">
               <thead className="bg-brand-green text-brand-cream">
                 <tr>
-                  <th className="px-4 py-3">Stat</th>
+                  <th className="w-32 min-w-32 px-4 py-3">Stat</th>
                   {selectedPlayers.map((player) => (
-                    <th key={player.id} className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1">
+                    <th key={player.id} className="w-40 min-w-40 whitespace-nowrap px-4 py-3">
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap">
                         <span>{player.name}</span>
                         <AvailabilityIcon
                           chanceOfPlaying={player.chanceOfPlaying}
@@ -249,9 +313,9 @@ export default function CompareClient({ players }: CompareClientProps) {
                       key={row.key}
                       className={index % 2 === 0 ? "bg-white text-brand-dark" : "bg-slate-50 text-brand-dark"}
                     >
-                      <td className="px-4 py-3 font-semibold">{row.label}</td>
+                      <td className="w-32 min-w-32 px-4 py-3 font-semibold">{row.label}</td>
                       {values.map((value, valueIndex) => (
-                      <td key={`${row.key}-${selectedPlayers[valueIndex].id}`} className={`px-4 py-3 ${value === bestValue ? "font-bold text-brand-green" : ""}`}>
+                      <td key={`${row.key}-${selectedPlayers[valueIndex].id}`} className={`w-40 min-w-40 px-4 py-3 ${value === bestValue ? "font-bold text-brand-green" : ""}`}>
                           {value.toFixed(2)}
                         </td>
                       ))}
@@ -260,6 +324,7 @@ export default function CompareClient({ players }: CompareClientProps) {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}
