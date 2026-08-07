@@ -260,15 +260,15 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   );
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const hasActiveFilters = Boolean(
-    search.trim() ||
-    positionFilter !== "All" ||
-    teamFilter !== "All" ||
-    selectedRoles.size > 0 ||
-    hideDrafted ||
-    watchlistOnly
-  );
-  const dragEnabled = isMyRankMode && !hasActiveFilters && !isSavingCustomRank;
+  const dragEnabled = isMyRankMode && !isSavingCustomRank;
+
+  const globalRankedPlayers = useMemo(() => [...players].sort((a, b) => {
+    const aValue = myRankValue(a, customRanks);
+    const bValue = myRankValue(b, customRanks);
+    if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+    if (bValue == null) return -1;
+    return aValue - bValue || a.name.localeCompare(b.name);
+  }), [customRanks, players]);
 
   const filteredAndSortedPlayers = useMemo(() => {
     const searchTerm = deferredSearch.trim().toLowerCase();
@@ -316,20 +316,39 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     const { active, over } = event;
     if (!dragEnabled || !over || active.id === over.id) return;
 
-    const currentOrder = filteredAndSortedPlayers;
-    const oldIndex = currentOrder.findIndex((player) => player.id === active.id);
-    const newIndex = currentOrder.findIndex((player) => player.id === over.id);
+    const visibleOrder = filteredAndSortedPlayers;
+    const oldIndex = visibleOrder.findIndex((player) => player.id === active.id);
+    const newIndex = visibleOrder.findIndex((player) => player.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const reordered = arrayMove(currentOrder, oldIndex, newIndex);
+    const reordered = arrayMove(visibleOrder, oldIndex, newIndex);
     const previousRanks = new Map(customRanksRef.current);
     const needsMaterialization = players.some((player) => !previousRanks.has(player.id));
     const materializedRanks = needsMaterialization
-      ? new Map(currentOrder.map((player, index) => [player.id, (index + 1) * 10]))
+      ? new Map(globalRankedPlayers.map((player, index) => [player.id, (index + 1) * 10]))
       : new Map(previousRanks);
     const movedPlayer = reordered[newIndex];
-    const aboveRank = newIndex > 0 ? materializedRanks.get(reordered[newIndex - 1].id) : undefined;
-    const belowRank = newIndex < reordered.length - 1 ? materializedRanks.get(reordered[newIndex + 1].id) : undefined;
+    const globalOrderWithoutMoved = globalRankedPlayers.filter((player) => player.id !== movedPlayer.id);
+    const nextVisiblePlayer = reordered[newIndex + 1];
+    const previousVisiblePlayer = reordered[newIndex - 1];
+    const nextVisibleGlobalIndex = nextVisiblePlayer
+      ? globalOrderWithoutMoved.findIndex((player) => player.id === nextVisiblePlayer.id)
+      : -1;
+    const previousVisibleGlobalIndex = previousVisiblePlayer
+      ? globalOrderWithoutMoved.findIndex((player) => player.id === previousVisiblePlayer.id)
+      : -1;
+    const globalAbovePlayer = nextVisibleGlobalIndex >= 0
+      ? globalOrderWithoutMoved[nextVisibleGlobalIndex - 1]
+      : previousVisibleGlobalIndex >= 0
+        ? globalOrderWithoutMoved[previousVisibleGlobalIndex]
+        : undefined;
+    const globalBelowPlayer = nextVisibleGlobalIndex >= 0
+      ? globalOrderWithoutMoved[nextVisibleGlobalIndex]
+      : previousVisibleGlobalIndex >= 0
+        ? globalOrderWithoutMoved[previousVisibleGlobalIndex + 1]
+        : undefined;
+    const aboveRank = globalAbovePlayer ? materializedRanks.get(globalAbovePlayer.id) : undefined;
+    const belowRank = globalBelowPlayer ? materializedRanks.get(globalBelowPlayer.id) : undefined;
     const nextCustomRank = aboveRank == null
       ? (belowRank == null ? 10 : belowRank - 10)
       : (belowRank == null ? aboveRank + 10 : (aboveRank + belowRank) / 2);
@@ -350,7 +369,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
       if (needsMaterialization) {
         const { error: materializationError } = await supabase.from("draft_picks").upsert(
-          currentOrder.map((player) => ({
+          globalRankedPlayers.map((player) => ({
             user_id: user.id,
             player_id: player.id,
             custom_rank: materializedRanks.get(player.id),
@@ -708,8 +727,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                           {...attributes}
                           {...listeners}
                           disabled={!dragEnabled}
-                          aria-label={dragEnabled ? `Drag ${player.name} to reorder` : "Clear filters to reorder players"}
-                          title={dragEnabled ? "Drag to reorder" : "Clear filters to reorder"}
+                          aria-label={dragEnabled ? `Drag ${player.name} to reorder` : "Saving custom ranking"}
+                          title={dragEnabled ? "Drag to reorder" : "Saving custom ranking"}
                           className={`touch-none text-sm leading-none ${dragEnabled ? "cursor-grab text-slate-500 active:cursor-grabbing" : "cursor-not-allowed text-slate-300"}`}
                         >
                           <span aria-hidden="true">⠿</span>
