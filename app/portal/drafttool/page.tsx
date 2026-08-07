@@ -28,6 +28,8 @@ type DraftPlayer = {
   freeKickShots: number;
   adp: number | null;
   rank: number;
+  picked: boolean;
+  watchlisted: boolean;
 };
 
 const PLAYER_GAMEWEEK_QUERY_COLUMNS =
@@ -154,6 +156,8 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       freeKickShots: decoratedRows.reduce((sum, row) => sum + row.free_kick_shots, 0),
       adp: adpByFantraxId.get(player.fantrax_id) ?? null,
       rank: 0,
+      picked: false,
+      watchlisted: false,
     };
   });
 
@@ -172,7 +176,28 @@ export default async function DraftToolPage() {
     redirect("/login?next=/portal/drafttool");
   }
 
-  const players = await loadDraftPlayers();
+  const [draftPlayers, { data: draftPickRows, error: draftPicksError }] = await Promise.all([
+    loadDraftPlayers(),
+    supabase
+      .from("draft_picks")
+      .select("player_id, picked, watchlisted")
+      .eq("user_id", user.id),
+  ]);
+
+  if (draftPicksError) {
+    throw new Error(`Unable to load draft board: ${draftPicksError.message}`);
+  }
+
+  const draftPicksByPlayerId = new Map(
+    (draftPickRows ?? []).map((draftPick) => [
+      draftPick.player_id as string,
+      { picked: draftPick.picked === true, watchlisted: draftPick.watchlisted === true },
+    ])
+  );
+  const players = draftPlayers.map((player) => ({
+    ...player,
+    ...draftPicksByPlayerId.get(player.id),
+  }));
 
   return (
     <div className="space-y-4">

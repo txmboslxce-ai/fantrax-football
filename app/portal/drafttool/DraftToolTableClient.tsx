@@ -2,6 +2,7 @@
 
 import type { PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
+import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { type ReactNode, useDeferredValue, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -24,6 +25,8 @@ type DraftToolPlayer = {
   freeKickShots: number;
   adp: number | null;
   rank: number;
+  picked: boolean;
+  watchlisted: boolean;
 };
 
 type RoleFilter = "penalties" | "corners" | "directFreekicks";
@@ -199,8 +202,13 @@ function SortableHeader({
 }
 
 export default function DraftToolTableClient({ players }: { players: DraftToolPlayer[] }) {
-  const [pickedPlayerIds, setPickedPlayerIds] = useState<Set<string>>(new Set());
-  const [watchlistedPlayerIds, setWatchlistedPlayerIds] = useState<Set<string>>(new Set());
+  const [pickedPlayerIds, setPickedPlayerIds] = useState<Set<string>>(() => new Set(players.filter((player) => player.picked).map((player) => player.id)));
+  const [watchlistedPlayerIds, setWatchlistedPlayerIds] = useState<Set<string>>(() => new Set(players.filter((player) => player.watchlisted).map((player) => player.id)));
+  const boardStateRef = useRef({
+    picked: new Set(players.filter((player) => player.picked).map((player) => player.id)),
+    watchlisted: new Set(players.filter((player) => player.watchlisted).map((player) => player.id)),
+  });
+  const saveVersionRef = useRef(new Map<string, number>());
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("All");
@@ -210,6 +218,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const teams = useMemo(
     () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
@@ -239,22 +250,86 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     });
   }, [deferredSearch, hideDrafted, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
 
-  function togglePicked(playerId: string) {
-    setPickedPlayerIds((current) => {
-      const next = new Set(current);
-      if (next.has(playerId)) next.delete(playerId);
-      else next.add(playerId);
-      return next;
-    });
+  function applyBoardState(picked: Set<string>, watchlisted: Set<string>) {
+    boardStateRef.current = { picked, watchlisted };
+    setPickedPlayerIds(picked);
+    setWatchlistedPlayerIds(watchlisted);
   }
 
-  function toggleWatchlisted(playerId: string) {
-    setWatchlistedPlayerIds((current) => {
-      const next = new Set(current);
-      if (next.has(playerId)) next.delete(playerId);
-      else next.add(playerId);
-      return next;
-    });
+  async function persistBoardState(
+    playerId: string,
+    previous: { picked: Set<string>; watchlisted: Set<string> },
+    next: { picked: Set<string>; watchlisted: Set<string> }
+  ) {
+    const version = (saveVersionRef.current.get(playerId) ?? 0) + 1;
+    saveVersionRef.current.set(playerId, version);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      const { error } = await supabase.from("draft_picks").upsert(
+        {
+          user_id: user.id,
+          player_id: playerId,
+          picked: next.picked.has(playerId),
+          watchlisted: next.watchlisted.has(playerId),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,player_id" }
+      );
+      if (error) throw error;
+    } catch (error) {
+      if (saveVersionRef.current.get(playerId) === version) {
+        applyBoardState(previous.picked, previous.watchlisted);
+        setSaveError(error instanceof Error ? error.message : "Unable to save your draft board.");
+      }
+    }
+  }
+
+  function toggleBoardFlag(playerId: string, flag: "picked" | "watchlisted") {
+    setSaveError(null);
+    const previous = boardStateRef.current;
+    const next = {
+      picked: new Set(previous.picked),
+      watchlisted: new Set(previous.watchlisted),
+    };
+    const target = next[flag];
+    if (target.has(playerId)) target.delete(playerId);
+    else target.add(playerId);
+
+    applyBoardState(next.picked, next.watchlisted);
+    void persistBoardState(playerId, previous, next);
+  }
+
+  async function resetDraftBoard() {
+    setIsResetting(true);
+    setSaveError(null);
+    const previous = boardStateRef.current;
+    applyBoardState(new Set(), new Set());
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      const { error } = await supabase.from("draft_picks").delete().eq("user_id", user.id);
+      if (error) throw error;
+
+      setIsResetDialogOpen(false);
+    } catch (error) {
+      applyBoardState(previous.picked, previous.watchlisted);
+      setSaveError(error instanceof Error ? error.message : "Unable to clear your draft board.");
+    } finally {
+      setIsResetting(false);
+    }
   }
 
   function toggleRole(role: RoleFilter) {
@@ -366,6 +441,26 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </div>
       </div>
 
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/60 p-3">
+        <div>
+          <p className="text-xs font-semibold text-red-950">Start over</p>
+          <p className="mt-0.5 text-[11px] text-red-800">Clear all of your Picked and Watchlist marks.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsResetDialogOpen(true)}
+          className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
+        >
+          New Draft
+        </button>
+      </div>
+
+      {saveError ? (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+          {saveError}
+        </p>
+      ) : null}
+
       <div className="max-w-full overflow-x-auto">
         <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         <table className="w-[1520px] table-fixed border-separate border-spacing-0 text-left text-xs">
@@ -416,12 +511,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               return (
                 <tr key={player.id} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} transition-colors hover:bg-brand-green/10`}>
                   <td className={`sticky left-0 z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                    <button type="button" onClick={() => toggleWatchlisted(player.id)} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
+                    <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
                       <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
                     </button>
                   </td>
                   <td className={`sticky left-10 z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                    <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => togglePicked(player.id)} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
+                    <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => toggleBoardFlag(player.id, "picked")} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
                   </td>
                   <td className={`sticky left-24 z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
@@ -455,6 +550,42 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </table>
         </div>
       </div>
+
+      {isResetDialogOpen ? createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-draft-title"
+            aria-describedby="new-draft-description"
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <h2 id="new-draft-title" className="text-lg font-black text-brand-dark">Start a new draft?</h2>
+            <p id="new-draft-description" className="mt-2 text-sm leading-relaxed text-slate-600">
+              This will clear ALL your Picked and Watchlist marks for every player. This cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsResetDialogOpen(false)}
+                disabled={isResetting}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void resetDraftBoard()}
+                disabled={isResetting}
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isResetting ? "Wiping…" : "Yes, wipe my board"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      ) : null}
     </div>
   );
 }
