@@ -343,25 +343,27 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
-        <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
-          <input
-            type="checkbox"
-            checked={hideDrafted}
-            onChange={(event) => setHideDrafted(event.target.checked)}
-            className="h-4 w-4 accent-brand-green"
-          />
-          <span>Hide Drafted</span>
-        </label>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
+            <input
+              type="checkbox"
+              checked={watchlistOnly}
+              onChange={(event) => setWatchlistOnly(event.target.checked)}
+              className="h-4 w-4 accent-brand-green"
+            />
+            <span>Watchlist Only</span>
+          </label>
 
-        <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
-          <input
-            type="checkbox"
-            checked={watchlistOnly}
-            onChange={(event) => setWatchlistOnly(event.target.checked)}
-            className="h-4 w-4 accent-brand-green"
-          />
-          <span>Watchlist Only</span>
-        </label>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
+            <input
+              type="checkbox"
+              checked={hideDrafted}
+              onChange={(event) => setHideDrafted(event.target.checked)}
+              className="h-4 w-4 accent-brand-green"
+            />
+            <span>Hide Drafted</span>
+          </label>
+        </div>
       </div>
 
       <div className="max-w-full overflow-x-auto">
