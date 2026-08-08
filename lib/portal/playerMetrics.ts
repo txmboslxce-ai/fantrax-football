@@ -129,6 +129,12 @@ export type PlayerSeasonSummary = {
   clearances: number;
   aerials: number;
   key_passes: number;
+  shots_on_target: number;
+  dribbles_succeeded: number;
+  penalty_saves: number;
+  high_claims: number;
+  smothers: number;
+  goals_against: number;
   current_gameweek: number;
 };
 
@@ -388,6 +394,12 @@ export function summarizePlayerSeason(rows: DecoratedGameweek[]): PlayerSeasonSu
     clearances: playedRows.reduce((sum, row) => sum + row.clearances, 0),
     aerials: playedRows.reduce((sum, row) => sum + row.aerials_won, 0),
     key_passes: playedRows.reduce((sum, row) => sum + row.key_passes, 0),
+    shots_on_target: playedRows.reduce((sum, row) => sum + row.shots_on_target, 0),
+    dribbles_succeeded: playedRows.reduce((sum, row) => sum + row.dribbles_succeeded, 0),
+    penalty_saves: playedRows.reduce((sum, row) => sum + row.penalty_saves, 0),
+    high_claims: playedRows.reduce((sum, row) => sum + row.high_claims, 0),
+    smothers: playedRows.reduce((sum, row) => sum + row.smothers, 0),
+    goals_against: playedRows.reduce((sum, row) => sum + row.goals_against, 0),
     current_gameweek: rows.reduce((max, row) => Math.max(max, row.gameweek), 0),
   };
 }

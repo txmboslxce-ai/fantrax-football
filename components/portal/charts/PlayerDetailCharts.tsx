@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -38,9 +39,10 @@ type PlayerDetailChartsProps = {
   last5: PlayedGameweekPoint[];
   homeAway: HomeAwayPoint[];
   breakdown: BreakdownPoint[];
+  radarCharts?: ReactNode;
 };
 
-export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakdown }: PlayerDetailChartsProps) {
+export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakdown, radarCharts }: PlayerDetailChartsProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <section className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-4">
@@ -74,6 +76,8 @@ export default function PlayerDetailCharts({ pointsByGw, last5, homeAway, breakd
           </ResponsiveContainer>
         </div>
       </section>
+
+      {radarCharts ? <div className="lg:col-span-2">{radarCharts}</div> : null}
 
       <section className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-4">
         <h3 className="mb-3 text-lg font-bold text-brand-cream">Home vs Away Avg</h3>

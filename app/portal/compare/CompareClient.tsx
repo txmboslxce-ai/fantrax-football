@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import { computeRadarValue } from "@/lib/portal/radarScaling";
 import { Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 
 type ComparePlayerSnapshot = {
@@ -65,20 +66,6 @@ const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["compa
 ];
 
 const radarColors = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
-
-function radarValueForRank(rank: number): number {
-  const scaleWithinBand = (startRank: number, endRank: number, minimum: number, maximum: number) =>
-    maximum - ((rank - startRank) / (endRank - startRank)) * (maximum - minimum);
-
-  if (rank <= 10) return scaleWithinBand(1, 10, 92, 100);
-  if (rank <= 30) return scaleWithinBand(11, 30, 75, 92);
-  if (rank <= 60) return scaleWithinBand(31, 60, 58, 75);
-  if (rank <= 100) return scaleWithinBand(61, 100, 42, 58);
-  if (rank <= 150) return scaleWithinBand(101, 150, 25, 42);
-  if (rank <= 200) return scaleWithinBand(151, 200, 12, 25);
-  if (rank <= 300) return scaleWithinBand(201, 300, 2, 12);
-  return 0;
-}
 
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
@@ -207,13 +194,13 @@ export default function CompareClient({ players }: CompareClientProps) {
 
         radarPlayers.forEach((player) => {
           const rank = radarRanksByPlayerId.get(player.id)?.[key] ?? 301;
-          dataPoint[player.name] = radarValueForRank(rank);
+          dataPoint[player.name] = computeRadarValue(rank, players.length, 300);
         });
 
         return dataPoint;
       });
     },
-    [radarPlayers, radarRanksByPlayerId]
+    [players, radarPlayers, radarRanksByPlayerId]
   );
 
   function updateSlot(index: number, nextSlot: CompareSlot) {
