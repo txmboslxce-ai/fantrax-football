@@ -513,7 +513,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
           ]}
           breakdown={[
             { name: "Ghost Pts", value: summary.ghost_pts_total, color: "#005B3A" },
-            { name: "G/A/CS", value: summary.attack_pts, color: "#E8E4D9" },
+            { name: "G/A/CS", value: summary.attack_pts, color: "#F59E0B" },
           ]}
         />
 
@@ -521,10 +521,10 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
           <h2 className="text-2xl font-black text-brand-dark">Next Fixtures</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {upcoming.map((fixture) => (
-              <article key={fixture.id} className="rounded-xl border border-brand-cream/20 bg-brand-greenDark p-4 text-brand-cream">
-                <p className="text-xs uppercase tracking-wider text-brand-creamDark">GW {fixture.gameweek}</p>
+              <article key={fixture.id} className="rounded-xl border border-slate-200 bg-white p-4 text-brand-dark">
+                <p className="text-xs uppercase tracking-wider text-slate-500">GW {fixture.gameweek}</p>
                 <p className="mt-2 font-bold">{fixture.opponentName}</p>
-                <p className="mt-1 text-sm">{fixture.isHome ? "H" : "A"}</p>
+                <p className="mt-1 text-sm text-slate-600">{fixture.isHome ? "H" : "A"}</p>
               </article>
             ))}
           </div>

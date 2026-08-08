@@ -100,12 +100,12 @@ const DEFAULT_SELECTED_COLUMNS: GameweekColumnKey[] = [
 const MAX_SELECTED_COLUMNS = 6;
 
 function fdrColor(rank: number | undefined): string {
-  if (rank == null) return "bg-brand-cream/10 text-brand-creamDark";
-  if (rank <= 4) return "bg-red-800/80 text-red-100";
-  if (rank <= 8) return "bg-orange-700/70 text-orange-100";
-  if (rank <= 12) return "bg-yellow-600/60 text-yellow-100";
-  if (rank <= 16) return "bg-lime-700/60 text-lime-100";
-  return "bg-green-700/60 text-green-100";
+  if (rank == null) return "bg-slate-100 text-slate-500";
+  if (rank <= 4) return "bg-red-100 text-red-800";
+  if (rank <= 8) return "bg-orange-100 text-orange-800";
+  if (rank <= 12) return "bg-yellow-100 text-yellow-800";
+  if (rank <= 16) return "bg-lime-100 text-lime-800";
+  return "bg-green-100 text-green-800";
 }
 
 function formatCellValue(value: number, digits: number): string {
@@ -276,10 +276,10 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
   return (
     <div className="space-y-3">
       {/* Filters bar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
         {/* H/A filter */}
-        <div className="flex items-center gap-1.5 rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">H/A</span>
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">H/A</span>
           {(["All", "Home", "Away"] as const).map((opt) => (
             <button
               key={opt}
@@ -288,7 +288,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
                 homeAwayFilter === opt
                   ? "bg-brand-green text-brand-cream"
-                  : "text-brand-creamDark hover:text-brand-cream"
+                  : "text-brand-dark hover:bg-slate-100"
               }`}
             >
               {opt}
@@ -297,8 +297,8 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
         </div>
 
         {/* Appearance filter */}
-        <div className="flex items-center gap-1.5 rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Show</span>
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Show</span>
           {(["Started", "Sub", "DNP"] as const).map((opt) => (
             <button
               key={opt}
@@ -307,7 +307,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
                 appearanceFilter.has(opt)
                   ? "bg-brand-green text-brand-cream"
-                  : "text-brand-creamDark hover:text-brand-cream"
+                  : "text-brand-dark hover:bg-slate-100"
               }`}
             >
               {opt}
@@ -316,25 +316,25 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
         </div>
 
         {/* FDR range filter */}
-        <div className="flex items-center gap-1.5 rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">FDR</span>
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">FDR</span>
           <input
             type="number"
             min={1}
             max={20}
             value={fdrMin}
             onChange={(e) => setFdrMin(e.target.value)}
-            className="w-10 rounded border border-brand-cream/20 bg-brand-dark px-1.5 py-0.5 text-center text-xs text-brand-cream focus:outline-none"
+            className="w-10 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-center text-xs text-brand-dark focus:border-brand-green focus:outline-none"
             aria-label="FDR minimum"
           />
-          <span className="text-xs text-brand-creamDark">–</span>
+          <span className="text-xs text-slate-500">–</span>
           <input
             type="number"
             min={1}
             max={20}
             value={fdrMax}
             onChange={(e) => setFdrMax(e.target.value)}
-            className="w-10 rounded border border-brand-cream/20 bg-brand-dark px-1.5 py-0.5 text-center text-xs text-brand-cream focus:outline-none"
+            className="w-10 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-center text-xs text-brand-dark focus:border-brand-green focus:outline-none"
             aria-label="FDR maximum"
           />
         </div>
@@ -346,7 +346,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
           className={`rounded border px-2 py-1 text-xs font-semibold ${
             isColumnPanelOpen
               ? "border-brand-green bg-brand-green text-brand-cream"
-              : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+              : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
           }`}
         >
           {isColumnPanelOpen ? "Hide columns" : "Add / Remove columns"}
@@ -355,12 +355,12 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
 
       {/* Column selector panel */}
       {isColumnPanelOpen ? (
-        <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
           <div className="mb-4">
-            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
-            <p className="mt-1 text-sm text-brand-creamDark">Expand a category to add or remove columns.</p>
+            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-dark">Columns</h2>
+            <p className="mt-1 text-sm text-slate-600">Expand a category to add or remove columns.</p>
             {hasReachedColumnLimit ? (
-              <p className="mt-2 text-xs font-semibold text-amber-300">Maximum {MAX_SELECTED_COLUMNS} columns selected</p>
+              <p className="mt-2 text-xs font-semibold text-amber-700">Maximum {MAX_SELECTED_COLUMNS} columns selected</p>
             ) : null}
           </div>
 
@@ -369,21 +369,21 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               const expanded = expandedCategories[cat];
               const catCols = columnsByCategory[cat];
               return (
-                <section key={cat} className="rounded-xl border border-brand-cream/15 bg-brand-dark/40">
+                <section key={cat} className="rounded-xl border border-slate-200 bg-slate-50/70">
                   <button
                     type="button"
                     onClick={() => toggleCategory(cat)}
                     className="flex w-full items-center justify-between px-4 py-3 text-left"
                   >
                     <div>
-                      <div className="text-sm font-bold text-brand-cream">{cat}</div>
-                      <div className="text-xs text-brand-creamDark">{catCols.length} columns</div>
+                      <div className="text-sm font-bold text-brand-dark">{cat}</div>
+                      <div className="text-xs text-slate-500">{catCols.length} columns</div>
                     </div>
-                    <span className="text-lg text-brand-cream">{expanded ? "−" : "+"}</span>
+                    <span className="text-lg text-brand-dark">{expanded ? "−" : "+"}</span>
                   </button>
 
                   {expanded ? (
-                    <div className="grid gap-3 border-t border-brand-cream/10 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3 border-t border-slate-200 px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
                       {catCols.map((col) => {
                         const checked = selectedColumns.includes(col.key);
                         const disabled = !checked && hasReachedColumnLimit;
@@ -392,8 +392,8 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                             key={col.key}
                             className={`flex items-start gap-3 rounded-lg border px-3 py-3 text-sm ${
                               disabled
-                                ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/50"
-                                : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
+                                ? "border-slate-100 bg-slate-100/60 text-slate-400"
+                                : "border-slate-200 bg-white text-brand-dark"
                             }`}
                           >
                             <input
@@ -401,7 +401,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                               checked={checked}
                               disabled={disabled}
                               onChange={() => toggleColumn(col.key)}
-                              className="mt-0.5 h-5 w-5 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                              className="mt-0.5 h-5 w-5 rounded border-slate-300 bg-white text-brand-green focus:ring-brand-green"
                             />
                             <span className="leading-snug">{col.label}</span>
                           </label>
@@ -415,17 +415,17 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
           </div>
 
           {/* Active columns pills */}
-          <div className="mt-4 rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Active Columns</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Active Columns</span>
               <button
                 type="button"
                 onClick={() => setSelectedColumns([])}
                 disabled={selectedColumns.length === 0}
                 className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                   selectedColumns.length === 0
-                    ? "cursor-not-allowed border-brand-cream/10 text-brand-creamDark/50"
-                    : "border-brand-cream/35 text-brand-cream"
+                    ? "cursor-not-allowed border-slate-200 text-slate-400"
+                    : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                 }`}
               >
                 Clear all
@@ -436,13 +436,13 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                 visibleColumns.map((col) => (
                   <span
                     key={col.key}
-                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
                   >
                     <span>{col.label}</span>
                     <button
                       type="button"
                       onClick={() => toggleColumn(col.key)}
-                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream"
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-slate-600 hover:bg-brand-green/20 hover:text-brand-dark"
                       aria-label={`Remove ${col.label}`}
                     >
                       ×
@@ -450,7 +450,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-brand-creamDark">No optional columns selected.</span>
+                <span className="text-xs text-slate-500">No optional columns selected.</span>
               )}
             </div>
           </div>
@@ -458,24 +458,24 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
       ) : null}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm text-brand-cream">
-          <thead className="bg-brand-dark text-brand-creamDark">
+      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+          <thead>
             <tr>
-              <th className="border-b border-brand-cream/20 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-0 top-0 z-30 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("gameweek")} className="inline-flex items-center gap-1">
                   GW <span aria-hidden="true">{sortArrow("gameweek")}</span>
                 </button>
               </th>
-              <th className="border-b border-brand-cream/20 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-12 top-0 z-30 w-56 min-w-56 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("opponent")} className="inline-flex items-center gap-1">
                   Opponent <span aria-hidden="true">{sortArrow("opponent")}</span>
                 </button>
               </th>
-              <th className="border-b border-brand-cream/20 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 H/A
               </th>
-              <th className="border-b border-brand-cream/20 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("fdr")} className="inline-flex items-center gap-1">
                   FDR <span aria-hidden="true">{sortArrow("fdr")}</span>
                 </button>
@@ -483,12 +483,12 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               {visibleColumns.map((col) => (
                 <th
                   key={col.key}
-                  className="border-b border-brand-cream/20 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                  className="sticky top-0 z-20 w-28 min-w-28 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
                     onClick={() => handleSort(col.key)}
-                    className="inline-flex items-center gap-1"
+                    className="inline-flex w-full items-center justify-end gap-1"
                   >
                     {col.label} <span aria-hidden="true">{sortArrow(col.key)}</span>
                   </button>
@@ -499,12 +499,17 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
           <tbody>
             {sortedRows.map((row, index) => {
               const fdr = renderFdr(row);
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               return (
-                <tr key={row.id} className={index % 2 === 0 ? "bg-brand-dark/70" : "bg-brand-dark/90"}>
-                  <td className="border-b border-brand-cream/10 px-3 py-3">{row.gameweek}</td>
-                  <td className="border-b border-brand-cream/10 px-3 py-3">{renderOpponent(row)}</td>
-                  <td className="border-b border-brand-cream/10 px-3 py-3">{renderHomeAway(row)}</td>
-                  <td className="border-b border-brand-cream/10 px-3 py-2">
+                <tr key={row.id} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5 font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
+                    {row.gameweek}
+                  </td>
+                  <td className={`sticky left-12 z-20 w-56 min-w-56 border-b border-r border-slate-200 px-2 py-1.5 font-medium text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    {renderOpponent(row)}
+                  </td>
+                  <td className="w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{renderHomeAway(row)}</td>
+                  <td className="w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5">
                     {fdr != null ? (
                       <span
                         className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-bold ${fdrColor(fdr)}`}
@@ -512,14 +517,14 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                         {fdr}
                       </span>
                     ) : (
-                      <span className="text-brand-creamDark">-</span>
+                      <span className="text-slate-500">-</span>
                     )}
                   </td>
                   {visibleColumns.map((col) => {
                     const raw = (row as Record<string, unknown>)[col.key];
                     const value = typeof raw === "number" ? raw : Number(raw ?? 0);
                     return (
-                      <td key={col.key} className="border-b border-brand-cream/10 px-3 py-3">
+                      <td key={col.key} className="w-28 min-w-28 border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {formatCellValue(value, col.digits ?? 2)}
                       </td>
                     );
@@ -531,7 +536,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               <tr>
                 <td
                   colSpan={4 + visibleColumns.length}
-                  className="px-3 py-6 text-center text-sm text-brand-creamDark"
+                  className="border-b border-slate-200 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500"
                 >
                   No gameweeks match the current filters.
                 </td>
@@ -540,15 +545,15 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
           </tbody>
           {tally ? (
             <tfoot>
-              <tr className="border-t-2 border-brand-cream/30 bg-brand-greenDark font-semibold text-brand-cream">
-                <td className="px-3 py-3 text-xs uppercase tracking-wide text-brand-creamDark">
+              <tr className="border-t-2 border-slate-200 bg-brand-green/10 font-semibold text-brand-dark">
+                <td className="px-2 py-2 text-xs uppercase tracking-wide text-slate-600">
                   Avg ({tally.n})
                 </td>
-                <td className="px-3 py-3" />
-                <td className="px-3 py-3" />
-                <td className="px-3 py-3" />
+                <td className="px-2 py-2" />
+                <td className="px-2 py-2" />
+                <td className="px-2 py-2" />
                 {visibleColumns.map((col) => (
-                  <td key={col.key} className="px-3 py-3">
+                  <td key={col.key} className="px-2 py-2 text-right tabular-nums">
                     {tally.avgs[col.key].toFixed(col.digits ?? 2)}
                   </td>
                 ))}
