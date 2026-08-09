@@ -1,6 +1,7 @@
 "use client";
 
 import type { DecoratedGameweek } from "@/lib/portal/playerMetrics";
+import HeaderTooltip from "@/components/portal/HeaderTooltip";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -502,9 +503,11 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                 H/A
               </th>
               <th className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("fdr")} className="inline-flex items-center gap-1">
-                  FDR <span aria-hidden="true">{sortArrow("fdr")}</span>
-                </button>
+                <HeaderTooltip description="Fixture Difficulty Rating: ranks opponents by the average Fantasy Points conceded per start to this player's position in the selected season. 1 = hardest; 20 = easiest.">
+                  <button type="button" onClick={() => handleSort("fdr")} className="inline-flex items-center gap-1">
+                    FDR <span aria-hidden="true">{sortArrow("fdr")}</span>
+                  </button>
+                </HeaderTooltip>
               </th>
               {visibleColumns.map((col) => (
                 <th

@@ -3,6 +3,7 @@
 import type { PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
 import { createClient } from "@/lib/supabase";
+import HeaderTooltip from "@/components/portal/HeaderTooltip";
 import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -139,50 +140,6 @@ function sortValue(player: DraftToolPlayer, key: SortKey): string | number | nul
 
 function myRankValue(player: DraftToolPlayer, customRanks: Map<string, number>): number | null {
   return customRanks.get(player.id) ?? player.adp;
-}
-
-function HeaderTooltip({ children, description }: { children: ReactNode; description?: string }) {
-  const triggerRef = useRef<HTMLSpanElement>(null);
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
-
-  if (!description) return children;
-
-  function showTooltip() {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const tooltipWidth = 224;
-    const viewportPadding = 12;
-    const left = Math.min(
-      Math.max(rect.left + rect.width / 2, viewportPadding + tooltipWidth / 2),
-      window.innerWidth - viewportPadding - tooltipWidth / 2
-    );
-
-    setPosition({ left, top: rect.bottom + 8 });
-  }
-
-  return (
-    <span
-      ref={triggerRef}
-      className="inline-flex w-full justify-center"
-      onMouseEnter={showTooltip}
-      onMouseLeave={() => setPosition(null)}
-      onFocus={showTooltip}
-      onBlur={() => setPosition(null)}
-    >
-      {children}
-      {position ? createPortal(
-        <span
-          role="tooltip"
-          style={{ left: position.left, top: position.top }}
-          className="pointer-events-none fixed z-[100] w-56 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[11px] font-medium normal-case leading-snug tracking-normal text-slate-700 shadow-lg"
-        >
-          {description}
-        </span>,
-        document.body
-      ) : null}
-    </span>
-  );
 }
 
 function SortableHeader({
