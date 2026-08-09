@@ -850,12 +850,29 @@ export default function GWOverviewClient({
             <span className="block text-sm font-bold uppercase tracking-widest text-brand-dark md:hidden">Filters</span>
           ) : null}
 
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-            <div className="flex justify-end text-sm text-brand-dark">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <div className="flex flex-wrap gap-2">
+              {selectedGameweeksAsc.map((gw) => (
+                <span
+                  key={gw}
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
+                >
+                  <span>{`GW${gw}`}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleGameweekSelection(gw)}
+                    disabled={selectedGameweeks.length === 1}
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-slate-600 hover:bg-brand-green/20 hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={`Remove GW${gw}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
               <button
                 type="button"
                 onClick={() => setIsGwPickerOpen((current) => !current)}
-                className={`rounded border px-3 py-1.5 text-xs font-semibold ${
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                   isGwPickerOpen
                     ? "border-brand-green bg-brand-green text-brand-cream"
                     : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
@@ -864,6 +881,10 @@ export default function GWOverviewClient({
                 {isGwPickerOpen ? "Hide gameweeks" : "Select gameweeks"}
               </button>
             </div>
+            {gameweekLoadError ? <p className="mt-2 text-xs text-red-700">{gameweekLoadError}</p> : null}
+            {loadingGameweeks.length > 0 ? (
+              <p className="mt-2 text-xs text-slate-500">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
+            ) : null}
           </div>
 
           {isGwPickerOpen ? (
@@ -901,32 +922,6 @@ export default function GWOverviewClient({
               </div>
             </div>
           ) : null}
-
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <div className="flex flex-wrap gap-2">
-              {selectedGameweeksAsc.map((gw) => (
-                <span
-                  key={gw}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
-                >
-                  <span>{`GW${gw}`}</span>
-                  <button
-                    type="button"
-                    onClick={() => toggleGameweekSelection(gw)}
-                    disabled={selectedGameweeks.length === 1}
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-slate-600 hover:bg-brand-green/20 hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label={`Remove GW${gw}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            {gameweekLoadError ? <p className="mt-2 text-xs text-red-700">{gameweekLoadError}</p> : null}
-            {loadingGameweeks.length > 0 ? (
-              <p className="mt-2 text-xs text-slate-500">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
-            ) : null}
-          </div>
 
           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
             <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
