@@ -290,6 +290,9 @@ export default function WaiverWireClient({
               ))}
             </select>
             {formationLabel ? <p className="text-xs text-slate-500">{formationLabel}</p> : null}
+            <p className="max-w-72 text-xs leading-snug text-slate-500">
+              Players are eligible at 50% ownership or lower; the availability filter only changes which rows of this XI are shown.
+            </p>
           </label>
 
           {leagueRoster ? (
@@ -325,21 +328,22 @@ export default function WaiverWireClient({
           Loading Waiver Wire XI...
         </div>
       ) : (
-        <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-          <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+        <div className="max-w-full overflow-x-auto">
+          <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+          <table className="border-separate border-spacing-0 text-left text-sm">
             <thead>
               <tr className="bg-brand-green text-brand-cream">
-                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Name</th>
-                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Team</th>
-                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Position</th>
-                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Ownership %</th>
-                <th className="sticky top-0 z-20 border-b border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-right">Points</th>
+                <th className="sticky top-0 z-20 w-64 min-w-64 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Name</th>
+                <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Team</th>
+                <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Position</th>
+                <th className="sticky top-0 z-20 w-28 min-w-28 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Ownership %</th>
+                <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-right">Points</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row, index) => (
                 <tr key={`${row.id}-${index}`} className={`group ${index % 2 === 0 ? "bg-white" : "bg-slate-50"} text-brand-dark transition-colors hover:bg-brand-green/10`}>
-                  <td className="border-b border-r border-slate-200 px-4 py-3 font-semibold">
+                  <td className="w-64 min-w-64 border-b border-r border-slate-200 px-4 py-3 font-semibold">
                     <div className="flex flex-wrap items-center gap-1">
                       <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green hover:underline">
                         {row.name}
@@ -347,14 +351,14 @@ export default function WaiverWireClient({
                       <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                     </div>
                   </td>
-                  <td className="border-b border-r border-slate-200 px-4 py-3">{row.team}</td>
-                  <td className="border-b border-r border-slate-200 px-4 py-3">
+                  <td className="w-20 min-w-20 border-b border-r border-slate-200 px-4 py-3">{row.team}</td>
+                  <td className="w-20 min-w-20 border-b border-r border-slate-200 px-4 py-3">
                     <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${positionBadgeClass[row.position]}`}>
                       {row.position}
                     </span>
                   </td>
-                  <td className="border-b border-r border-slate-200 px-4 py-3 tabular-nums">{row.ownershipPct.toFixed(1)}%</td>
-                  <td className="border-b border-slate-200 px-4 py-3 text-right font-semibold tabular-nums">{row.rawFantraxPts.toFixed(2)}</td>
+                  <td className="w-28 min-w-28 border-b border-r border-slate-200 px-4 py-3 tabular-nums">{row.ownershipPct.toFixed(1)}%</td>
+                  <td className="w-20 min-w-20 border-b border-slate-200 px-4 py-3 text-right font-semibold tabular-nums">{row.rawFantraxPts.toFixed(2)}</td>
                 </tr>
               ))}
               <tr className="bg-brand-green/10 text-brand-dark">
@@ -365,6 +369,7 @@ export default function WaiverWireClient({
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
