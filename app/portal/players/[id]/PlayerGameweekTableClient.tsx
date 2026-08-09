@@ -1,6 +1,7 @@
 "use client";
 
 import type { DecoratedGameweek } from "@/lib/portal/playerMetrics";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type GameweekColumnKey =
@@ -116,9 +117,13 @@ type Props = {
   rows: DecoratedGameweek[];
   teamNames: Record<string, string>;
   fdrRankByTeam: Record<string, number>;
+  season: string;
+  availableSeasons: string[];
 };
 
-export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTeam }: Props) {
+export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTeam, season, availableSeasons }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [selectedColumns, setSelectedColumns] = useState<GameweekColumnKey[]>(DEFAULT_SELECTED_COLUMNS);
   const [homeAwayFilter, setHomeAwayFilter] = useState<"All" | "Home" | "Away">("All");
   const [appearanceFilter, setAppearanceFilter] = useState<Set<"Started" | "Sub" | "DNP">>(
@@ -250,6 +255,12 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
     setExpandedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
   }
 
+  function selectSeason(nextSeason: string) {
+    const params = new URLSearchParams(window.location.search);
+    params.set("season", nextSeason);
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
 
   function renderOpponent(row: DecoratedGameweek): string {
@@ -277,6 +288,21 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
     <div className="space-y-3">
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+        <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Season</span>
+          <select
+            value={season}
+            onChange={(event) => selectSeason(event.target.value)}
+            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
+          >
+            {availableSeasons.map((availableSeason) => (
+              <option key={availableSeason} value={availableSeason}>
+                {availableSeason}
+              </option>
+            ))}
+          </select>
+        </label>
+
         {/* H/A filter */}
         <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">H/A</span>

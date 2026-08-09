@@ -15,6 +15,7 @@ import {
 import { computeRadarValue, rankRadarValues, type RadarBandShape, type RadarDirection } from "@/lib/portal/radarScaling";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
+import { resolvePortalSeason } from "@/lib/season/portal-season";
 import { notFound } from "next/navigation";
 import PlayerGameweekTableClient from "./PlayerGameweekTableClient";
 
@@ -22,6 +23,13 @@ type PlayerDetailPageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams?:
+    | {
+        season?: string | string[];
+      }
+    | Promise<{
+        season?: string | string[];
+      }>;
 };
 
 type FplPlayerData = {
@@ -132,10 +140,14 @@ function formatShortDate(value: string | null): string | null {
   });
 }
 
-export default async function PlayerDetailPage({ params }: PlayerDetailPageProps) {
+export default async function PlayerDetailPage({ params, searchParams }: PlayerDetailPageProps) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
   const season = await getCurrentSeason(supabase);
+  const resolvedSearchParams =
+    searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
+  const requestedTableSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
+  const { availableSeasons, season: tableSeason } = await resolvePortalSeason(supabase, requestedTableSeason);
 
   const [
     {
@@ -187,6 +199,35 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   }
 
   const playerRow = player as PlayerDetailRow;
+
+  const [tableGameweeksResult, tableFixturesResult] =
+    tableSeason === season
+      ? [null, null]
+      : await Promise.all([
+          supabase
+            .from("player_gameweeks")
+            .select(
+              "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, goals_against_outfield, saves, key_passes, shots_on_target, tackles_won, interceptions, clearances, aerials_won, accurate_crosses, blocked_shots, dribbles_succeeded, dispossessed, penalties_drawn, penalties_missed, yellow_cards, red_cards, own_goals, subbed_on, subbed_off, penalty_saves, high_claims, smothers, corner_kicks, free_kick_shots"
+            )
+            .eq("player_id", id)
+            .eq("season", tableSeason)
+            .order("gameweek", { ascending: true }),
+          supabase
+            .from("fixtures")
+            .select("id, season, gameweek, home_team, away_team")
+            .eq("season", tableSeason)
+            .order("gameweek"),
+        ]);
+
+  if (tableGameweeksResult?.error) {
+    throw new Error(`Unable to load ${tableSeason} player gameweeks: ${tableGameweeksResult.error.message}`);
+  }
+  if (tableFixturesResult?.error) {
+    throw new Error(`Unable to load ${tableSeason} fixtures: ${tableFixturesResult.error.message}`);
+  }
+
+  const tableGameweeks = tableGameweeksResult?.data ?? gameweeks ?? [];
+  const tableFixtures = tableFixturesResult?.data ?? teamFixtures ?? [];
 
   const { data: radarPoolRows, error: radarPoolError } = await supabase
     .from("season_player_pool")
@@ -245,7 +286,7 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
     return { id: radarPlayer.id as string, position, summary: summarizePlayerSeason(rows) };
   });
 
-  // FDR: fetch all started rows for this season (position filtered in JS below)
+  // FDR: fetch all started rows for the selected table season (position filtered in JS below)
   type FdrGameweekRow = {
     gameweek: number;
     raw_fantrax_pts: number | string | null;
@@ -254,13 +295,13 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const { data: fdrGameweeks } = await supabase
     .from("player_gameweeks")
     .select("gameweek, raw_fantrax_pts, players!inner(team, position)")
-    .eq("season", season)
+    .eq("season", tableSeason)
     .gte("games_started", 1)
     .gt("games_played", 0);
 
   // Build gameweek:team → opponents[] map from all season fixtures
   const opponentsByGwAndTeam = new Map<string, string[]>();
-  for (const fixture of (teamFixtures ?? []) as FixtureRow[]) {
+  for (const fixture of tableFixtures as FixtureRow[]) {
     const homeKey = `${fixture.gameweek}:${fixture.home_team}`;
     const awayKey = `${fixture.gameweek}:${fixture.away_team}`;
     if (!opponentsByGwAndTeam.has(homeKey)) opponentsByGwAndTeam.set(homeKey, []);
@@ -307,7 +348,11 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
   const fixturesForTeam = ((teamFixtures ?? []) as FixtureRow[]).filter(
     (fixture) => fixture.home_team === playerRow.team || fixture.away_team === playerRow.team
   );
+  const tableFixturesForTeam = (tableFixtures as FixtureRow[]).filter(
+    (fixture) => fixture.home_team === playerRow.team || fixture.away_team === playerRow.team
+  );
   const decorated = decorateGameweeks((gameweeks ?? []) as PlayerGameweekRow[], playerRow.team, fixturesForTeam);
+  const tableDecorated = decorateGameweeks(tableGameweeks as PlayerGameweekRow[], playerRow.team, tableFixturesForTeam);
   const summary = summarizePlayerSeason(decorated);
   const playerPosition = mapPosition(playerRow.position);
   const outfieldRadarPool = radarPool.filter((radarPlayer) => radarPlayer.position !== "GK");
@@ -533,9 +578,11 @@ export default async function PlayerDetailPage({ params }: PlayerDetailPageProps
         <section className="space-y-3">
           <h2 className="text-2xl font-black text-brand-dark">Full Gameweek Stats</h2>
           <PlayerGameweekTableClient
-            rows={decorated}
+            rows={tableDecorated}
             teamNames={teamNamesRecord}
             fdrRankByTeam={fdrRankByTeam}
+            season={tableSeason}
+            availableSeasons={availableSeasons}
           />
         </section>
       </div>
