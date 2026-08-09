@@ -163,6 +163,7 @@ export default function FixturePlannerClient({
   const [latestGw, setLatestGw] = useState<number | null>(null);
   const [fixturesByTeamAndGw, setFixturesByTeamAndGw] = useState<Map<string, FixtureCell>>(new Map());
   const [difficultyRankByOpponentPos, setDifficultyRankByOpponentPos] = useState<Map<string, number>>(new Map());
+  const [hasDifficultyData, setHasDifficultyData] = useState(false);
 
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
@@ -257,7 +258,8 @@ export default function FixturePlannerClient({
         existing.seasonPts += toPoints(row.raw_fantrax_pts);
       }
 
-      const allTeams = teamRows.map((team) => team.abbrev);
+      const seasonTeamAbbrevs = new Set(fixtures.flatMap((fixture) => [fixture.home_team, fixture.away_team]));
+      const allTeams = teamRows.map((team) => team.abbrev).filter((team) => seasonTeamAbbrevs.has(team));
       const fixturesByGw = new Map<number, FixtureRow[]>();
       for (const fixture of fixtures) {
         const existing = fixturesByGw.get(fixture.gameweek) ?? [];
@@ -335,6 +337,7 @@ export default function FixturePlannerClient({
       setLatestGw(latestUploadedGw);
       setFixturesByTeamAndGw(fixtureLookup);
       setDifficultyRankByOpponentPos(difficultyRanks);
+      setHasDifficultyData(Array.from(difficultyTotals.values()).some((value) => value !== 0));
       setLoading(false);
     }
 
@@ -582,7 +585,7 @@ export default function FixturePlannerClient({
 
                     return (
                       <td key={`${row.id}-${gw}`} className="w-20 min-w-20 border-b border-r border-slate-200 px-3 py-2 text-center last:border-r-0">
-                        <div className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${fdrColor(difficultyRank)}`}>
+                        <div className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${hasDifficultyData ? fdrColor(difficultyRank) : "bg-slate-100 text-slate-500"}`}>
                           {fixture.opponent}
                         </div>
                         <div className="mt-1 text-[11px] font-semibold text-slate-500">{fixture.isHome ? "H" : "A"}</div>
