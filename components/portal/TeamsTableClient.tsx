@@ -138,7 +138,7 @@ export default function TeamsTableClient({ rows }: { rows: TeamRow[] }) {
             return (
               <tr key={row.abbrev} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
                 <td className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
-                  {row.rank}
+                  {index + 1}
                 </td>
                 <td className={`sticky left-9 z-20 w-64 min-w-64 whitespace-nowrap border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
                   <Link href={`/portal/teams/${row.abbrev.toLowerCase()}`} prefetch={false} className="whitespace-nowrap hover:text-brand-green hover:underline">
