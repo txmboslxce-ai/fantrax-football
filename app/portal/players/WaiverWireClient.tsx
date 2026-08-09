@@ -130,10 +130,10 @@ function buildWaiverXI(rows: WaiverRow[]): { lineup: WaiverRow[]; formation: str
 }
 
 const positionBadgeClass: Record<WaiverRow["position"], string> = {
-  G: "bg-brand-green",
-  D: "bg-brand-greenDark",
-  M: "bg-[#1e3325]",
-  F: "bg-[#27412d]",
+  G: "bg-amber-100 text-amber-900",
+  D: "bg-emerald-200 text-emerald-950",
+  M: "bg-violet-200 text-violet-950",
+  F: "bg-orange-200 text-orange-950",
 };
 
 export default function WaiverWireClient({
@@ -273,14 +273,14 @@ export default function WaiverWireClient({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-4 py-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="space-y-1 text-xs">
-            <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Gameweek</span>
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap items-stretch gap-3">
+          <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-xs">
+            <span className="block font-semibold uppercase tracking-wide text-slate-600">Gameweek</span>
             <select
               value={selectedGw ?? ""}
               onChange={(event) => setSelectedGw(Number.parseInt(event.target.value, 10))}
-              className="min-w-32 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+              className="min-w-32 rounded border border-slate-300 bg-white px-2 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
               disabled={loadingGameweeks || gameweeks.length === 0}
             >
               {gameweeks.map((gw) => (
@@ -289,12 +289,12 @@ export default function WaiverWireClient({
                 </option>
               ))}
             </select>
-            {formationLabel ? <p className="text-xs text-brand-creamDark">{formationLabel}</p> : null}
+            {formationLabel ? <p className="text-xs text-slate-500">{formationLabel}</p> : null}
           </label>
 
           {leagueRoster ? (
-            <div className="space-y-1 text-xs">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+            <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-xs">
+              <span className="block font-semibold uppercase tracking-wide text-slate-600">Availability</span>
               <div className="flex gap-1">
                 {(["All", "Available", "Taken"] as const).map((option) => (
                   <button
@@ -304,7 +304,7 @@ export default function WaiverWireClient({
                     className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                       availabilityFilter === option
                         ? "border-brand-green bg-brand-green text-brand-cream"
-                        : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                        : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                     }`}
                   >
                     {option}
@@ -317,29 +317,29 @@ export default function WaiverWireClient({
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
       ) : null}
 
       {loadingGameweeks || loadingRows ? (
-        <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 px-4 py-6 text-sm text-brand-creamDark">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
           Loading Waiver Wire XI...
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-          <table className="min-w-full border-separate border-spacing-0 text-left text-sm text-brand-cream">
+        <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+          <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
             <thead>
-              <tr className="bg-brand-dark text-brand-creamDark">
-                <th className="border-b border-r border-brand-cream/20 px-4 py-3 text-xs font-semibold uppercase tracking-wide">Name</th>
-                <th className="border-b border-r border-brand-cream/20 px-4 py-3 text-xs font-semibold uppercase tracking-wide">Team</th>
-                <th className="border-b border-r border-brand-cream/20 px-4 py-3 text-xs font-semibold uppercase tracking-wide">Position</th>
-                <th className="border-b border-r border-brand-cream/20 px-4 py-3 text-xs font-semibold uppercase tracking-wide">Ownership %</th>
-                <th className="border-b border-brand-cream/20 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-right">Points</th>
+              <tr className="bg-brand-green text-brand-cream">
+                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Name</th>
+                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Team</th>
+                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Position</th>
+                <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide">Ownership %</th>
+                <th className="sticky top-0 z-20 border-b border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-right">Points</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row, index) => (
-                <tr key={`${row.id}-${index}`} className={index % 2 === 0 ? "bg-brand-dark/65" : "bg-brand-dark/85"}>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3 font-semibold">
+                <tr key={`${row.id}-${index}`} className={`group ${index % 2 === 0 ? "bg-white" : "bg-slate-50"} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                  <td className="border-b border-r border-slate-200 px-4 py-3 font-semibold">
                     <div className="flex flex-wrap items-center gap-1">
                       <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green hover:underline">
                         {row.name}
@@ -347,21 +347,21 @@ export default function WaiverWireClient({
                       <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                     </div>
                   </td>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3">{row.team}</td>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold text-brand-cream ${positionBadgeClass[row.position]}`}>
+                  <td className="border-b border-r border-slate-200 px-4 py-3">{row.team}</td>
+                  <td className="border-b border-r border-slate-200 px-4 py-3">
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${positionBadgeClass[row.position]}`}>
                       {row.position}
                     </span>
                   </td>
-                  <td className="border-b border-r border-brand-cream/10 px-4 py-3">{row.ownershipPct.toFixed(1)}%</td>
-                  <td className="border-b border-brand-cream/10 px-4 py-3 text-right font-semibold">{row.rawFantraxPts.toFixed(2)}</td>
+                  <td className="border-b border-r border-slate-200 px-4 py-3 tabular-nums">{row.ownershipPct.toFixed(1)}%</td>
+                  <td className="border-b border-slate-200 px-4 py-3 text-right font-semibold tabular-nums">{row.rawFantraxPts.toFixed(2)}</td>
                 </tr>
               ))}
-              <tr className="bg-brand-green/20">
-                <td colSpan={4} className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-brand-creamDark">
+              <tr className="bg-brand-green/10 text-brand-dark">
+                <td colSpan={4} className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-600">
                   Total Points
                 </td>
-                <td className="px-4 py-3 text-right text-sm font-black text-brand-cream">{totalPoints.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right text-sm font-black tabular-nums text-brand-dark">{totalPoints.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
