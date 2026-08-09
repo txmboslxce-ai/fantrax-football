@@ -232,7 +232,7 @@ const outfieldOnlyStats = new Set<StatKey>(["goals_against_outfield"]);
 const CELL_WIDTHS = {
   rankMobile: 36,
   positionMobile: 40,
-  playerMobile: 160,
+  playerMobile: 192,
   teamMobile: 56,
   ownershipMobile: 64,
   formMobile: 72,
@@ -1125,7 +1125,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky left-[76px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky left-[76px] top-0 z-30 w-48 min-w-48 max-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -1249,15 +1249,15 @@ export default function GWOverviewClient({
                     </span>
                   </td>
                   <td
-                    className={`sticky left-[76px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
+                    className={`sticky left-[76px] z-20 w-48 min-w-48 max-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
                       prefetch={false}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap hover:text-brand-green hover:underline"
+                      className="flex max-w-full min-w-0 items-center gap-1.5 hover:text-brand-green hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span>{player.name}</span>
+                      <span className="min-w-0 truncate" title={player.name}>{player.name}</span>
                       {leagueRoster?.myTeamPlayerIds.includes(player.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                       <AvailabilityIcon
                         chanceOfPlaying={player.chanceOfPlaying}
