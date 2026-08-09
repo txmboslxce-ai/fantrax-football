@@ -182,34 +182,34 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
           <p className="mt-2 text-sm text-brand-dark/70">Connect your Fantrax league to track roster availability.</p>
         </div>
 
-        <div className="mx-auto max-w-lg rounded-xl border border-brand-cream/20 bg-brand-dark/60 p-6 sm:p-8">
-          <h2 className="text-lg font-bold text-brand-cream">Connect Your League</h2>
+        <div className="mx-auto max-w-lg rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
+          <h2 className="text-lg font-bold text-brand-dark">Connect Your League</h2>
 
-          <ol className="mt-4 space-y-3 text-sm text-brand-creamDark">
+          <ol className="mt-4 space-y-3 text-sm text-slate-600">
             <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/20 text-xs font-bold text-brand-green">1</span>
-              <span>Go to your Fantrax league and click <span className="font-semibold text-brand-cream">League</span> in the left sidebar.</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-bold text-brand-green">1</span>
+              <span>Go to your Fantrax league and click <span className="font-semibold text-brand-dark">League</span> in the left sidebar.</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/20 text-xs font-bold text-brand-green">2</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-bold text-brand-green">2</span>
               <span>Find the league ID in your browser&apos;s URL bar:</span>
             </li>
           </ol>
 
-          <div className="mt-3 rounded-lg border border-brand-cream/15 bg-brand-dark px-4 py-3 font-mono text-xs text-brand-creamDark">
-            fantrax.com/fantasy/league/<span className="rounded bg-brand-green/30 px-1 py-0.5 font-bold text-brand-cream">abc123def456</span>/home
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs text-slate-600">
+            fantrax.com/fantasy/league/<span className="rounded bg-brand-green/10 px-1 py-0.5 font-bold text-brand-green">abc123def456</span>/home
           </div>
 
-          <ol className="mt-3 space-y-3 text-sm text-brand-creamDark" start={3}>
+          <ol className="mt-3 space-y-3 text-sm text-slate-600" start={3}>
             <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/20 text-xs font-bold text-brand-green">3</span>
-              <span>Paste it in the field below and click <span className="font-semibold text-brand-cream">Sync League</span>.</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-bold text-brand-green">3</span>
+              <span>Paste it in the field below and click <span className="font-semibold text-brand-dark">Sync League</span>.</span>
             </li>
           </ol>
 
           <div className="mt-5 space-y-3">
             <label className="space-y-1.5">
-              <span className="block text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Fantrax League ID
               </span>
               <input
@@ -221,7 +221,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 }}
                 placeholder="e.g. abc123def456"
                 disabled={syncing}
-                className="w-full rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark/50 focus:border-brand-green focus:outline-none disabled:opacity-50"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none disabled:opacity-50"
               />
             </label>
 
@@ -234,7 +234,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               {syncing ? "Syncing…" : "Sync League"}
             </button>
 
-            {syncError ? <p className="text-sm text-red-400">{syncError}</p> : null}
+            {syncError ? <p className="text-sm text-red-700">{syncError}</p> : null}
           </div>
         </div>
       </div>
@@ -255,16 +255,16 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
           <p className="mt-1 text-sm text-brand-dark/70">
             League ID: <span className="font-mono text-brand-dark">{leagueId}</span>
           </p>
-          <p className="mt-0.5 text-xs text-brand-creamDark">Last synced: {formatSyncDate(lastSyncedAt)}</p>
+          <p className="mt-0.5 text-xs text-slate-500">Last synced: {formatSyncDate(lastSyncedAt)}</p>
           {/* My Team selector */}
           {teams.length > 0 && (
             <div className="mt-3 flex items-center gap-2">
               <label className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark">My Team</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">My Team</span>
                 <select
                   value={myTeamDraft}
                   onChange={(e) => setMyTeamDraft(e.target.value)}
-                  className="rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-1.5 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
                 >
                   {teams.map((team) => (
                     <option key={team.id} value={team.id}>{team.name}</option>
@@ -275,11 +275,11 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 type="button"
                 onClick={() => void saveMyTeam()}
                 disabled={myTeamSaving}
-                className="rounded-lg border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {myTeamSaving ? "Saving…" : "Save"}
               </button>
-              {myTeamSaved && <span className="text-xs text-green-400">Saved</span>}
+              {myTeamSaved && <span className="text-xs text-green-700">Saved</span>}
             </div>
           )}
         </div>
@@ -289,13 +289,13 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             type="button"
             onClick={() => void handleSync(leagueId)}
             disabled={syncing}
-            className="rounded-lg border border-brand-cream/35 px-4 py-2 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-cream/10 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {syncing ? "Syncing…" : "Re-sync"}
           </button>
-          {syncError ? <p className="text-xs text-red-400">{syncError}</p> : null}
+          {syncError ? <p className="text-xs text-red-700">{syncError}</p> : null}
           {syncResult ? (
-            <p className="text-xs text-green-400">
+            <p className="text-xs text-green-700">
               Synced {syncResult.playersRostered} players across {syncResult.teams} teams.
               {syncResult.unmatchedPlayers.length > 0
                 ? ` ${syncResult.unmatchedPlayers.length} unmatched.`
@@ -306,7 +306,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       </div>
 
       {/* Tab bar */}
-      <div className="border-b border-brand-cream/20">
+      <div className="border-b border-slate-200">
         <nav className="-mb-px flex gap-1">
           {TABS.map((tab) => (
             <button
@@ -316,7 +316,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               className={`px-4 py-2.5 text-sm font-semibold transition-colors ${
                 activeTab === tab.id
                   ? "border-b-2 border-brand-green text-brand-green"
-                  : "text-brand-creamDark hover:text-brand-cream"
+                  : "text-slate-500 hover:text-brand-dark"
               }`}
             >
               {tab.label}
@@ -330,11 +330,11 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         <>
           <div className="flex flex-wrap items-end gap-4">
             <label className="space-y-1">
-              <span className="block text-xs font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Team</span>
               <select
                 value={selectedTeamId}
                 onChange={(e) => handleTeamChange(e.target.value)}
-                className="rounded-lg border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
               >
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
@@ -343,58 +343,58 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 ))}
               </select>
             </label>
-            <p className="pb-2 text-xs text-brand-creamDark">{selectedTeamPlayers.length} players</p>
+            <p className="pb-2 text-xs text-slate-500">{selectedTeamPlayers.length} players</p>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+          <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white [scrollbar-gutter:stable]">
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 border-b border-r border-brand-cream/20 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-creamDark">
+                  <th className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Player
                   </th>
-                  <th className="border-b border-r border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Season Pts
                   </th>
-                  <th className="border-b border-r border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Avg Pts/GW
                   </th>
-                  <th className="border-b border-r border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Ghost Pts/GW
                   </th>
-                  <th className="border-b border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 border-b border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
                     Ownership %
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {selectedTeamPlayers.map((player, index) => {
-                  const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+                  const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                   return (
-                    <tr key={player.playerId} className={rowShade}>
-                      <td className={`sticky left-0 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
+                    <tr key={player.playerId} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                      <td className={`sticky left-0 z-20 border-b border-r border-slate-200 px-4 py-3 ${rowShade} group-hover:bg-brand-green/10`}>
                         <Link
                           href={`/portal/players/${player.playerId}`}
                           prefetch={false}
-                          className="font-semibold text-brand-cream hover:text-brand-green hover:underline"
+                          className="font-semibold text-brand-dark hover:text-brand-green hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {player.playerName}
                         </Link>
-                        <div className="mt-0.5 text-xs text-brand-creamDark/70">
+                        <div className="mt-0.5 text-xs text-slate-500">
                           {player.team} / {player.position}
                         </div>
                       </td>
-                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                      <td className="border-b border-r border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
                         {safeFixed(player.seasonPts, 2)}
                       </td>
-                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                      <td className="border-b border-r border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
                         {safeFixed(player.avgPtsPerGw, 2)}
                       </td>
-                      <td className="border-b border-r border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                      <td className="border-b border-r border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
                         {safeFixed(player.ghostPtsPerGw, 2)}
                       </td>
-                      <td className="border-b border-brand-cream/10 px-4 py-3 text-center text-brand-cream">
+                      <td className="border-b border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
                         {safeFixed(player.ownershipPct, 1)}%
                       </td>
                     </tr>
@@ -402,7 +402,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 })}
                 {selectedTeamPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="border-b border-brand-cream/10 px-4 py-8 text-center text-brand-creamDark">
+                    <td colSpan={5} className="border-b border-slate-200 bg-slate-50 px-4 py-8 text-center text-slate-500">
                       No players found for this team.
                     </td>
                   </tr>
@@ -416,20 +416,20 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 const avgOwnership = selectedTeamPlayers.reduce((sum, p) => sum + p.ownershipPct, 0) / n;
                 return (
                   <tfoot>
-                    <tr className="bg-brand-greenDark">
-                      <td className="sticky left-0 border-t border-brand-cream/20 bg-brand-greenDark px-4 py-3 text-xs font-bold uppercase tracking-wide text-brand-cream">
+                    <tr className="bg-brand-green/10 text-brand-dark">
+                      <td className="sticky left-0 border-t border-slate-200 bg-brand-green/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">
                         Team Total
                       </td>
-                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(totalSeasonPts, 2)}
                       </td>
-                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(avgPtsPerGw, 2)}
                       </td>
-                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(avgGhostPtsPerGw, 2)}
                       </td>
-                      <td className="border-t border-brand-cream/20 px-4 py-3 text-center text-xs font-bold text-brand-cream">
+                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(avgOwnership, 1)}%
                       </td>
                     </tr>
@@ -445,12 +445,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         <>
           {analyticsLoading && (
             <div className="flex min-h-[200px] items-center justify-center">
-              <p className="text-sm text-brand-creamDark">Loading analytics…</p>
+              <p className="text-sm text-slate-500">Loading analytics…</p>
             </div>
           )}
           {analyticsError && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-              <p className="text-sm text-red-400">{analyticsError}</p>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm text-red-700">{analyticsError}</p>
             </div>
           )}
           {analyticsData && (
@@ -508,12 +508,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         <>
           {analyticsLoading && (
             <div className="flex min-h-[200px] items-center justify-center">
-              <p className="text-sm text-brand-creamDark">Loading analytics…</p>
+              <p className="text-sm text-slate-500">Loading analytics…</p>
             </div>
           )}
           {analyticsError && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-              <p className="text-sm text-red-400">{analyticsError}</p>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm text-red-700">{analyticsError}</p>
             </div>
           )}
           {analyticsData && (
@@ -559,8 +559,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       )}
 
       {activeTab === "trade-values" && (
-        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-brand-cream/20 bg-brand-dark/40">
-          <p className="text-sm text-brand-creamDark">Coming soon</p>
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+          <p className="text-sm text-slate-500">Coming soon</p>
         </div>
       )}
 
@@ -591,17 +591,17 @@ function AnalyticsTable({
   return (
     <div className="space-y-2">
       <div>
-        <h3 className="text-base font-bold text-brand-cream">{title}</h3>
-        <p className="text-xs text-brand-creamDark">{description}</p>
+        <h3 className="text-base font-bold text-brand-dark">{title}</h3>
+        <p className="text-xs text-slate-600">{description}</p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr>
               {headers.map((h, i) => (
                 <th
                   key={h}
-                  className={`border-b border-brand-cream/20 bg-brand-greenDark px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream ${i === 0 ? "" : "text-center"}`}
+                  className={`border-b border-brand-cream/25 bg-brand-green px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream ${i === 0 ? "" : "text-center"}`}
                 >
                   {h}
                 </th>
@@ -614,14 +614,14 @@ function AnalyticsTable({
               const rowShade = isMyTeam
                 ? "bg-brand-green/10"
                 : index % 2 === 0
-                ? "bg-brand-dark/60"
-                : "bg-brand-dark/90";
+                ? "bg-white"
+                : "bg-slate-50";
               return (
-                <tr key={row.teamId} className={rowShade}>
+                <tr key={row.teamId} className={`${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
                   {row.cells.map((cell, ci) => (
                     <td
                       key={ci}
-                      className={`border-b border-brand-cream/10 px-4 py-2.5 ${ci === 0 ? "" : "text-center"} ${isMyTeam ? "font-semibold text-brand-cream" : "text-brand-creamDark"}`}
+                      className={`border-b border-slate-200 px-4 py-2.5 ${ci === 0 ? "" : "text-center"} ${isMyTeam ? "font-semibold text-brand-dark" : "text-slate-600"}`}
                     >
                       {cell}
                     </td>
@@ -643,10 +643,10 @@ function LuckBadge({ value }: { value: number }) {
     <span
       className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
         neutral
-          ? "bg-brand-cream/10 text-brand-creamDark"
+          ? "bg-slate-100 text-slate-600"
           : positive
-          ? "bg-green-500/20 text-green-400"
-          : "bg-red-500/20 text-red-400"
+          ? "bg-green-100 text-green-800"
+          : "bg-red-100 text-red-800"
       }`}
     >
       {positive ? "+" : ""}{value.toFixed(2)}
@@ -661,10 +661,10 @@ function DeltaBadge({ value }: { value: number }) {
     <span
       className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
         neutral
-          ? "bg-brand-cream/10 text-brand-creamDark"
+          ? "bg-slate-100 text-slate-600"
           : positive
-          ? "bg-green-500/20 text-green-400"
-          : "bg-red-500/20 text-red-400"
+          ? "bg-green-100 text-green-800"
+          : "bg-red-100 text-red-800"
       }`}
     >
       {positive ? "+" : ""}{value.toFixed(2)}
@@ -675,20 +675,20 @@ function DeltaBadge({ value }: { value: number }) {
 function ConsistencyProfileBadge({ stdDev }: { stdDev: number }) {
   if (stdDev < 18) {
     return (
-      <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-green-500/20 text-green-400">
+      <span className="inline-block rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
         Reliable
       </span>
     );
   }
   if (stdDev <= 24) {
     return (
-      <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-amber-500/20 text-amber-400">
+      <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
         Mixed
       </span>
     );
   }
   return (
-    <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-red-500/20 text-red-400">
+    <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
       Boom/Bust
     </span>
   );
