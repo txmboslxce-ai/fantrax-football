@@ -58,6 +58,7 @@ const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
 ];
 
 const PLAYER_ID_BATCH_SIZE = 100;
+const FIXTURE_PLANNER_SEASON = "2026-27";
 const PLAYER_GAMEWEEK_QUERY_COLUMNS =
   "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won";
 
@@ -270,7 +271,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
       ) : null}
 
       {activeTab === "waiver" ? <WaiverWireClient leagueRoster={leagueRoster} season={season} /> : null}
-      {activeTab === "fixtures" ? <FixturePlannerClient leagueRoster={leagueRoster} season={season} /> : null}
+      {activeTab === "fixtures" ? <FixturePlannerClient leagueRoster={leagueRoster} season={FIXTURE_PLANNER_SEASON} /> : null}
     </div>
   );
 }

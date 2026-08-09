@@ -188,9 +188,14 @@ export default function FixturePlannerClient({
           .select(
             "player_id, gameweek, games_played, raw_fantrax_pts, players!inner(id, name, team, position, ownership_pct, fpl_player_data(chance_of_playing_next_round, status, news))"
           )
+          .eq("season", season),
+        supabase
+          .from("player_gameweeks")
+          .select("gameweek")
           .eq("season", season)
-          .gt("games_played", 0),
-        supabase.from("player_gameweeks").select("gameweek").eq("season", season).order("gameweek", { ascending: false }).limit(1),
+          .gt("games_played", 0)
+          .order("gameweek", { ascending: false })
+          .limit(1),
         supabase.from("fixtures").select("id, gameweek, home_team, away_team").eq("season", season).order("gameweek", { ascending: true }),
         supabase.from("teams").select("abbrev").order("abbrev"),
       ]);
@@ -506,8 +511,9 @@ export default function FixturePlannerClient({
         </div>
       </div>
 
-      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+      <div className="max-w-full overflow-x-auto">
+        <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
               <th className="sticky left-0 top-0 z-30 w-64 min-w-64 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -588,6 +594,7 @@ export default function FixturePlannerClient({
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
