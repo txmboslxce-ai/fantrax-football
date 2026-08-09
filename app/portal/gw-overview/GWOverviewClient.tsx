@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
@@ -249,39 +249,6 @@ function formatPlayerName(name: string): string {
   return `${parts[0][0].toUpperCase()}. ${parts.slice(1).join(" ")}`;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
-  const safeRatio = clamp(ratio, 0, 1);
-  const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
-  const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
-  const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
-  return `rgb(${r}, ${g}, ${blue})`;
-}
-
-function pointsGradientBackground(value: number): string {
-  const min = 4;
-  const mid = 8;
-  const max = 20;
-  const red: [number, number, number] = [239, 68, 68];
-  const yellow: [number, number, number] = [234, 179, 8];
-  const green: [number, number, number] = [42, 122, 59];
-
-  if (value <= min) {
-    return "#ef4444";
-  }
-  if (value >= max) {
-    return "#005B3A";
-  }
-  if (value <= mid) {
-    return mixColor(red, yellow, (value - min) / (mid - min));
-  }
-
-  return mixColor(yellow, green, (value - mid) / (max - mid));
-}
-
 function toDisplayValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
@@ -366,10 +333,10 @@ function gpStatus(row: GWOverviewGameweekRow): "Started" | "Sub" | "DNP" {
 
 function gpStatusTextClasses(status: "Started" | "Sub" | "DNP") {
   if (status === "Started") {
-    return "text-white";
+    return "text-emerald-700";
   }
   if (status === "Sub") {
-    return "text-orange-400";
+    return "text-orange-700";
   }
   return "text-red-500";
 }
@@ -864,7 +831,7 @@ export default function GWOverviewClient({
           value={searchPlayer}
           onChange={(event) => setSearchPlayer(event.target.value)}
           placeholder="Search player…"
-          className="min-w-0 flex-1 rounded-xl border border-brand-cream/35 bg-brand-dark px-3 py-2 text-sm text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
         />
         <button
           type="button"
@@ -872,7 +839,7 @@ export default function GWOverviewClient({
           className="relative shrink-0 flex items-center gap-1.5 rounded-xl border border-brand-greenLight bg-brand-green px-3 py-2 text-sm font-semibold text-brand-cream md:hidden"
         >
           {hasActiveFilters ? (
-            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-white ring-2 ring-brand-dark" aria-hidden="true" />
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-white ring-2 ring-brand-green" aria-hidden="true" />
           ) : null}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0" aria-hidden="true">
             <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
@@ -885,18 +852,18 @@ export default function GWOverviewClient({
       <div
         className={
           mobileFiltersOpen
-            ? "fixed inset-0 z-50 flex flex-col bg-brand-dark md:static md:inset-auto md:flex md:flex-none md:bg-transparent"
+            ? "fixed inset-0 z-50 flex flex-col bg-white md:static md:inset-auto md:flex md:flex-none md:bg-transparent"
             : "hidden md:block md:space-y-3"
         }
       >
         {/* Scrollable filter content */}
         <div className={mobileFiltersOpen ? "flex-1 space-y-3 overflow-y-auto p-4" : "space-y-3"}>
           {mobileFiltersOpen ? (
-            <span className="block text-sm font-bold uppercase tracking-widest text-brand-cream md:hidden">Filters</span>
+            <span className="block text-sm font-bold uppercase tracking-widest text-brand-dark md:hidden">Filters</span>
           ) : null}
 
-          <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-brand-cream">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-brand-dark">
               <div className="flex flex-wrap gap-1">
                 {venueFilters.map((filter) => {
                   const active = venueFilter === filter;
@@ -908,7 +875,7 @@ export default function GWOverviewClient({
                       className={`rounded border px-2 py-1 text-xs font-semibold ${
                         active
                           ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                          : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                       }`}
                     >
                       {filter}
@@ -922,7 +889,7 @@ export default function GWOverviewClient({
                 className={`rounded border px-3 py-1.5 text-xs font-semibold ${
                   isGwPickerOpen
                     ? "border-brand-green bg-brand-green text-brand-cream"
-                    : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                    : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                 }`}
               >
                 {isGwPickerOpen ? "Hide gameweeks" : "Select gameweeks"}
@@ -931,10 +898,10 @@ export default function GWOverviewClient({
           </div>
 
           {isGwPickerOpen ? (
-            <div className="rounded-xl border border-brand-cream/20 bg-[#102116] p-4 sm:p-5">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="mb-4">
-                <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Gameweeks</h2>
-                <p className="mt-1 text-sm text-brand-creamDark">Select which gameweeks to show in the Form Table.</p>
+                <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-dark">Gameweeks</h2>
+                <p className="mt-1 text-sm text-slate-600">Select which gameweeks to show in the Form Table.</p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
@@ -947,8 +914,8 @@ export default function GWOverviewClient({
                       key={gw}
                       className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm ${
                         disabled
-                          ? "border-brand-cream/5 bg-brand-dark/30 text-brand-creamDark/60"
-                          : "border-brand-cream/10 bg-brand-dark/70 text-brand-cream"
+                          ? "border-slate-100 bg-slate-100/60 text-slate-400"
+                          : "border-slate-200 bg-slate-50/70 text-brand-dark"
                       }`}
                     >
                       <input
@@ -956,7 +923,7 @@ export default function GWOverviewClient({
                         checked={checked}
                         disabled={disabled}
                         onChange={() => toggleGameweekSelection(gw)}
-                        className="h-4 w-4 rounded border-brand-cream/35 bg-brand-dark text-brand-green focus:ring-brand-green"
+                        className="h-4 w-4 rounded border-slate-300 bg-white text-brand-green focus:ring-brand-green"
                       />
                       <span>{`GW${gw}`}</span>
                     </label>
@@ -966,19 +933,19 @@ export default function GWOverviewClient({
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/40 px-3 py-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
             <div className="flex flex-wrap gap-2">
               {selectedGameweeksAsc.map((gw) => (
                 <span
                   key={gw}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/15 px-3 py-1 text-xs font-semibold text-brand-cream"
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
                 >
                   <span>{`GW${gw}`}</span>
                   <button
                     type="button"
                     onClick={() => toggleGameweekSelection(gw)}
                     disabled={selectedGameweeks.length === 1}
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-creamDark hover:bg-brand-green/30 hover:text-brand-cream disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-slate-600 hover:bg-brand-green/20 hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label={`Remove GW${gw}`}
                   >
                     ×
@@ -986,17 +953,17 @@ export default function GWOverviewClient({
                 </span>
               ))}
             </div>
-            {gameweekLoadError ? <p className="mt-2 text-xs text-red-400">{gameweekLoadError}</p> : null}
+            {gameweekLoadError ? <p className="mt-2 text-xs text-red-700">{gameweekLoadError}</p> : null}
             {loadingGameweeks.length > 0 ? (
-              <p className="mt-2 text-xs text-brand-creamDark">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
+              <p className="mt-2 text-xs text-slate-500">{`Loading GW${loadingGameweeks.join(", GW")}...`}</p>
             ) : null}
           </div>
 
-          <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
             <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
               {leagueRoster ? (
                 <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
-                  <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+                  <span className="block font-semibold uppercase tracking-wide text-slate-600">Availability</span>
                   <div className="flex flex-nowrap gap-1">
                     {(["All", "Available", "Taken"] as const).map((option) => {
                       const active = availabilityFilter === option;
@@ -1008,7 +975,7 @@ export default function GWOverviewClient({
                           className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                             active
                               ? "border-brand-green bg-brand-green text-brand-cream"
-                              : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                              : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                           }`}
                         >
                           {option}
@@ -1022,7 +989,7 @@ export default function GWOverviewClient({
                         className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                           availabilityFilter === "My Team"
                             ? "border-brand-green bg-brand-green text-brand-cream"
-                            : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                            : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                         }`}
                       >
                         My Team
@@ -1033,11 +1000,11 @@ export default function GWOverviewClient({
               ) : null}
 
               <label className="space-y-1 md:shrink-0">
-                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Stat</span>
+                <span className="block font-semibold uppercase tracking-wide text-slate-600">Stat</span>
                 <select
                   value={selectedStat}
                   onChange={(event) => setSelectedStat(event.target.value as StatKey)}
-                  className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-36"
+                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-36"
                 >
                   {statSelectEntries.map((entry) =>
                     entry.type === "heading" ? (
@@ -1054,7 +1021,7 @@ export default function GWOverviewClient({
               </label>
 
               <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
-                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
+                <span className="block font-semibold uppercase tracking-wide text-slate-600">Position</span>
                 <div className="flex flex-nowrap gap-1">
                   {positionFilters.map((filter) => {
                     const active = positionFilter === filter;
@@ -1066,7 +1033,7 @@ export default function GWOverviewClient({
                         className={`rounded border px-2 py-1 text-[11px] font-semibold ${
                           active
                             ? "border-brand-green bg-brand-green text-brand-cream"
-                            : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                            : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                         }`}
                       >
                         {filter}
@@ -1077,11 +1044,11 @@ export default function GWOverviewClient({
               </div>
 
               <label className="space-y-1 md:shrink-0">
-                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+                <span className="block font-semibold uppercase tracking-wide text-slate-600">Team</span>
                 <select
                   value={teamFilter}
                   onChange={(event) => setTeamFilter(event.target.value)}
-                  className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none md:w-24"
+                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-24"
                 >
                   <option value="All">All</option>
                   {teams.map((team) => (
@@ -1093,7 +1060,7 @@ export default function GWOverviewClient({
               </label>
 
               <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
-                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
+                <span className="block font-semibold uppercase tracking-wide text-slate-600">Ownership %</span>
                 <div className="grid grid-cols-2 gap-1 md:flex">
                   <input
                     type="number"
@@ -1103,7 +1070,7 @@ export default function GWOverviewClient({
                     value={ownershipMin}
                     onChange={(event) => setOwnershipMin(event.target.value)}
                     placeholder="Min"
-                    className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
+                    className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-16"
                   />
                   <input
                     type="number"
@@ -1113,7 +1080,7 @@ export default function GWOverviewClient({
                     value={ownershipMax}
                     onChange={(event) => setOwnershipMax(event.target.value)}
                     placeholder="Max"
-                    className="w-full rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream md:w-16"
+                    className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none md:w-16"
                   />
                 </div>
               </div>
@@ -1123,7 +1090,7 @@ export default function GWOverviewClient({
 
         {/* Sticky Done button — mobile drawer footer only */}
         {mobileFiltersOpen ? (
-          <div className="sticky bottom-0 border-t border-brand-cream/20 bg-brand-dark p-4 md:hidden">
+          <div className="sticky bottom-0 border-t border-slate-200 bg-white p-4 md:hidden">
             <button
               type="button"
               onClick={() => setMobileFiltersOpen(false)}
@@ -1136,7 +1103,7 @@ export default function GWOverviewClient({
       </div>
 
       {/* Table */}
-      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-brand-cream/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <table
           className="border-separate border-spacing-0 text-sm"
           style={{
@@ -1152,13 +1119,13 @@ export default function GWOverviewClient({
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 w-[32px] min-w-[32px] border-b border-r border-brand-cream/25 bg-brand-greenDark px-0.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-creamDark"
+                className="sticky left-0 top-0 z-30 w-[32px] min-w-[32px] border-b border-r border-brand-cream/25 bg-brand-green px-0.5 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream"
               >
                 #
               </th>
               <th
                 rowSpan={2}
-                className="sticky left-[32px] top-0 z-30 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-greenDark px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-creamDark md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
+                className="sticky left-[32px] top-0 z-30 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px]"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -1167,7 +1134,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/20 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -1180,7 +1147,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/20 bg-brand-greenDark px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
               >
                 <button
                   type="button"
@@ -1195,7 +1162,7 @@ export default function GWOverviewClient({
               {displayedGws.map((gw) => (
                 <th
                   key={`gw-header-${gw}`}
-                  className="relative sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/20 bg-brand-dark px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px]"
+                  className="relative sticky top-0 z-10 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-xs font-bold text-brand-cream md:w-[118px] md:min-w-[118px]"
                 >
                   <div className="inline-flex items-center gap-1">
                     <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
@@ -1205,22 +1172,22 @@ export default function GWOverviewClient({
                     <button
                       type="button"
                       onClick={() => openFilterMenu(gw, "stat")}
-                      className={isColumnFilterActive(gw) ? "text-brand-green" : "text-brand-cream/90"}
+                      className={isColumnFilterActive(gw) ? "text-amber-200" : "text-brand-cream/90"}
                       aria-label={`Filter GW${gw} stat`}
                     >
                       <span aria-hidden="true">▼</span>
                     </button>
                   </div>
                   {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
-                    <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-brand-cream/30 bg-brand-dark p-2 text-left shadow-lg">
+                    <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-slate-200 bg-white p-2 text-left shadow-lg">
                       <div className="space-y-2">
                         {gpStatusFilters.map((status) => (
-                          <label key={`${gw}-${status}`} className="flex items-center gap-2 text-xs text-brand-cream">
+                          <label key={`${gw}-${status}`} className="flex items-center gap-2 text-xs text-brand-dark">
                             <input
                               type="checkbox"
                               checked={gpStatusDraft.includes(status)}
                               onChange={() => toggleGpStatusDraft(status)}
-                              className="h-3.5 w-3.5 rounded border-brand-cream/40 bg-brand-dark"
+                              className="h-3.5 w-3.5 rounded border-slate-300 bg-white text-brand-green"
                             />
                             <span>{status}</span>
                           </label>
@@ -1242,36 +1209,36 @@ export default function GWOverviewClient({
 
           <tbody>
             {pageRows.map(({ player, overallRank, positionKey, positionRank }, index) => {
-              const rowShade = index % 2 === 0 ? "bg-[#15221a]" : "bg-[#0f1a14]";
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const playerRowsByGw = visibleRowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
               const isSelectedRow = selectedPlayerId === player.id;
               const selectedRowClass = isSelectedRow
-                ? "shadow-[inset_0_0_0_2px_rgba(232,228,217,0.78),inset_0_0_0_9999px_rgba(7,16,10,0.14)]"
+                ? "shadow-[inset_0_0_0_2px_rgba(0,91,58,0.55),inset_0_0_0_9999px_rgba(0,91,58,0.06)]"
                 : "";
-              const selectedRankCellClass = isSelectedRow ? "border-l-2 border-l-[#E8E4D9]" : "";
+              const selectedRankCellClass = isSelectedRow ? "border-l-2 border-l-brand-green" : "";
 
               return (
                 <tr
                   key={player.id}
-                  className={`${rowShade} cursor-pointer`}
+                  className={`group ${rowShade} cursor-pointer text-brand-dark transition-colors hover:bg-brand-green/10`}
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 w-[32px] min-w-[32px] border-b border-r border-brand-cream/10 px-0.5 py-1 text-center text-brand-cream ${rowShade} ${selectedRowClass} ${selectedRankCellClass}`}
+                    className={`sticky left-0 z-20 w-[32px] min-w-[32px] border-b border-r border-slate-200 px-0.5 py-1 text-center ${rowShade} ${selectedRowClass} ${selectedRankCellClass} group-hover:bg-brand-green/10`}
                   >
-                    <div className="text-sm font-bold text-brand-cream">{overallRank}</div>
-                    <div className="whitespace-nowrap text-[9px] text-brand-creamDark/80">
+                    <div className="text-sm font-bold text-brand-dark">{overallRank}</div>
+                    <div className="whitespace-nowrap text-[9px] text-slate-500">
                       {positionKey} #{positionRank}
                     </div>
                   </td>
                   <td
-                    className={`sticky left-[32px] z-20 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-brand-cream/10 px-2 py-1 font-semibold text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass}`}
+                    className={`sticky left-[32px] z-20 w-[136px] min-w-[136px] max-w-[136px] overflow-hidden border-b border-r border-slate-200 px-2 py-1 font-semibold text-brand-dark md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
                       prefetch={false}
-                      className="block truncate text-sm leading-tight hover:text-brand-greenLight md:overflow-visible md:whitespace-normal"
+                      className="block truncate text-sm leading-tight hover:text-brand-green md:overflow-visible md:whitespace-normal"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="inline-flex flex-wrap items-center gap-1">
@@ -1288,17 +1255,17 @@ export default function GWOverviewClient({
                     <div className="mt-0.5">
                       <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
                     </div>
-                    <div className="mt-0 truncate text-[10px] text-brand-creamDark/60 md:overflow-visible md:whitespace-normal">
+                    <div className="mt-0 truncate text-[10px] text-slate-500 md:overflow-visible md:whitespace-normal">
                       {player.team} / {positionLetter(player.position)} / {player.ownershipPct.toFixed(1)}%
                     </div>
                   </td>
                   <td
-                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-slate-200 px-2 py-1 text-center font-bold tabular-nums text-brand-dark md:w-[106px] md:min-w-[106px] ${selectedRowClass}`}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className={`w-[72px] min-w-[72px] border-b border-r border-brand-cream/10 px-2 py-1 text-center font-bold text-brand-cream md:w-[106px] md:min-w-[106px] ${rowShade} ${selectedRowClass}`}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-slate-200 px-2 py-1 text-center font-bold tabular-nums text-brand-dark md:w-[106px] md:min-w-[106px] ${selectedRowClass}`}
                   >
                     {form.formPPG.toFixed(2)}
                   </td>
@@ -1309,21 +1276,13 @@ export default function GWOverviewClient({
                     const applicable = isStatApplicable(player.position, selectedStat);
 
                     let statCellContent = "-";
-                    let statCellClass = `border-b border-r border-brand-cream/10 ${rowShade} text-brand-cream/85`;
-                    let statBadgeStyle: CSSProperties | undefined;
-                    let showStatBadge = false;
+                    let statCellClass = "border-b border-r border-slate-200 text-brand-dark";
 
                     if (!noRow && applicable) {
                       const value = Number(row[selectedStat] ?? 0);
                       statCellContent = toDisplayValue(value);
 
-                      if (selectedStat === "raw_fantrax_pts") {
-                        showStatBadge = true;
-                        statBadgeStyle = { backgroundColor: pointsGradientBackground(value) };
-                        statCellClass = `border-b border-r border-brand-cream/10 ${rowShade} text-brand-cream`;
-                      } else {
-                        statCellClass = `border-b border-r border-brand-cream/10 ${rowShade} text-brand-cream`;
-                      }
+                      statCellClass = "border-b border-r border-slate-200 text-brand-dark";
                     }
 
                     const gpValue = noRow ? null : gpStatus(row);
@@ -1336,16 +1295,7 @@ export default function GWOverviewClient({
                         >
                           <div className="flex flex-col items-center gap-1">
                             <div>
-                              {showStatBadge ? (
-                                <span
-                                  className="inline-flex rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                                  style={statBadgeStyle}
-                                >
-                                  {statCellContent}
-                                </span>
-                              ) : (
-                                <span>{statCellContent}</span>
-                              )}
+                              <span className="font-bold tabular-nums text-brand-dark">{statCellContent}</span>
                             </div>
                             {gpValue ? (
                               <div className="inline-flex items-center gap-1">
@@ -1353,7 +1303,7 @@ export default function GWOverviewClient({
                                   {gpValue}
                                 </span>
                                 {gpValue !== "DNP" && minsCellContent && (
-                                  <span className="text-xs text-brand-creamDark/60">{`· ${minsCellContent}`}</span>
+                                  <span className="text-xs text-slate-500">{`· ${minsCellContent}`}</span>
                                 )}
                               </div>
                             ) : null}
@@ -1376,18 +1326,18 @@ export default function GWOverviewClient({
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="rounded border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream disabled:opacity-40"
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark hover:bg-slate-50 disabled:opacity-40"
           >
             ← Prev
           </button>
-          <span className="text-xs text-brand-creamDark">
+          <span className="text-xs text-slate-500">
             Page {page} of {totalPages} · {rankedPlayers.length} players
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="rounded border border-brand-cream/35 px-3 py-1.5 text-xs font-semibold text-brand-cream disabled:opacity-40"
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark hover:bg-slate-50 disabled:opacity-40"
           >
             Next →
           </button>
