@@ -244,8 +244,6 @@ const CELL_WIDTHS = {
   stat: 118,
 };
 
-const PAGE_SIZE = 150;
-
 function toDisplayValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
@@ -410,7 +408,6 @@ export default function GWOverviewClient({
   const [loadingGameweeks, setLoadingGameweeks] = useState<number[]>([]);
   const [failedGameweeks, setFailedGameweeks] = useState<number[]>([]);
   const [gameweekLoadError, setGameweekLoadError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   // Refs for synchronous tracking inside the effect — state updates are async/batched
   // and would cause the effect to re-run (aborting the in-flight fetch) if used as deps.
   const loadedGwsRef = useRef<Set<number>>(new Set());
@@ -546,11 +543,6 @@ export default function GWOverviewClient({
       setSortState({ kind: "gwStat", direction: "desc", gw: Math.max(...displayedGws) });
     }
   }, [displayedGws, selectedGws, sortState]);
-
-  // Reset page when filters or sort change
-  useEffect(() => {
-    setPage(1);
-  }, [searchPlayer, positionFilter, teamFilter, availabilityFilter, ownershipMin, ownershipMax, selectedGameweeks, venueFilter, gwStatusFilters, selectedStat, sortState]);
 
   const visibleRowsByPlayerByGw = useMemo(() => {
     const map = new Map<string, Map<number, GWOverviewGameweekRow>>();
@@ -818,10 +810,6 @@ export default function GWOverviewClient({
     teamFilter,
     venueFilter,
   ]);
-
-  const totalPages = Math.max(1, Math.ceil(rankedPlayers.length / PAGE_SIZE));
-  const pageStart = (page - 1) * PAGE_SIZE;
-  const pageRows = rankedPlayers.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
     <div className="space-y-3">
@@ -1232,7 +1220,7 @@ export default function GWOverviewClient({
           </thead>
 
           <tbody>
-            {pageRows.map(({ player, overallRank, positionKey }, index) => {
+            {rankedPlayers.map(({ player, overallRank, positionKey }, index) => {
               const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const playerRowsByGw = visibleRowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
@@ -1323,11 +1311,11 @@ export default function GWOverviewClient({
                             </div>
                             {gpValue ? (
                               <div className="inline-flex items-center gap-1">
-                                <span className={`text-xs font-semibold ${gpStatusTextClasses(gpValue)}`}>
+                                <span className={`text-[10px] font-semibold ${gpStatusTextClasses(gpValue)}`}>
                                   {gpValue}
                                 </span>
                                 {gpValue !== "DNP" && minsCellContent && (
-                                  <span className="text-xs text-slate-500">{`· ${minsCellContent}`}</span>
+                                  <span className="text-[10px] text-slate-500">{`· ${minsCellContent}`}</span>
                                 )}
                               </div>
                             ) : null}
@@ -1343,30 +1331,6 @@ export default function GWOverviewClient({
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between px-1 py-2">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark hover:bg-slate-50 disabled:opacity-40"
-          >
-            ← Prev
-          </button>
-          <span className="text-xs text-slate-500">
-            Page {page} of {totalPages} · {rankedPlayers.length} players
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark hover:bg-slate-50 disabled:opacity-40"
-          >
-            Next →
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
