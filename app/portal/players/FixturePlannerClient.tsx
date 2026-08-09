@@ -140,23 +140,13 @@ function toPoints(value: number | string | null | undefined): number {
   return 0;
 }
 
-function mixColor(a: [number, number, number], b: [number, number, number], ratio: number): string {
-  const safeRatio = Math.max(0, Math.min(1, ratio));
-  const r = Math.round(a[0] + (b[0] - a[0]) * safeRatio);
-  const g = Math.round(a[1] + (b[1] - a[1]) * safeRatio);
-  const blue = Math.round(a[2] + (b[2] - a[2]) * safeRatio);
-  return `rgb(${r}, ${g}, ${blue})`;
-}
-
-function gradientCellColor(value: number, min: number, max: number): string {
-  const red: [number, number, number] = [239, 68, 68];
-  const yellow: [number, number, number] = [234, 179, 8];
-  const green: [number, number, number] = [42, 122, 59];
-  const ratio = max > min ? (value - min) / (max - min) : 0.5;
-  if (ratio <= 0.5) {
-    return mixColor(red, yellow, ratio * 2);
-  }
-  return mixColor(yellow, green, (ratio - 0.5) * 2);
+function fdrColor(rank: number | undefined): string {
+  if (rank == null) return "bg-slate-100 text-slate-500";
+  if (rank <= 4) return "bg-red-100 text-red-800";
+  if (rank <= 8) return "bg-orange-100 text-orange-800";
+  if (rank <= 12) return "bg-yellow-100 text-yellow-800";
+  if (rank <= 16) return "bg-lime-100 text-lime-800";
+  return "bg-green-100 text-green-800";
 }
 
 export default function FixturePlannerClient({
@@ -172,13 +162,7 @@ export default function FixturePlannerClient({
   const [teams, setTeams] = useState<string[]>([]);
   const [latestGw, setLatestGw] = useState<number | null>(null);
   const [fixturesByTeamAndGw, setFixturesByTeamAndGw] = useState<Map<string, FixtureCell>>(new Map());
-  const [difficultyByOpponentPos, setDifficultyByOpponentPos] = useState<Map<string, number>>(new Map());
-  const [difficultyRanges, setDifficultyRanges] = useState<Record<PositionLetter, { min: number; max: number }>>({
-    G: { min: 0, max: 0 },
-    D: { min: 0, max: 0 },
-    M: { min: 0, max: 0 },
-    F: { min: 0, max: 0 },
-  });
+  const [difficultyRankByOpponentPos, setDifficultyRankByOpponentPos] = useState<Map<string, number>>(new Map());
 
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
@@ -331,27 +315,13 @@ export default function FixturePlannerClient({
         }
       }
 
-      const positionRanges: Record<PositionLetter, { min: number; max: number }> = {
-        G: { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY },
-        D: { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY },
-        M: { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY },
-        F: { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY },
-      };
-
-      for (const team of allTeams) {
-        for (const pos of ["G", "D", "M", "F"] as const) {
-          const value = difficultyTotals.get(`${team}:${pos}`) ?? 0;
-          positionRanges[pos].min = Math.min(positionRanges[pos].min, value);
-          positionRanges[pos].max = Math.max(positionRanges[pos].max, value);
-        }
-      }
-
+      const difficultyRanks = new Map<string, number>();
       for (const pos of ["G", "D", "M", "F"] as const) {
-        if (!Number.isFinite(positionRanges[pos].min)) {
-          positionRanges[pos].min = 0;
-        }
-        if (!Number.isFinite(positionRanges[pos].max)) {
-          positionRanges[pos].max = 0;
+        const rankedTeams = allTeams
+          .map((team) => ({ team, value: difficultyTotals.get(`${team}:${pos}`) ?? 0 }))
+          .sort((a, b) => a.value - b.value || a.team.localeCompare(b.team));
+        for (const [index, entry] of rankedTeams.entries()) {
+          difficultyRanks.set(`${entry.team}:${pos}`, index + 1);
         }
       }
 
@@ -359,8 +329,7 @@ export default function FixturePlannerClient({
       setTeams(allTeams);
       setLatestGw(latestUploadedGw);
       setFixturesByTeamAndGw(fixtureLookup);
-      setDifficultyByOpponentPos(difficultyTotals);
-      setDifficultyRanges(positionRanges);
+      setDifficultyRankByOpponentPos(difficultyRanks);
       setLoading(false);
     }
 
@@ -408,12 +377,12 @@ export default function FixturePlannerClient({
   const sortArrow = sortDirection === "asc" ? "↑" : "↓";
 
   if (error) {
-    return <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>;
+    return <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>;
   }
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark/70 px-4 py-6 text-sm text-brand-creamDark">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
         Loading fixture planner...
       </div>
     );
@@ -421,21 +390,21 @@ export default function FixturePlannerClient({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-brand-cream/20 bg-brand-dark px-3 py-2">
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
         <div className="overflow-x-auto">
-          <div className="flex min-w-max items-end gap-2 text-xs">
-            <label className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Search player</span>
+          <div className="flex min-w-max items-stretch gap-2 text-xs">
+            <label className="shrink-0 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <span className="block font-semibold uppercase tracking-wide text-slate-600">Search player</span>
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Player"
-                className="w-44 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream placeholder:text-brand-creamDark focus:border-brand-green focus:outline-none"
+                className="w-44 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
               />
             </label>
 
-            <div className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Position</span>
+            <div className="shrink-0 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <span className="block font-semibold uppercase tracking-wide text-slate-600">Position</span>
               <div className="flex gap-1">
                 {positionFilters.map((filter) => {
                   const active = positionFilter === filter;
@@ -447,7 +416,7 @@ export default function FixturePlannerClient({
                       className={`rounded-md border px-3 py-1 text-xs font-semibold ${
                         active
                           ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                          : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                       }`}
                     >
                       {filter}
@@ -457,12 +426,12 @@ export default function FixturePlannerClient({
               </div>
             </div>
 
-            <label className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Team</span>
+            <label className="shrink-0 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <span className="block font-semibold uppercase tracking-wide text-slate-600">Team</span>
               <select
                 value={teamFilter}
                 onChange={(event) => setTeamFilter(event.target.value)}
-                className="w-24 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream focus:border-brand-green focus:outline-none"
+                className="w-24 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
               >
                 <option value="All">All</option>
                 {teams.map((team) => (
@@ -473,8 +442,8 @@ export default function FixturePlannerClient({
               </select>
             </label>
 
-            <div className="shrink-0 space-y-1">
-              <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Ownership %</span>
+            <div className="shrink-0 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <span className="block font-semibold uppercase tracking-wide text-slate-600">Ownership %</span>
               <div className="flex gap-1">
                 <input
                   type="number"
@@ -484,7 +453,7 @@ export default function FixturePlannerClient({
                   value={ownershipMin}
                   onChange={(event) => setOwnershipMin(event.target.value)}
                   placeholder="Min"
-                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                  className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
                 />
                 <input
                   type="number"
@@ -494,14 +463,14 @@ export default function FixturePlannerClient({
                   value={ownershipMax}
                   onChange={(event) => setOwnershipMax(event.target.value)}
                   placeholder="Max"
-                  className="w-16 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1 text-xs text-brand-cream"
+                  className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
                 />
               </div>
             </div>
 
             {leagueRoster ? (
-              <div className="shrink-0 space-y-1">
-                <span className="block font-semibold uppercase tracking-wide text-brand-creamDark">Availability</span>
+              <div className="shrink-0 space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+                <span className="block font-semibold uppercase tracking-wide text-slate-600">Availability</span>
                 <div className="flex gap-1">
                   {(["All", "Available", "Taken"] as const).map((option) => (
                     <button
@@ -511,7 +480,7 @@ export default function FixturePlannerClient({
                       className={`rounded-md border px-3 py-1 text-xs font-semibold ${
                         availabilityFilter === option
                           ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                          : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                       }`}
                     >
                       {option}
@@ -524,7 +493,7 @@ export default function FixturePlannerClient({
                       className={`rounded-md border px-3 py-1 text-xs font-semibold ${
                         availabilityFilter === "My Team"
                           ? "border-brand-green bg-brand-green text-brand-cream"
-                          : "border-brand-cream/35 bg-brand-dark text-brand-cream"
+                          : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
                       }`}
                     >
                       My Team
@@ -537,14 +506,14 @@ export default function FixturePlannerClient({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-cream/20">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="text-brand-creamDark">
+      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+          <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-20 border-b border-r border-brand-cream/35 bg-[#0F1F13] px-4 py-3 text-xs font-semibold uppercase tracking-wide">
+              <th className="sticky left-0 top-0 z-30 w-64 min-w-64 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Name
               </th>
-              <th className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-brand-greenDark px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button
                   type="button"
                   onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -557,7 +526,7 @@ export default function FixturePlannerClient({
               {nextGws.map((gw) => (
                 <th
                   key={gw}
-                  className="sticky top-0 z-10 border-b border-r border-brand-cream/35 bg-brand-greenDark px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-brand-cream last:border-r-0"
+                  className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream last:border-r-0"
                 >
                   GW{gw}
                 </th>
@@ -566,12 +535,12 @@ export default function FixturePlannerClient({
           </thead>
           <tbody>
             {filteredAndSortedRows.map((row, index) => {
-              const rowShade = index % 2 === 0 ? "bg-brand-dark/60" : "bg-brand-dark/90";
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
 
               return (
-                <tr key={row.id} className="text-brand-cream">
-                  <td className={`sticky left-0 z-20 border-b border-r border-brand-cream/10 px-4 py-3 ${rowShade}`}>
-                    <Link href={`/portal/players/${row.id}`} prefetch={false} className="block hover:text-brand-greenLight">
+                <tr key={row.id} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 w-64 min-w-64 border-b border-r border-slate-200 px-3 py-2 ${rowShade} group-hover:bg-brand-green/10`}>
+                    <Link href={`/portal/players/${row.id}`} prefetch={false} className="block hover:text-brand-green hover:underline">
                       <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
                         <span>{row.name}</span>
                         {leagueRoster?.myTeamPlayerIds.includes(row.id) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
@@ -582,13 +551,13 @@ export default function FixturePlannerClient({
                         />
                         <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
                       </div>
-                      <div className="mt-0.5 text-xs text-brand-creamDark/70">
+                      <div className="mt-0.5 text-xs text-slate-500">
                         {row.team} / {positionLetter(row.position)} / {row.ownershipPct.toFixed(1)}%
                       </div>
                     </Link>
                   </td>
 
-                  <td className={`border-b border-r border-brand-cream/10 px-4 py-3 text-center font-semibold ${rowShade}`}>
+                  <td className="w-24 min-w-24 border-b border-r border-slate-200 px-3 py-2 text-center font-semibold tabular-nums text-brand-dark">
                     {row.seasonPts.toFixed(2)}
                   </td>
 
@@ -596,25 +565,21 @@ export default function FixturePlannerClient({
                     const fixture = fixturesByTeamAndGw.get(`${row.team}:${gw}`);
                     if (!fixture) {
                       return (
-                        <td key={`${row.id}-${gw}`} className={`border-b border-r border-brand-cream/10 px-3 py-3 text-center last:border-r-0 ${rowShade}`}>
-                          <span className="text-xs font-semibold uppercase tracking-wide text-brand-creamDark/70">BGW</span>
+                        <td key={`${row.id}-${gw}`} className="w-20 min-w-20 border-b border-r border-slate-200 px-3 py-2 text-center last:border-r-0">
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">BGW</span>
                         </td>
                       );
                     }
 
                     const pos = positionLetter(row.position);
-                    const difficultyValue = difficultyByOpponentPos.get(`${fixture.opponent}:${pos}`) ?? 0;
-                    const range = difficultyRanges[pos];
+                    const difficultyRank = difficultyRankByOpponentPos.get(`${fixture.opponent}:${pos}`);
 
                     return (
-                      <td key={`${row.id}-${gw}`} className={`border-b border-r border-brand-cream/10 px-3 py-2 text-center last:border-r-0 ${rowShade}`}>
-                        <div
-                          className="rounded-md px-2 py-1 text-xs font-bold text-[#0f1f13]"
-                          style={{ backgroundColor: gradientCellColor(difficultyValue, range.min, range.max) }}
-                        >
+                      <td key={`${row.id}-${gw}`} className="w-20 min-w-20 border-b border-r border-slate-200 px-3 py-2 text-center last:border-r-0">
+                        <div className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${fdrColor(difficultyRank)}`}>
                           {fixture.opponent}
                         </div>
-                        <div className="mt-1 text-[11px] font-semibold text-brand-creamDark">{fixture.isHome ? "H" : "A"}</div>
+                        <div className="mt-1 text-[11px] font-semibold text-slate-500">{fixture.isHome ? "H" : "A"}</div>
                       </td>
                     );
                   })}
