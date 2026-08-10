@@ -1,7 +1,6 @@
 "use client";
 
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
-import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
@@ -425,8 +424,9 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
       </button>
 
       {/* Table */}
-      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+      <div className="max-w-full overflow-x-auto">
+        <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+          <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
               <th className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -504,9 +504,16 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                   </td>
 
                   {/* Player */}
-                  <td className={`sticky left-[76px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
-                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                      <Link href={`/portal/players/${row.playerId}`} prefetch={false} className="hover:underline">{row.playerName}</Link>
+                  <td className={`sticky left-[76px] z-20 w-40 min-w-40 overflow-hidden border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                      <Link
+                        href={`/portal/players/${row.playerId}`}
+                        prefetch={false}
+                        title={row.playerName}
+                        className="min-w-0 truncate hover:underline"
+                      >
+                        {row.playerName}
+                      </Link>
                       {leagueRoster ? (
                         <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>
                           {availabilityLabel}
@@ -518,7 +525,6 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                           status={row.availabilityStatus}
                           news={row.availabilityNews}
                         />
-                        <RosterPill playerId={row.playerId} leagueRoster={leagueRoster} />
                     </span>
                   </td>
 
@@ -576,7 +582,8 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
               </tr>
             ) : null}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );
