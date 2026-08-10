@@ -124,12 +124,14 @@ function resolveAccum(
 export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
   const supabase = await createServerSupabaseClient();
   const SEASON = await getCurrentSeason(supabase);
+  const FIXTURE_SEASON = "2026-27";
 
   const [
     { data: playersRaw, error: playersError },
     { data: gwsRaw, error: gwsError },
-    { data: fixturesRaw, error: fixturesError },
-    { data: latestGwRaw, error: latestGwError },
+    { data: historicalFixturesRaw, error: historicalFixturesError },
+    { data: fixtureSeasonFixturesRaw, error: fixtureSeasonFixturesError },
+    { data: fixtureSeasonLatestGwRaw, error: fixtureSeasonLatestGwError },
   ] = await Promise.all([
     supabase
       .from("players")
@@ -142,14 +144,11 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
       )
       .eq("season", SEASON),
     supabase.from("fixtures").select("gameweek, home_team, away_team").eq("season", SEASON),
-    // Dedicated query for the latest uploaded GW — filtered to games_played > 0
-    // so DNP rows (games_played = 0) don't corrupt the result. Ordered desc
-    // limit 1 is the same pattern used in FixturePlannerClient which is known
-    // to return the correct current gameweek.
+    supabase.from("fixtures").select("gameweek, home_team, away_team").eq("season", FIXTURE_SEASON),
     supabase
       .from("player_gameweeks")
       .select("gameweek")
-      .eq("season", SEASON)
+      .eq("season", FIXTURE_SEASON)
       .gt("games_played", 0)
       .order("gameweek", { ascending: false })
       .limit(1),
@@ -157,12 +156,14 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
 
   if (playersError) throw new Error(`Failed to load players: ${playersError.message}`);
   if (gwsError) throw new Error(`Failed to load gameweeks: ${gwsError.message}`);
-  if (fixturesError) throw new Error(`Failed to load fixtures: ${fixturesError.message}`);
-  if (latestGwError) throw new Error(`Failed to load latest gameweek: ${latestGwError.message}`);
+  if (historicalFixturesError) throw new Error(`Failed to load historical fixtures: ${historicalFixturesError.message}`);
+  if (fixtureSeasonFixturesError) throw new Error(`Failed to load fixture-season fixtures: ${fixtureSeasonFixturesError.message}`);
+  if (fixtureSeasonLatestGwError) throw new Error(`Failed to load fixture-season gameweek: ${fixtureSeasonLatestGwError.message}`);
 
   const players = (playersRaw ?? []) as PlayerDbRow[];
   const gws = (gwsRaw ?? []) as GwRow[];
-  const fixtures = (fixturesRaw ?? []) as FixRow[];
+  const historicalFixtures = (historicalFixturesRaw ?? []) as FixRow[];
+  const fixtureSeasonFixtures = (fixtureSeasonFixturesRaw ?? []) as FixRow[];
 
   // --- indexes ---
 
@@ -171,11 +172,12 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     playerInfo.set(p.id, { team: p.team, position: mapPosition(p.position) });
   }
 
-  // fixByTeamGw: `${team}:${gw}` → { opponent, isHome }
-  const fixByTeamGw = new Map<string, { opponent: string; isHome: boolean }>();
-  for (const fix of fixtures) {
-    fixByTeamGw.set(`${fix.home_team}:${fix.gameweek}`, { opponent: fix.away_team, isHome: true });
-    fixByTeamGw.set(`${fix.away_team}:${fix.gameweek}`, { opponent: fix.home_team, isHome: false });
+  // Historical fixtures are used only to match the historical gameweeks that
+  // feed the opponent-conceded accumulation below.
+  const historicalFixByTeamGw = new Map<string, { opponent: string; isHome: boolean }>();
+  for (const fix of historicalFixtures) {
+    historicalFixByTeamGw.set(`${fix.home_team}:${fix.gameweek}`, { opponent: fix.away_team, isHome: true });
+    historicalFixByTeamGw.set(`${fix.away_team}:${fix.gameweek}`, { opponent: fix.home_team, isHome: false });
   }
 
   const rowsByPlayer = new Map<string, GwRow[]>();
@@ -185,25 +187,27 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     else rowsByPlayer.set(row.player_id, [row]);
   }
 
-  // Group fixtures by gameweek.
-  const fixturesByGw = new Map<number, FixRow[]>();
-  for (const fix of fixtures) {
-    const existing = fixturesByGw.get(fix.gameweek);
+  // Fixture-season data is deliberately separate from the historical fixture
+  // map: it drives only the upcoming-fixture lookup shown in Advice.
+  const fixtureSeasonFixByTeamGw = new Map<string, { opponent: string; isHome: boolean }>();
+  const fixtureSeasonFixturesByGw = new Map<number, FixRow[]>();
+  for (const fix of fixtureSeasonFixtures) {
+    fixtureSeasonFixByTeamGw.set(`${fix.home_team}:${fix.gameweek}`, { opponent: fix.away_team, isHome: true });
+    fixtureSeasonFixByTeamGw.set(`${fix.away_team}:${fix.gameweek}`, { opponent: fix.home_team, isHome: false });
+    const existing = fixtureSeasonFixturesByGw.get(fix.gameweek);
     if (existing) existing.push(fix);
-    else fixturesByGw.set(fix.gameweek, [fix]);
+    else fixtureSeasonFixturesByGw.set(fix.gameweek, [fix]);
   }
 
-  // Use the dedicated latest-GW query result (games_played > 0, ordered desc
-  // limit 1) — the same approach as FixturePlannerClient, which is known to
-  // return the correct current gameweek. nextGw = latestGw + 1, or latestGw
-  // itself if the season has ended and no future fixtures exist.
-  const latestGw = Number((latestGwRaw ?? [])[0]?.gameweek ?? 0);
-  const nextGw: number | null =
-    latestGw === 0
-      ? ([...fixturesByGw.keys()].sort((a, b) => a - b)[0] ?? null)
-      : fixturesByGw.has(latestGw + 1)
-      ? latestGw + 1
-      : latestGw;
+  // Start from the fixture season's first available GW when it has no played
+  // matches; otherwise advance to the next fixture GW when available.
+  const fixtureSeasonLatestGw = Number((fixtureSeasonLatestGwRaw ?? [])[0]?.gameweek ?? 0);
+  const nextFixtureGw: number | null =
+    fixtureSeasonLatestGw === 0
+      ? ([...fixtureSeasonFixturesByGw.keys()].sort((a, b) => a - b)[0] ?? null)
+      : fixtureSeasonFixturesByGw.has(fixtureSeasonLatestGw + 1)
+      ? fixtureSeasonLatestGw + 1
+      : fixtureSeasonLatestGw;
 
   // --- opponent conceded accumulation ---
   // oppMap[opponent_team][position][stat] = { sum, count }
@@ -215,7 +219,7 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
     const info = playerInfo.get(row.player_id);
     if (!info) continue;
 
-    const fix = fixByTeamGw.get(`${info.team}:${row.gameweek}`);
+    const fix = historicalFixByTeamGw.get(`${info.team}:${row.gameweek}`);
     if (!fix) continue;
 
     const { opponent } = fix;
@@ -276,20 +280,11 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
 
     const position = mapPosition(p.position);
 
-    // Next fixture: the exact upcoming gameweek (first with no player data yet)
-    const nextFix =
-      nextGw !== null
-        ? fixtures.find(
-            (f) => f.gameweek === nextGw && (f.home_team === p.team || f.away_team === p.team),
-          ) ?? null
-        : null;
-
-    const nextFixtureOpponent = nextFix
-      ? nextFix.home_team === p.team
-        ? nextFix.away_team
-        : nextFix.home_team
+    const nextFix = nextFixtureGw !== null
+      ? fixtureSeasonFixByTeamGw.get(`${p.team}:${nextFixtureGw}`) ?? null
       : null;
-    const nextFixtureIsHome = nextFix ? nextFix.home_team === p.team : null;
+    const nextFixtureOpponent = nextFix?.opponent ?? null;
+    const nextFixtureIsHome = nextFix?.isHome ?? null;
 
     const oppStats: Record<AdviceStatKey, number> = {
       pts_per_start: resolveAccum(oppMap, nextFixtureOpponent, position, "pts_per_start"),
@@ -323,7 +318,7 @@ export async function getAdviceData(): Promise<{ players: AdvicePlayerRow[] }> {
       availabilityNews: availRaw?.news ?? null,
       playerStats,
       gamesStarted: ns,
-      nextFixtureGw: nextFix?.gameweek ?? null,
+      nextFixtureGw: nextFix ? nextFixtureGw : null,
       nextFixtureOpponent,
       nextFixtureIsHome,
       oppStats,

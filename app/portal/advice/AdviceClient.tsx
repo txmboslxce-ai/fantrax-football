@@ -15,7 +15,7 @@ type Props = {
 type PositionFilter = "All" | "GK" | "DEF" | "MID" | "FWD";
 type VenueFilter = "All" | "Home" | "Away";
 type AvailabilityFilter = "All" | "Available" | "Taken";
-type SortKey = "playerName" | "playerStat" | "oppStat" | "fixture";
+type SortKey = "playerName" | "team" | "gamesStarted" | "ownershipPct" | "playerStat" | "oppStat" | "fixture";
 type SortDir = "asc" | "desc";
 
 function tieredBadgeClass(value: number, values: number[]): string {
@@ -76,17 +76,11 @@ const statEntries: StatEntry[] = [
 
 const positionFilters: PositionFilter[] = ["All", "GK", "DEF", "MID", "FWD"];
 
-function posBadgeClass(pos: AdvicePlayerRow["position"]): string {
-  switch (pos) {
-    case "GK":
-      return "bg-amber-100 text-amber-900";
-    case "DEF":
-      return "bg-emerald-200 text-emerald-950";
-    case "MID":
-      return "bg-violet-200 text-violet-950";
-    case "FWD":
-      return "bg-orange-200 text-orange-950";
-  }
+function positionBadgeClass(position: AdvicePlayerRow["position"]): string {
+  if (position === "GK") return "bg-amber-100 text-amber-900";
+  if (position === "DEF") return "bg-emerald-200 text-emerald-950";
+  if (position === "MID") return "bg-violet-200 text-violet-950";
+  return "bg-orange-200 text-orange-950";
 }
 
 export default function AdviceClient({ players, leagueRoster }: Props) {
@@ -150,6 +144,15 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
         case "playerName":
           diff = a.playerName.localeCompare(b.playerName);
           break;
+        case "team":
+          diff = a.team.localeCompare(b.team);
+          break;
+        case "gamesStarted":
+          diff = a.gamesStarted - b.gamesStarted;
+          break;
+        case "ownershipPct":
+          diff = (a.ownershipPct ?? -1) - (b.ownershipPct ?? -1);
+          break;
         case "playerStat":
           diff = a.playerStats[selectedStat] - b.playerStats[selectedStat];
           break;
@@ -190,7 +193,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDir(key === "playerName" || key === "fixture" ? "asc" : "desc");
+      setSortDir(key === "playerName" || key === "team" || key === "fixture" ? "asc" : "desc");
     }
   }
 
@@ -438,6 +441,24 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
               <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("team")} className="inline-flex items-center gap-1">
+                  <span>Team</span>
+                  <span aria-hidden="true">{arrow("team")}</span>
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("gamesStarted")} className="inline-flex items-center justify-end gap-1">
+                  <span>Starts</span>
+                  <span aria-hidden="true">{arrow("gamesStarted")}</span>
+                </button>
+              </th>
+              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("ownershipPct")} className="inline-flex items-center justify-end gap-1">
+                  <span>Own%</span>
+                  <span aria-hidden="true">{arrow("ownershipPct")}</span>
+                </button>
+              </th>
               <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("playerStat")} className="inline-flex items-center justify-center gap-1">
                   <span>{meta.label}</span>
@@ -485,16 +506,28 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                         <RosterPill playerId={row.playerId} leagueRoster={leagueRoster} />
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-[10px] text-slate-500 md:overflow-visible md:whitespace-normal">
-                      {row.team} / {row.gamesStarted} starts{row.ownershipPct != null ? ` / ${row.ownershipPct.toFixed(1)}%` : ""}
-                    </div>
                   </td>
 
                   {/* Position */}
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
-                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${posBadgeClass(row.position)}`}>
+                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>
                       {row.position}
                     </span>
+                  </td>
+
+                  {/* Team */}
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-brand-dark">
+                    {row.team}
+                  </td>
+
+                  {/* Starts */}
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {row.gamesStarted}
+                  </td>
+
+                  {/* Ownership */}
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {row.ownershipPct != null ? `${row.ownershipPct.toFixed(1)}%` : "—"}
                   </td>
 
                   {/* Player stat */}
@@ -530,7 +563,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
             })}
             {filteredAndSorted.length === 0 ? (
               <tr>
-                <td colSpan={6} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
+                <td colSpan={9} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
                   No players match the current filters.
                 </td>
               </tr>
