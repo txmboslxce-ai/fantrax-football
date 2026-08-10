@@ -31,6 +31,7 @@ export default function HomePage() {
               alt="Fantrax and Football podcast"
               width={1179}
               height={1156}
+              quality={95}
               className="h-36 w-36 rounded-xl object-cover"
             />
             <h2 className="mt-5 text-2xl font-black">Fantrax and Football</h2>
