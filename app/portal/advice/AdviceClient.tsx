@@ -425,55 +425,55 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
       </button>
 
       {/* Table */}
-      <div className="h-[calc(100dvh-160px)] overflow-auto rounded-xl border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-xs">
+      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+        <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-[48px] min-w-[48px] border-b border-r border-brand-cream/25 bg-brand-green px-1.5 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 #
               </th>
-              <th className="sticky left-[48px] top-0 z-30 w-[120px] min-w-[120px] max-w-[120px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream md:w-[220px] md:min-w-[220px] md:max-w-[220px]">
+              <th className="sticky left-9 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Pos
+              </th>
+              <th className="sticky left-[76px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("playerName")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{arrow("playerName")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                Pos
-              </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("team")} className="inline-flex items-center gap-1">
                   <span>Team</span>
                   <span aria-hidden="true">{arrow("team")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("gamesStarted")} className="inline-flex items-center justify-end gap-1">
                   <span>Starts</span>
                   <span aria-hidden="true">{arrow("gamesStarted")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("ownershipPct")} className="inline-flex items-center justify-end gap-1">
                   <span>Own%</span>
                   <span aria-hidden="true">{arrow("ownershipPct")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("playerStat")} className="inline-flex items-center justify-center gap-1">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("playerStat")} className="inline-flex w-full items-center justify-end gap-1">
                   <span>{meta.label}</span>
                   <span aria-hidden="true">{arrow("playerStat")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("fixture")} className="inline-flex items-center justify-center gap-1">
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("fixture")} className="inline-flex w-full items-center justify-end gap-1">
                   <span>Fixture</span>
                   <span aria-hidden="true">{arrow("fixture")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("oppStat")} className="inline-flex items-center justify-center gap-1">
-                  <span className="max-w-[120px] text-left leading-tight">{oppColHeader}</span>
+              <th className="sticky top-0 z-20 w-[88px] min-w-[88px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("oppStat")} className="inline-flex w-full items-center justify-end gap-1">
+                  <span>{oppColHeader}</span>
                   <span aria-hidden="true">{arrow("oppStat")}</span>
                 </button>
               </th>
@@ -485,60 +485,67 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
               const playerVal = row.playerStats[selectedStat];
               const oppVal = row.oppStats[selectedStat];
               const hasFixture = row.nextFixtureOpponent !== null;
+              const posKey = row.position === "GK" ? "G" : row.position === "DEF" ? "D" : row.position === "MID" ? "M" : "F";
+              const rosterTeam = leagueRoster?.teamByPlayerId[row.playerId];
+              const availabilityLabel = rosterTeam ? "Taken" : "Available";
 
               return (
                 <tr key={row.playerId} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
                   {/* Rank */}
-                  <td className={`sticky left-0 z-20 w-[48px] min-w-[48px] border-b border-r border-slate-200 px-1.5 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
                     {index + 1}
                   </td>
 
+                  {/* Position */}
+                  <td className={`sticky left-9 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>
+                      {posKey}
+                    </span>
+                  </td>
+
                   {/* Player */}
-                  <td className={`sticky left-[48px] z-20 w-[120px] min-w-[120px] max-w-[120px] overflow-hidden border-b border-r border-slate-200 px-2 py-1.5 font-semibold md:w-[220px] md:min-w-[220px] md:max-w-[220px] ${rowShade} group-hover:bg-brand-green/10`}>
-                    <div className="truncate leading-tight md:overflow-visible md:whitespace-normal">
-                      <span className="inline-flex flex-wrap items-center gap-1">
-                        <Link href={`/portal/players/${row.playerId}`} prefetch={false} className="hover:underline">{row.playerName}</Link>
+                  <td className={`sticky left-[76px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                      <Link href={`/portal/players/${row.playerId}`} prefetch={false} className="hover:underline">{row.playerName}</Link>
+                      {leagueRoster ? (
+                        <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>
+                          {availabilityLabel}
+                        </span>
+                      ) : null}
+                      {leagueRoster?.myTeamPlayerIds.includes(row.playerId) ? <span className="text-[10px] text-brand-green" title="My Team">★</span> : null}
                         <AvailabilityIcon
                           chanceOfPlaying={row.chanceOfPlaying}
                           status={row.availabilityStatus}
                           news={row.availabilityNews}
                         />
                         <RosterPill playerId={row.playerId} leagueRoster={leagueRoster} />
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Position */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
-                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>
-                      {row.position}
                     </span>
                   </td>
 
                   {/* Team */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-brand-dark">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">
                     {row.team}
                   </td>
 
                   {/* Starts */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
                     {row.gamesStarted}
                   </td>
 
                   {/* Ownership */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
                     {row.ownershipPct != null ? `${row.ownershipPct.toFixed(1)}%` : "—"}
                   </td>
 
                   {/* Player stat */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right">
                     <span className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${tieredBadgeClass(playerVal, playerStatValues)}`}>
                       {playerVal.toFixed(meta.digits)}
                     </span>
                   </td>
 
                   {/* Fixture */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right">
                     {hasFixture ? (
                       <span className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${tieredBadgeClass(oppVal, oppStatValues)}`}>
                         {row.nextFixtureOpponent} {row.nextFixtureIsHome ? "H" : "A"}
@@ -549,7 +556,7 @@ export default function AdviceClient({ players, leagueRoster }: Props) {
                   </td>
 
                   {/* Opp stat */}
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right">
                     {hasFixture ? (
                       <span className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${tieredBadgeClass(oppVal, oppStatValues)}`}>
                         {oppVal.toFixed(meta.digits)}
