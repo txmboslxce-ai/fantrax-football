@@ -46,6 +46,20 @@ const TABS: { id: Tab; label: string }[] = [
 
 const POSITION_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 
+function positionLetter(position: LeaguePlayerData["position"]): "G" | "D" | "M" | "F" {
+  if (position === "GK") return "G";
+  if (position === "DEF") return "D";
+  if (position === "MID") return "M";
+  return "F";
+}
+
+function positionBadgeClass(position: LeaguePlayerData["position"]): string {
+  if (position === "GK") return "bg-amber-100 text-amber-900";
+  if (position === "DEF") return "bg-emerald-200 text-emerald-950";
+  if (position === "MID") return "bg-violet-200 text-violet-950";
+  return "bg-orange-200 text-orange-950";
+}
+
 function formatSyncDate(iso: string | null): string {
   if (!iso) return "Never";
   const date = new Date(iso);
@@ -384,22 +398,28 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
 
           <div className="max-w-full overflow-x-auto">
             <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-            <table className="w-max border-separate border-spacing-0 text-left text-xs">
+            <table className="w-[720px] min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 top-0 z-30 w-48 min-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky left-0 top-0 z-30 w-[200px] min-w-[200px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Player
                   </th>
-                  <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Team
+                  </th>
+                  <th className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Pos
+                  </th>
+                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Season Pts
                   </th>
-                  <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Avg Pts/GW
                   </th>
-                  <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Ghost Pts/GW
                   </th>
-                  <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Ownership %
                   </th>
                 </tr>
@@ -409,7 +429,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                   return (
                     <tr key={player.playerId} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
-                      <td className={`sticky left-0 z-20 w-48 min-w-48 border-b border-r border-slate-200 px-2 py-1.5 ${rowShade} group-hover:bg-brand-green/10`}>
+                      <td className={`sticky left-0 z-20 w-[200px] min-w-[200px] border-b border-r border-slate-200 px-2 py-1.5 ${rowShade} group-hover:bg-brand-green/10`}>
                         <Link
                           href={`/portal/players/${player.playerId}`}
                           prefetch={false}
@@ -418,9 +438,14 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         >
                           {player.playerName}
                         </Link>
-                        <div className="mt-0.5 text-[10px] text-slate-500">
-                          {player.team} / {player.position}
-                        </div>
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">
+                        {player.team}
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
+                        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
+                          {positionLetter(player.position)}
+                        </span>
                       </td>
                       <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {safeFixed(player.seasonPts, 2)}
@@ -439,7 +464,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 })}
                 {selectedTeamPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
+                    <td colSpan={7} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
                       No players found for this team.
                     </td>
                   </tr>
@@ -454,9 +479,11 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 return (
                   <tfoot>
                     <tr className="bg-brand-green/10 text-brand-dark">
-                      <td className="sticky left-0 w-48 min-w-48 border-t border-slate-200 bg-brand-green/10 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                      <td className="sticky left-0 w-[200px] min-w-[200px] border-t border-slate-200 bg-brand-green/10 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
                         Team Total
                       </td>
+                      <td className="border-t border-slate-200 bg-brand-green/10" />
+                      <td className="border-t border-slate-200 bg-brand-green/10" />
                       <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(totalSeasonPts, 2)}
                       </td>
@@ -504,12 +531,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   <AnalyticsTable
                     title="Power Rankings"
                     description="0–100 score based on simulated wins if every team played every other team's schedule each week. 100 = best, 0 = worst."
-                    headers={["Team", "Rank", "Power Score (0-100)", "League Position"]}
+                    headers={["Rank", "Team", "Power Score (0-100)", "League Position"]}
                     rows={analyticsData.powerRankings.map((r) => ({
                       teamId: r.teamId,
                       cells: [
-                        r.teamName,
                         r.rank,
+                        r.teamName,
                         safeFixed(r.powerScore, 1),
                         leaguePosMap.get(r.teamId) ?? "—",
                       ],
@@ -523,12 +550,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Luck Index"
                 description="Compares actual wins to expected wins if you played every opponent each week. Positive = luckier than average."
-                headers={["Team", "Rank", "Actual W", "Expected W", "Luck Score"]}
+                headers={["Rank", "Team", "Actual W", "Expected W", "Luck Score"]}
                 rows={analyticsData.luckIndex.map((r) => ({
                   teamId: r.teamId,
                   cells: [
-                    r.teamName,
                     r.rank,
+                    r.teamName,
                     r.actualW,
                     safeFixed(r.expectedW, 2),
                     <LuckBadge key="luck" value={r.luckScore ?? 0} />,
@@ -560,12 +587,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Consistency Rankings"
                 description="Standard deviation of weekly scores. Lower std dev = more reliable week-to-week output."
-                headers={["Team", "Consistency Rank", "Avg Score (per GW)", "Std Dev", "Profile"]}
+                headers={["Consistency Rank", "Team", "Avg Score (per GW)", "Std Dev", "Profile"]}
                 rows={analyticsData.consistency.map((r) => ({
                   teamId: r.teamId,
                   cells: [
-                    r.teamName,
                     r.consistencyRank,
+                    r.teamName,
                     safeFixed(r.avgScore, 2),
                     safeFixed(r.stdDev, 2),
                     <ConsistencyProfileBadge key="profile" stdDev={r.stdDev ?? 0} />,
@@ -578,12 +605,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Trajectory"
                 description="Ranks teams by their last 4 gameweek average vs the league average over the same period. Positive = trending above the league."
-                headers={["Team", "Rank", "Last 4 GW Avg", "League Avg", "Delta"]}
+                headers={["Rank", "Team", "Last 4 GW Avg", "League Avg", "Delta"]}
                 rows={analyticsData.trajectory.map((r, i) => ({
                   teamId: r.teamId,
                   cells: [
-                    r.teamName,
                     i + 1,
+                    r.teamName,
                     safeFixed(r.last4Avg, 2),
                     safeFixed(r.leagueLast4Avg, 2),
                     <DeltaBadge key="delta" value={r.trajectoryDelta ?? 0} />,
@@ -670,14 +697,14 @@ function AnalyticsTable({
         <p className="text-xs text-slate-600">{description}</p>
       </div>
       <div className="max-w-full overflow-x-auto">
-        <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-          <table className="w-max border-separate border-spacing-0 text-left text-xs">
+        <div className="w-[720px] min-w-[720px] rounded-lg border border-slate-200 bg-white">
+          <table className="w-[720px] min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-xs">
             <thead>
               <tr>
                 {headers.map((h, i) => (
                   <th
                     key={h}
-                    className={`sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream ${i === 0 ? "left-0 z-30 w-48 min-w-48 text-left" : i === 1 ? "w-20 min-w-20" : "w-28 min-w-28"}`}
+                    className={`border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream ${i === 0 ? "w-[84px]" : i === 1 ? "w-[220px] text-left" : headers.length === 4 ? "w-[208px]" : "w-[138px]"}`}
                   >
                     {h}
                   </th>
@@ -697,7 +724,7 @@ function AnalyticsTable({
                     {row.cells.map((cell, ci) => (
                       <td
                         key={ci}
-                        className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums ${ci === 0 ? `sticky left-0 z-20 w-48 min-w-48 text-left ${rowShade} group-hover:bg-brand-green/10` : ci === 1 ? "w-20 min-w-20" : "w-28 min-w-28"} ${isMyTeam ? "font-semibold text-brand-dark" : "text-slate-600"}`}
+                        className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums ${ci === 0 ? "w-[84px]" : ci === 1 ? "w-[220px] text-left" : headers.length === 4 ? "w-[208px]" : "w-[138px]"} ${isMyTeam ? "font-semibold text-brand-dark" : "text-slate-600"}`}
                       >
                         {cell}
                       </td>
