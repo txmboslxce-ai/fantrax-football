@@ -587,7 +587,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Consistency Rankings"
                 description="Standard deviation of weekly scores. Lower std dev = more reliable week-to-week output."
-                headers={["Consistency Rank", "Team", "Avg Score (per GW)", "Std Dev", "Profile"]}
+                headers={["Rank", "Team", "Avg Score (per GW)", "Std Dev", "Profile"]}
                 rows={analyticsData.consistency.map((r) => ({
                   teamId: r.teamId,
                   cells: [

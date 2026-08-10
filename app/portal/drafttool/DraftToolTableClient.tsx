@@ -201,7 +201,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [sortKey, setSortKey] = useState<SortKey>("adp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [isMyRankMode, setIsMyRankMode] = useState(false);
   const [isSavingCustomRank, setIsSavingCustomRank] = useState(false);
@@ -605,7 +605,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
       {isMyRankMode ? (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-green/20 bg-brand-green/10 px-3 py-1.5 text-xs font-semibold text-brand-green">
-          <span>Rank Players — drag rows to set your order</span>
+          <span>Rank Players — drag rows to set your order. Your rankings are saved automatically and will be here next time you log in.</span>
           <button
             type="button"
             onClick={() => setIsRankResetDialogOpen(true)}

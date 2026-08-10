@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const portalCards = [
   { href: "/portal/players", title: "Players", description: "Search and filter all 900+ players by position and form. Click any player for an in-depth profile including full stat history and gameweek breakdown." },
+  { href: "/portal/drafttool", title: "Draft Tool", description: "Compare season rank, ADP and ADP vs Rank, then drag players into your own order and track Picked and Watchlist marks on draft day." },
   { href: "/portal/my-league", title: "My League", description: "Connect your Fantrax league to see which players are available in your waiver pool." },
   { href: "/portal/stats", title: "Stats", description: "Search and sort players by any stat used in Fantrax scoring. Filter by position, team, and time window to find the edge." },
   { href: "/portal/fixtures", title: "Fixtures", description: "Upcoming fixture difficulty plus a full match-by-match breakdown of Fantrax scores across every gameweek." },
