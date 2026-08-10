@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase";
 import type { AnalyticsPayload } from "@/app/api/league-analytics/types";
 
@@ -69,6 +70,9 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ teams: number; playersRostered: number; unmatchedPlayers: string[] } | null>(null);
+  const [isUnsyncDialogOpen, setIsUnsyncDialogOpen] = useState(false);
+  const [isUnsyncing, setIsUnsyncing] = useState(false);
+  const [unsyncError, setUnsyncError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("roster");
   const [analyticsData, setAnalyticsData] = useState<AnalyticsPayload | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -170,6 +174,27 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       setSyncError("Network error. Please try again.");
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleUnsync() {
+    setIsUnsyncing(true);
+    setUnsyncError(null);
+
+    try {
+      const response = await fetch("/api/my-league/unsync", { method: "POST" });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setUnsyncError(data.message ?? "Unable to disconnect this league.");
+        return;
+      }
+
+      setIsUnsyncDialogOpen(false);
+      router.refresh();
+    } catch {
+      setUnsyncError("Network error. Please try again.");
+    } finally {
+      setIsUnsyncing(false);
     }
   }
 
@@ -293,6 +318,17 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
           >
             {syncing ? "Syncing…" : "Re-sync"}
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setUnsyncError(null);
+              setIsUnsyncDialogOpen(true);
+            }}
+            disabled={syncing || isUnsyncing}
+            className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Un-sync League
+          </button>
           {syncError ? <p className="text-xs text-red-700">{syncError}</p> : null}
           {syncResult ? (
             <p className="text-xs text-green-700">
@@ -346,23 +382,24 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             <p className="pb-2 text-xs text-slate-500">{selectedTeamPlayers.length} players</p>
           </div>
 
-          <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white [scrollbar-gutter:stable]">
-            <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+          <div className="max-w-full overflow-x-auto">
+            <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+            <table className="w-max border-separate border-spacing-0 text-left text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky left-0 top-0 z-30 w-48 min-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Player
                   </th>
-                  <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Season Pts
                   </th>
-                  <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Avg Pts/GW
                   </th>
-                  <th className="sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Ghost Pts/GW
                   </th>
-                  <th className="sticky top-0 z-20 border-b border-brand-cream/25 bg-brand-green px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Ownership %
                   </th>
                 </tr>
@@ -372,7 +409,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                   return (
                     <tr key={player.playerId} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
-                      <td className={`sticky left-0 z-20 border-b border-r border-slate-200 px-4 py-3 ${rowShade} group-hover:bg-brand-green/10`}>
+                      <td className={`sticky left-0 z-20 w-48 min-w-48 border-b border-r border-slate-200 px-2 py-1.5 ${rowShade} group-hover:bg-brand-green/10`}>
                         <Link
                           href={`/portal/players/${player.playerId}`}
                           prefetch={false}
@@ -381,20 +418,20 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         >
                           {player.playerName}
                         </Link>
-                        <div className="mt-0.5 text-xs text-slate-500">
+                        <div className="mt-0.5 text-[10px] text-slate-500">
                           {player.team} / {player.position}
                         </div>
                       </td>
-                      <td className="border-b border-r border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
+                      <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {safeFixed(player.seasonPts, 2)}
                       </td>
-                      <td className="border-b border-r border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
+                      <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {safeFixed(player.avgPtsPerGw, 2)}
                       </td>
-                      <td className="border-b border-r border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
+                      <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {safeFixed(player.ghostPtsPerGw, 2)}
                       </td>
-                      <td className="border-b border-slate-200 px-4 py-3 text-center tabular-nums text-brand-dark">
+                      <td className="border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {safeFixed(player.ownershipPct, 1)}%
                       </td>
                     </tr>
@@ -402,7 +439,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 })}
                 {selectedTeamPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="border-b border-slate-200 bg-slate-50 px-4 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
                       No players found for this team.
                     </td>
                   </tr>
@@ -417,19 +454,19 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 return (
                   <tfoot>
                     <tr className="bg-brand-green/10 text-brand-dark">
-                      <td className="sticky left-0 border-t border-slate-200 bg-brand-green/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-600">
+                      <td className="sticky left-0 w-48 min-w-48 border-t border-slate-200 bg-brand-green/10 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
                         Team Total
                       </td>
-                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
+                      <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(totalSeasonPts, 2)}
                       </td>
-                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
+                      <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(avgPtsPerGw, 2)}
                       </td>
-                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
+                      <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(avgGhostPtsPerGw, 2)}
                       </td>
-                      <td className="border-t border-slate-200 px-4 py-3 text-center text-xs font-bold tabular-nums text-brand-dark">
+                      <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
                         {safeFixed(avgOwnership, 1)}%
                       </td>
                     </tr>
@@ -437,6 +474,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 );
               })() : null}
             </table>
+            </div>
           </div>
         </>
       )}
@@ -466,12 +504,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   <AnalyticsTable
                     title="Power Rankings"
                     description="0–100 score based on simulated wins if every team played every other team's schedule each week. 100 = best, 0 = worst."
-                    headers={["Rank", "Team", "Power Score (0-100)", "League Position"]}
+                    headers={["Team", "Rank", "Power Score (0-100)", "League Position"]}
                     rows={analyticsData.powerRankings.map((r) => ({
                       teamId: r.teamId,
                       cells: [
-                        r.rank,
                         r.teamName,
+                        r.rank,
                         safeFixed(r.powerScore, 1),
                         leaguePosMap.get(r.teamId) ?? "—",
                       ],
@@ -485,12 +523,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Luck Index"
                 description="Compares actual wins to expected wins if you played every opponent each week. Positive = luckier than average."
-                headers={["Rank", "Team", "Actual W", "Expected W", "Luck Score"]}
+                headers={["Team", "Rank", "Actual W", "Expected W", "Luck Score"]}
                 rows={analyticsData.luckIndex.map((r) => ({
                   teamId: r.teamId,
                   cells: [
-                    r.rank,
                     r.teamName,
+                    r.rank,
                     r.actualW,
                     safeFixed(r.expectedW, 2),
                     <LuckBadge key="luck" value={r.luckScore ?? 0} />,
@@ -522,12 +560,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Consistency Rankings"
                 description="Standard deviation of weekly scores. Lower std dev = more reliable week-to-week output."
-                headers={["Consistency Rank", "Team", "Avg Score (per GW)", "Std Dev", "Profile"]}
+                headers={["Team", "Consistency Rank", "Avg Score (per GW)", "Std Dev", "Profile"]}
                 rows={analyticsData.consistency.map((r) => ({
                   teamId: r.teamId,
                   cells: [
-                    r.consistencyRank,
                     r.teamName,
+                    r.consistencyRank,
                     safeFixed(r.avgScore, 2),
                     safeFixed(r.stdDev, 2),
                     <ConsistencyProfileBadge key="profile" stdDev={r.stdDev ?? 0} />,
@@ -540,12 +578,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               <AnalyticsTable
                 title="Trajectory"
                 description="Ranks teams by their last 4 gameweek average vs the league average over the same period. Positive = trending above the league."
-                headers={["Rank", "Team", "Last 4 GW Avg", "League Avg", "Delta"]}
+                headers={["Team", "Rank", "Last 4 GW Avg", "League Avg", "Delta"]}
                 rows={analyticsData.trajectory.map((r, i) => ({
                   teamId: r.teamId,
                   cells: [
-                    i + 1,
                     r.teamName,
+                    i + 1,
                     safeFixed(r.last4Avg, 2),
                     safeFixed(r.leagueLast4Avg, 2),
                     <DeltaBadge key="delta" value={r.trajectoryDelta ?? 0} />,
@@ -563,6 +601,43 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
           <p className="text-sm text-slate-500">Coming soon</p>
         </div>
       )}
+
+      {isUnsyncDialogOpen ? createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unsync-league-title"
+            aria-describedby="unsync-league-description"
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <h2 id="unsync-league-title" className="text-lg font-black text-brand-dark">Un-sync this league?</h2>
+            <p id="unsync-league-description" className="mt-2 text-sm leading-relaxed text-slate-600">
+              This permanently disconnects the league and clears all roster and saved team data. This cannot be undone.
+            </p>
+            {unsyncError ? <p className="mt-3 text-sm text-red-700">{unsyncError}</p> : null}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsUnsyncDialogOpen(false)}
+                disabled={isUnsyncing}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleUnsync()}
+                disabled={isUnsyncing}
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isUnsyncing ? "Disconnecting…" : "Yes, un-sync my league"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      ) : null}
 
     </div>
   );
@@ -594,43 +669,45 @@ function AnalyticsTable({
         <h3 className="text-base font-bold text-brand-dark">{title}</h3>
         <p className="text-xs text-slate-600">{description}</p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead>
-            <tr>
-              {headers.map((h, i) => (
-                <th
-                  key={h}
-                  className={`border-b border-brand-cream/25 bg-brand-green px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-brand-cream ${i === 0 ? "" : "text-center"}`}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => {
-              const isMyTeam = myTeamId && row.teamId === myTeamId;
-              const rowShade = isMyTeam
-                ? "bg-brand-green/10"
-                : index % 2 === 0
-                ? "bg-white"
-                : "bg-slate-50";
-              return (
-                <tr key={row.teamId} className={`${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
-                  {row.cells.map((cell, ci) => (
-                    <td
-                      key={ci}
-                      className={`border-b border-slate-200 px-4 py-2.5 ${ci === 0 ? "" : "text-center"} ${isMyTeam ? "font-semibold text-brand-dark" : "text-slate-600"}`}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="max-w-full overflow-x-auto">
+        <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+          <table className="w-max border-separate border-spacing-0 text-left text-xs">
+            <thead>
+              <tr>
+                {headers.map((h, i) => (
+                  <th
+                    key={h}
+                    className={`sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream ${i === 0 ? "left-0 z-30 w-48 min-w-48 text-left" : i === 1 ? "w-20 min-w-20" : "w-28 min-w-28"}`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => {
+                const isMyTeam = myTeamId && row.teamId === myTeamId;
+                const rowShade = isMyTeam
+                  ? "bg-brand-green/10"
+                  : index % 2 === 0
+                  ? "bg-white"
+                  : "bg-slate-50";
+                return (
+                  <tr key={row.teamId} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                    {row.cells.map((cell, ci) => (
+                      <td
+                        key={ci}
+                        className={`border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums ${ci === 0 ? `sticky left-0 z-20 w-48 min-w-48 text-left ${rowShade} group-hover:bg-brand-green/10` : ci === 1 ? "w-20 min-w-20" : "w-28 min-w-28"} ${isMyTeam ? "font-semibold text-brand-dark" : "text-slate-600"}`}
+                      >
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

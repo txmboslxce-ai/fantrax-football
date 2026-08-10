@@ -7,6 +7,7 @@ const portalCards = [
   { href: "/portal/fixtures", title: "Fixtures", description: "Upcoming fixture difficulty plus a full match-by-match breakdown of Fantrax scores across every gameweek." },
   { href: "/portal/compare", title: "Compare", description: "Head-to-head player comparisons across key metrics." },
   { href: "/portal/teams", title: "Teams", description: "Team pages with set piece takers, points conceded by position, and form data." },
+  { href: "/portal/advice", title: "Advice", description: "See how players' recent form stacks up against what their next opponent has been conceding — a quick way to spot a favorable matchup before you set your lineup." },
 ];
 
 export default function PortalPage() {
