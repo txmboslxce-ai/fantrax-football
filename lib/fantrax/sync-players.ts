@@ -62,6 +62,7 @@ export type SyncFantraxPlayersResult = {
   season: string;
   playersFound: number;
   poolEntriesAdded: number;
+  poolEntriesRemoved: number;
   added: PlayerPoolAdded[];
   changed: PlayerPoolChanged[];
   failed: PlayerPoolFailed[];
@@ -202,16 +203,19 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
   }
 
   let poolEntriesAdded = 0;
-  if (fantraxIds.length > 0) {
-    const { data: existingPoolRows, error: existingPoolError } = await supabase
-      .from("season_player_pool")
-      .select("fantrax_id")
-      .eq("season", season)
-      .in("fantrax_id", fantraxIds);
-    if (existingPoolError) throw new Error(`Unable to load the ${season} season player pool: ${existingPoolError.message}`);
+  let poolEntriesRemoved = 0;
+  const currentSourceIds = new Set(incomingByFantraxId.keys());
+  const { data: existingPoolRows, error: existingPoolError } = await supabase
+    .from("season_player_pool")
+    .select("fantrax_id")
+    .eq("season", season);
+  if (existingPoolError) throw new Error(`Unable to load the ${season} season player pool: ${existingPoolError.message}`);
 
-    const existingPoolIds = new Set((existingPoolRows ?? []).map((row) => row.fantrax_id as string));
-    poolEntriesAdded = fantraxIds.filter((fantraxId) => !existingPoolIds.has(fantraxId)).length;
+  const existingPoolIds = new Set((existingPoolRows ?? []).map((row) => row.fantrax_id as string));
+  const stalePoolIds = [...existingPoolIds].filter((fantraxId) => !currentSourceIds.has(fantraxId));
+  poolEntriesAdded = fantraxIds.filter((fantraxId) => !existingPoolIds.has(fantraxId)).length;
+
+  if (fantraxIds.length > 0) {
 
     const { error: poolError } = await supabase.from("season_player_pool").upsert(
       validPlayers.map((player) => ({ season, fantrax_id: player.fantraxId, adp: player.adp })),
@@ -220,10 +224,21 @@ export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPla
     if (poolError) throw new Error(`Unable to update the ${season} season player pool: ${poolError.message}`);
   }
 
+  if (stalePoolIds.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("season_player_pool")
+      .delete()
+      .eq("season", season)
+      .in("fantrax_id", stalePoolIds);
+    if (deleteError) throw new Error(`Unable to remove stale entries from the ${season} season player pool: ${deleteError.message}`);
+    poolEntriesRemoved = stalePoolIds.length;
+  }
+
   return {
     season,
     playersFound: validPlayers.length + unmatched.length,
     poolEntriesAdded,
+    poolEntriesRemoved,
     added: successfullyAdded,
     changed: successfullyChanged,
     failed,

@@ -34,6 +34,7 @@ type FantraxPlayerSyncResponse = {
   season?: string;
   playersFound?: number;
   poolEntriesAdded?: number;
+  poolEntriesRemoved?: number;
   added?: Array<{ fantraxId: string; name: string; team: string; position: string }>;
   changed?: Array<{
     fantraxId: string;
@@ -468,7 +469,7 @@ function FantraxPlayerSyncPanel({ seasons, defaultSeason }: { seasons: string[];
             {result.success || result.failed ? (
               <>
                 <p className="font-semibold">{result.added?.length ?? 0} added, {result.changed?.length ?? 0} team/position changes, {result.failed?.length ?? 0} failed, {result.unmatched?.length ?? 0} unmatched.</p>
-                <p className="mt-1 text-brand-creamDark">Players found: {result.playersFound ?? 0}. New season-pool entries: {result.poolEntriesAdded ?? 0}.</p>
+                <p className="mt-1 text-brand-creamDark">Players found: {result.playersFound ?? 0}. New season-pool entries: {result.poolEntriesAdded ?? 0}. Stale season-pool entries removed: {result.poolEntriesRemoved ?? 0}.</p>
                 {(result.changed?.length ?? 0) > 0 ? (
                   <ul className="mt-3 space-y-1 border-t border-brand-cream/15 pt-3">
                     {result.changed?.map((player) => <li key={player.fantraxId}>{player.name}: {player.before.team ?? "—"} / {player.before.position} → {player.after.team} / {player.after.position}</li>)}
