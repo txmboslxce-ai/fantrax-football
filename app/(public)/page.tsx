@@ -19,7 +19,7 @@ export default function HomePage() {
             <p className="mt-5 text-lg text-brand-creamDark">The tools, stats, and analysis behind every decision.</p>
             <Link
               href="/login"
-              className="mt-6 inline-flex w-fit rounded-md bg-brand-cream px-6 py-3 font-semibold text-brand-greenDark transition-colors hover:bg-white"
+              className="mt-auto inline-flex w-fit rounded-md bg-brand-cream px-6 py-3 font-semibold text-brand-greenDark transition-colors hover:bg-white"
             >
               Sign In / Sign Up
             </Link>
@@ -36,7 +36,7 @@ export default function HomePage() {
             />
             <h2 className="mt-5 text-2xl font-black">Fantrax and Football</h2>
             <p className="mt-3 text-brand-creamDark">Weekly Premier League fantasy conversations focused on tactics, waivers, ranks, and real decisions for Fantrax managers.</p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row">
               <a
                 href="https://open.spotify.com/show/2g6xYDAZvN1OIfJ5Hh1Tmn?si=3fe57265a1aa4f0d"
                 target="_blank"
