@@ -17,12 +17,14 @@ export default function HomePage() {
               priority
             />
             <p className="mt-5 text-lg text-brand-creamDark">The tools, stats, and analysis behind every decision.</p>
-            <Link
-              href="/login"
-              className="mt-auto inline-flex w-fit rounded-md bg-brand-cream px-6 py-3 font-semibold text-brand-greenDark transition-colors hover:bg-white"
-            >
-              Sign In / Sign Up
-            </Link>
+            <div className="mt-auto pt-6">
+              <Link
+                href="/login"
+                className="inline-flex w-fit rounded-md bg-brand-cream px-6 py-3 font-semibold text-brand-greenDark transition-colors hover:bg-white"
+              >
+                Sign In / Sign Up
+              </Link>
+            </div>
           </article>
 
           <article className="flex min-h-full flex-col rounded-2xl border border-brand-cream/30 bg-brand-greenDark p-6 sm:p-8">
@@ -32,10 +34,10 @@ export default function HomePage() {
               width={1179}
               height={1156}
               quality={95}
-              className="h-36 w-36 rounded-xl object-cover"
+              className="h-44 w-44 rounded-xl object-cover"
             />
             <h2 className="mt-5 text-2xl font-black">Fantrax and Football</h2>
-            <p className="mt-3 text-brand-creamDark">Weekly Premier League fantasy conversations focused on tactics, waivers, ranks, and real decisions for Fantrax managers.</p>
+            <p className="mt-3 text-brand-creamDark">Weekly Premier League fantasy podcast focused on tactics, waivers, ranks, and real decisions for Fantrax managers.</p>
             <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row">
               <a
                 href="https://open.spotify.com/show/2g6xYDAZvN1OIfJ5Hh1Tmn?si=3fe57265a1aa4f0d"
