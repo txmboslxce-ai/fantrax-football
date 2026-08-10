@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { socialLinks } from "@/lib/socialLinks";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -6,12 +7,6 @@ const navLinks = [
   { href: "/articles", label: "Articles" },
   { href: "/contact", label: "Contact" },
   { href: "/login", label: "Login" },
-];
-
-const socialLinks = [
-  { href: "https://www.instagram.com/fantraxandfootball", label: "Instagram" },
-  { href: "https://open.spotify.com/show/2g6xYDAZvN1OIfJ5Hh1Tmn?si=3fe57265a1aa4f0d", label: "Spotify" },
-  { href: "https://podcasts.apple.com/us/podcast/fantrax-and-football/id1826549507", label: "Apple Podcasts" },
 ];
 
 export default function Footer() {

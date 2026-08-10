@@ -1,3 +1,5 @@
+import { socialLinks } from "@/lib/socialLinks";
+
 export default function ContactPage() {
   return (
     <div className="bg-brand-cream px-4 py-16 sm:px-6 lg:px-8">
@@ -55,10 +57,17 @@ export default function ContactPage() {
         <section className="mt-10 rounded-2xl bg-brand-dark p-6 text-brand-cream">
           <h2 className="text-xl font-bold">Follow the show</h2>
           <div className="mt-4 flex flex-wrap gap-4 text-sm">
-            <a href="#" className="rounded-md bg-brand-green/30 px-3 py-2 transition-colors hover:bg-brand-green/50">Twitter/X</a>
-            <a href="#" className="rounded-md bg-brand-green/30 px-3 py-2 transition-colors hover:bg-brand-green/50">Instagram</a>
-            <a href="#" className="rounded-md bg-brand-green/30 px-3 py-2 transition-colors hover:bg-brand-green/50">Spotify</a>
-            <a href="#" className="rounded-md bg-brand-green/30 px-3 py-2 transition-colors hover:bg-brand-green/50">Apple Podcasts</a>
+            {socialLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md bg-brand-green/30 px-3 py-2 transition-colors hover:bg-brand-green/50"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
         </section>
       </div>

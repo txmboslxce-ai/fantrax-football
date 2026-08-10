@@ -111,6 +111,7 @@ export default function LoginClient() {
             className="rounded-xl border-2 border-brand-green/50 object-cover"
           />
           <h1 className="mt-4 text-2xl font-black text-brand-dark">Draft Academical</h1>
+          <p className="mt-1 text-sm text-brand-dark/70">Home of the Fantrax and Football podcast</p>
           <p className="mt-1 text-sm text-brand-greenDark">Sign in to access the Portal</p>
         </div>
 
