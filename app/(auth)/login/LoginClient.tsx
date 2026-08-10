@@ -104,13 +104,13 @@ export default function LoginClient() {
       <div className="w-full max-w-md rounded-2xl border border-brand-green/40 bg-brand-cream p-8 shadow-2xl">
         <div className="mb-6 flex flex-col items-center text-center">
           <Image
-            src="/logo.jpeg"
-            alt="Fantrax and Football"
+            src="/logo-mark.png"
+            alt="Draft Academical"
             width={84}
             height={84}
-            className="rounded-full border-2 border-brand-green/50 object-cover"
+            className="rounded-xl border-2 border-brand-green/50 object-cover"
           />
-          <h1 className="mt-4 text-2xl font-black text-brand-dark">Fantrax and Football</h1>
+          <h1 className="mt-4 text-2xl font-black text-brand-dark">Draft Academical</h1>
           <p className="mt-1 text-sm text-brand-greenDark">Sign in to access the Portal</p>
         </div>
 

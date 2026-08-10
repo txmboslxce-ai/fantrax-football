@@ -198,16 +198,16 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-brand-green/40 bg-brand-dark text-brand-cream">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3" aria-label="Fantrax and Football home">
+        <Link href="/" className="flex items-center gap-3" aria-label="Draft Academical home">
           <Image
-            src="/logo.jpeg"
-            alt="Fantrax and Football logo"
+            src="/logo-mark.png"
+            alt="Draft Academical logo"
             width={44}
             height={44}
-            className="h-11 w-11 rounded-full border border-brand-cream/30 object-cover"
+            className="h-11 w-11 rounded-lg border border-brand-cream/30 object-cover"
             priority
           />
-          <span className="text-sm font-semibold tracking-wide sm:text-base">Fantrax and Football</span>
+          <span className="text-sm font-semibold tracking-wide sm:text-base">Draft Academical</span>
         </Link>
 
         <nav className="hidden items-center gap-7 text-sm md:flex">

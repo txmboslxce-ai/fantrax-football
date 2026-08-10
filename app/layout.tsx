@@ -17,7 +17,7 @@ const leagueSpartan = League_Spartan({
 });
 
 export const metadata: Metadata = {
-  title: "Fantrax and Football",
+  title: "Draft Academical",
   description: "The Fantrax Premier League fantasy podcast",
 };
 

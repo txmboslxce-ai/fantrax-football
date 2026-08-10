@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -6,7 +7,14 @@ export default function HomePage() {
       <section className="bg-brand-green px-4 py-20 text-brand-cream sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-8">
           <div>
-            <h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">Fantrax and Football</h1>
+            <Image
+              src="/logo-lockup.png"
+              alt="Draft Academical — Data. Debate. Decisions."
+              width={1536}
+              height={1024}
+              className="w-full max-w-xl object-contain"
+              priority
+            />
             <p className="mt-5 max-w-2xl text-lg text-brand-creamDark">Home of the Fantrax and Football podcast — and the tools, stats, and analysis that go with it.</p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row">
