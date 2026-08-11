@@ -16,11 +16,9 @@ async function handleSync(request: Request) {
   }
 
   try {
-    const [playerResult, fixturesResult] = await Promise.all([syncFplPlayerData(),
-      // TEMP disabled — FPL was writing 2026-27 fixtures into 2025-26; re-enable after season-pointer fix.
-      // syncFixtures()
-    ]);
-    return NextResponse.json({ success: true, ...playerResult, fixtures: fixturesResult });
+    // TEMP: FPL fixtures sync disabled — was writing 2026-27 fixtures into 2025-26. Re-enable after season-pointer fix.
+    const [playerResult] = await Promise.all([syncFplPlayerData()]);
+    return NextResponse.json({ success: true, ...playerResult });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to sync FPL data.";
     return NextResponse.json({ success: false, message }, { status: 500 });
