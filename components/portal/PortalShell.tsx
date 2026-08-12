@@ -111,7 +111,7 @@ export default function PortalShell({ email, children }: PortalShellProps) {
       </div>
 
       <div className="flex min-h-full md:min-h-[calc(100vh-8rem)]">
-        <aside className="hidden w-72 flex-col border-r border-brand-cream/20 bg-brand-green px-4 py-6 text-brand-cream md:sticky md:top-[69px] md:flex md:h-[calc(100vh-69px)] md:overflow-y-auto">
+        <aside className="hidden w-56 flex-col border-r border-brand-cream/20 bg-brand-green px-4 py-6 text-brand-cream md:sticky md:top-[69px] md:flex md:h-[calc(100vh-69px)] md:overflow-y-auto">
           <p className="px-3 text-xs font-bold uppercase tracking-widest text-brand-creamDark">Subscriber Portal</p>
           <div className="mt-4 flex-1">
             <NavLinks pathname={pathname} />
