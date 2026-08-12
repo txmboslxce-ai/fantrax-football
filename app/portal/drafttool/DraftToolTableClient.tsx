@@ -784,19 +784,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsMyTiersOnly((current) => !current)}
-          aria-pressed={isMyTiersOnly}
-          className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
-            isMyTiersOnly
-              ? "border-brand-green bg-brand-green text-brand-cream"
-              : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
-          }`}
-        >
-          Show My Tiers Only
-        </button>
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
               type="checkbox"
@@ -806,7 +794,18 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             />
             <span>Watchlist Only</span>
           </label>
-
+          <button
+            type="button"
+            onClick={() => setIsMyTiersOnly((current) => !current)}
+            aria-pressed={isMyTiersOnly}
+            className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
+              isMyTiersOnly
+                ? "border-brand-green bg-brand-green text-brand-cream"
+                : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+            }`}
+          >
+            Show My Tiers Only
+          </button>
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
               type="checkbox"
@@ -816,8 +815,6 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             />
             <span>Hide Drafted</span>
           </label>
-        </div>
-        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setIsMyRankMode((current) => !current)}
@@ -830,6 +827,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             Rank Players
           </button>
+        </div>
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setIsResetDialogOpen(true)}
