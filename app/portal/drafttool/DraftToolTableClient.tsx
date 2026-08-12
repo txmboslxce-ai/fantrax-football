@@ -8,7 +8,7 @@ import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor,
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
-import { type ReactNode, useDeferredValue, useMemo, useRef, useState } from "react";
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type DraftToolPlayer = {
@@ -72,12 +72,12 @@ const TIER_COLUMN_WIDTH = "w-28 min-w-28";
 const SET_PIECES_COLUMN_WIDTH = "w-24 min-w-24";
 const TIERS: Array<{ number: TierNumber; label: string; className: string }> = [
   { number: 1, label: "Elite", className: "border border-violet-400 bg-violet-100 text-violet-950" },
-  { number: 2, label: "High-end", className: "border border-sky-400 bg-sky-100 text-sky-950" },
+  { number: 2, label: "Great", className: "border border-sky-400 bg-sky-100 text-sky-950" },
   { number: 3, label: "Starter", className: "border border-teal-400 bg-teal-100 text-teal-950" },
   { number: 4, label: "Solid", className: "border border-lime-400 bg-lime-100 text-lime-950" },
-  { number: 5, label: "Rotation", className: "border border-amber-400 bg-amber-100 text-amber-950" },
-  { number: 6, label: "Depth", className: "border border-orange-400 bg-orange-100 text-orange-950" },
-  { number: 7, label: "Late Target", className: "border border-stone-400 bg-stone-100 text-stone-800" },
+  { number: 5, label: "Depth", className: "border border-amber-400 bg-amber-100 text-amber-950" },
+  { number: 6, label: "Bench", className: "border border-orange-400 bg-orange-100 text-orange-950" },
+  { number: 7, label: "LateRd", className: "border border-stone-400 bg-stone-100 text-stone-800" },
 ];
 
 function positionLetter(position: DraftToolPlayer["position"]): "G" | "D" | "M" | "F" {
@@ -210,6 +210,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   ));
   const tierSaveVersionRef = useRef(new Map<string, number>());
   const [tierMenuPlayerId, setTierMenuPlayerId] = useState<string | null>(null);
+  const tierMenuRef = useRef<HTMLTableCellElement | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("All");
@@ -231,6 +232,31 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
     [players]
   );
+
+  useEffect(() => {
+    if (tierMenuPlayerId == null) return;
+
+    function closeTierMenuOnOutsideClick(event: MouseEvent) {
+      if (!tierMenuRef.current?.contains(event.target as Node)) setTierMenuPlayerId(null);
+    }
+
+    function closeTierMenuOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setTierMenuPlayerId(null);
+    }
+
+    function closeTierMenuOnScroll() {
+      setTierMenuPlayerId(null);
+    }
+
+    document.addEventListener("click", closeTierMenuOnOutsideClick);
+    document.addEventListener("keydown", closeTierMenuOnEscape);
+    document.addEventListener("scroll", closeTierMenuOnScroll, true);
+    return () => {
+      document.removeEventListener("click", closeTierMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeTierMenuOnEscape);
+      document.removeEventListener("scroll", closeTierMenuOnScroll, true);
+    };
+  }, [tierMenuPlayerId]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const dragEnabled = isMyRankMode && !isSavingCustomRank;
@@ -801,7 +827,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatAdpDelta(player)}</td>
-                  <td className={`relative ${TIER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
+                  <td ref={isTierMenuOpen ? tierMenuRef : undefined} className={`relative ${TIER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
                     {tierAssignment && tierDefinition ? (
                       <span className="inline-flex items-center gap-1">
                         <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
@@ -818,7 +844,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       <div className="absolute left-1/2 z-40 mt-1 w-36 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-lg">
                         {TIERS.map((tier) => (
                           <button key={tier.number} type="button" onClick={() => setPlayerTier(player.id, tier.number)} aria-pressed={tierAssignment?.tier === tier.number} className={`flex w-full items-center justify-between rounded px-2 py-1 text-xs hover:bg-slate-100 ${tierAssignment?.tier === tier.number ? "bg-slate-100 font-semibold" : ""}`}>
-                            <span>{tier.label}</span>{tierAssignment?.tier === tier.number ? <span aria-hidden="true">✓</span> : null}
+                            <span>{tier.number} - {tier.label}</span>{tierAssignment?.tier === tier.number ? <span aria-hidden="true">✓</span> : null}
                           </button>
                         ))}
                         {tierAssignment ? <button type="button" onClick={() => setPlayerTier(player.id, null)} className="mt-1 w-full rounded border-t border-slate-200 px-2 py-1 text-left text-xs font-semibold text-red-700 hover:bg-red-50">Remove from tier</button> : null}
