@@ -721,22 +721,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
-        <div>
-          <button
-            type="button"
-            onClick={() => setIsMyTiersOnly((current) => !current)}
-            aria-pressed={isMyTiersOnly}
-            className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
-              isMyTiersOnly
-                ? "border-brand-green bg-brand-green text-brand-cream"
-                : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
-            }`}
-          >
-            Show My Tiers Only
-          </button>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
         <label className="h-[76px] w-full space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 sm:w-64 sm:shrink-0">
           <span className="block font-semibold uppercase tracking-wide text-slate-500">Search</span>
           <input
@@ -799,6 +784,18 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setIsMyTiersOnly((current) => !current)}
+          aria-pressed={isMyTiersOnly}
+          className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
+            isMyTiersOnly
+              ? "border-brand-green bg-brand-green text-brand-cream"
+              : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+          }`}
+        >
+          Show My Tiers Only
+        </button>
         <div className="flex flex-col gap-2">
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
@@ -820,7 +817,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <span>Hide Drafted</span>
           </label>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setIsMyRankMode((current) => !current)}
@@ -840,7 +837,6 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             New Draft
           </button>
-        </div>
         </div>
       </div>
 
