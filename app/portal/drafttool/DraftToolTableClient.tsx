@@ -71,14 +71,14 @@ const TEAM_COLUMN_WIDTH = "w-14 min-w-14";
 const NUMERIC_COLUMN_WIDTH = "w-20 min-w-20";
 const TIER_COLUMN_WIDTH = "w-28 min-w-28";
 const SET_PIECES_COLUMN_WIDTH = "w-24 min-w-24";
-const TIERS: Array<{ number: TierNumber; label: string; className: string }> = [
-  { number: 1, label: "Elite", className: "border border-violet-400 bg-violet-100 text-violet-950" },
-  { number: 2, label: "Great", className: "border border-sky-400 bg-sky-100 text-sky-950" },
-  { number: 3, label: "Starter", className: "border border-teal-400 bg-teal-100 text-teal-950" },
-  { number: 4, label: "Solid", className: "border border-lime-400 bg-lime-100 text-lime-950" },
-  { number: 5, label: "Depth", className: "border border-amber-400 bg-amber-100 text-amber-950" },
-  { number: 6, label: "Bench", className: "border border-orange-400 bg-orange-100 text-orange-950" },
-  { number: 7, label: "LateRd", className: "border border-stone-400 bg-stone-100 text-stone-800" },
+const TIERS: Array<{ number: TierNumber; label: string; className: string; dividerClassName: string }> = [
+  { number: 1, label: "Elite", className: "border border-violet-400 bg-violet-100 text-violet-950", dividerClassName: "bg-[#EEEDFE] text-[#26215C]" },
+  { number: 2, label: "Great", className: "border border-sky-400 bg-sky-100 text-sky-950", dividerClassName: "bg-[#E6F1FB] text-[#042C53]" },
+  { number: 3, label: "Starter", className: "border border-teal-400 bg-teal-100 text-teal-950", dividerClassName: "bg-[#E1F5EE] text-[#04342C]" },
+  { number: 4, label: "Solid", className: "border border-lime-400 bg-lime-100 text-lime-950", dividerClassName: "bg-[#EAF3DE] text-[#173404]" },
+  { number: 5, label: "Depth", className: "border border-amber-400 bg-amber-100 text-amber-950", dividerClassName: "bg-[#FAEEDA] text-[#412402]" },
+  { number: 6, label: "Bench", className: "border border-orange-400 bg-orange-100 text-orange-950", dividerClassName: "bg-[#FAECE7] text-[#4A1B0C]" },
+  { number: 7, label: "LateRd", className: "border border-stone-400 bg-stone-100 text-stone-800", dividerClassName: "bg-[#F1EFE8] text-[#2C2C2A]" },
 ];
 
 function positionLetter(position: DraftToolPlayer["position"]): "G" | "D" | "M" | "F" {
@@ -322,6 +322,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
       const aValue = sortValue(a, sortKey, tierAssignments, tieredBoardRanks);
       const bValue = sortValue(b, sortKey, tierAssignments, tieredBoardRanks);
+      if (sortKey === "tier" && aValue == null && bValue == null) {
+        if (a.adp == null) return b.adp == null ? a.name.localeCompare(b.name) : 1;
+        if (b.adp == null) return -1;
+        return a.adp - b.adp || a.name.localeCompare(b.name);
+      }
       if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
       if (bValue == null) return -1;
       if (typeof aValue === "string" && typeof bValue === "string") {
@@ -688,7 +693,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     if (isMyRankMode) {
       setIsMyRankMode(false);
       setSortKey(nextKey);
-      setSortDir(nextKey === "name" ? "asc" : "desc");
+      setSortDir(nextKey === "name" || nextKey === "tier" ? "asc" : "desc");
       return;
     }
 
@@ -698,14 +703,21 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     }
 
     setSortKey(nextKey);
-    setSortDir(nextKey === "name" ? "asc" : "desc");
+    setSortDir(nextKey === "name" || nextKey === "tier" ? "asc" : "desc");
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
-  const tableWidth = isMyRankMode ? "1592px" : "1552px";
-  const stickyOffsets = isMyRankMode
-    ? { watchlist: "left-10", picked: "left-20", player: "left-[136px]", position: "left-[328px]" }
-    : { watchlist: "left-0", picked: "left-10", player: "left-24", position: "left-[288px]" };
+  const tableWidth = isMyTiersOnly
+    ? isMyRankMode ? "1632px" : "1592px"
+    : isMyRankMode ? "1592px" : "1552px";
+  const tableColumnCount = (isMyRankMode ? 20 : 19) + (isMyTiersOnly ? 1 : 0);
+  const stickyOffsets = isMyTiersOnly
+    ? isMyRankMode
+      ? { myRank: "left-10", watchlist: "left-20", picked: "left-[120px]", player: "left-[176px]", position: "left-[368px]" }
+      : { myRank: "left-0", watchlist: "left-10", picked: "left-20", player: "left-[136px]", position: "left-[328px]" }
+    : isMyRankMode
+      ? { myRank: "left-0", watchlist: "left-10", picked: "left-20", player: "left-[136px]", position: "left-[328px]" }
+      : { myRank: "left-0", watchlist: "left-0", picked: "left-10", player: "left-24", position: "left-[288px]" };
 
   return (
     <div className="space-y-3">
@@ -793,7 +805,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <span>Hide Drafted</span>
           </label>
         </div>
-        <div className="flex w-full">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setIsMyTiersOnly((current) => !current)}
@@ -806,8 +818,6 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             Show My Tiers Only
           </button>
-        </div>
-        <div className="flex w-full items-center gap-3">
           <button
             type="button"
             onClick={() => setIsMyRankMode((current) => !current)}
@@ -866,6 +876,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         <table style={{ width: tableWidth }} className="table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
+            {isMyTiersOnly ? <col style={{ width: "40px" }} /> : null}
             {isMyRankMode ? <col style={{ width: "40px" }} /> : null}
             <col style={{ width: "40px" }} />
             <col style={{ width: "56px" }} />
@@ -879,7 +890,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </colgroup>
           <thead>
             <tr>
-              {isMyRankMode ? <th aria-label="Personal draft position" className={`sticky left-0 top-0 z-30 h-16 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>My<br />#</th> : null}
+              {isMyTiersOnly ? <th aria-label="Reorder tier" className="sticky left-0 top-0 z-30 h-16 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream">↕</th> : null}
+              {isMyRankMode ? <th aria-label="Personal draft position" className={`sticky ${stickyOffsets.myRank} top-0 z-30 h-16 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>My<br />#</th> : null}
               <th aria-label="Watchlist" className={`sticky ${stickyOffsets.watchlist} top-0 z-30 h-16 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><span aria-hidden="true">★</span></th>
               <th className={`sticky ${stickyOffsets.picked} top-0 z-30 h-16 ${PICKED_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Picked?</th>
               <th className={`sticky ${stickyOffsets.player} top-0 z-30 h-16 ${PLAYER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>
@@ -928,15 +940,21 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                 <Fragment key={player.id}>
                   {startsTierBlock && tierDefinition ? (
                     <tr>
-                      <td colSpan={isMyRankMode ? 20 : 19} className="border-b border-slate-200 bg-slate-50 px-3 py-1.5">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>{tierDefinition.number} · {tierDefinition.label}</span>
+                      <td colSpan={tableColumnCount} className={`border-b border-slate-200 px-3 py-1 text-center text-[10px] font-semibold ${tierDefinition.dividerClassName}`}>
+                        {tierDefinition.number} · {tierDefinition.label}
                       </td>
                     </tr>
                   ) : null}
                 <SortableRow id={player.id} disabled={!dragEnabled}>
                   {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
-                  {isMyRankMode ? <td className={`sticky left-0 z-20 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums ${rowShade} group-hover:bg-brand-green/10`}>{index + 1}</td> : null}
+                  {isMyTiersOnly ? <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="inline-flex items-center gap-1">
+                      <button type="button" onClick={() => movePlayerWithinTier(player.id, "up")} disabled={!canMoveTierPlayerUp} aria-label={`Move ${player.name} up within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↑</button>
+                      <button type="button" onClick={() => movePlayerWithinTier(player.id, "down")} disabled={!canMoveTierPlayerDown} aria-label={`Move ${player.name} down within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↓</button>
+                    </span>
+                  </td> : null}
+                  {isMyRankMode ? <td className={`sticky ${stickyOffsets.myRank} z-20 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums ${rowShade} group-hover:bg-brand-green/10`}>{index + 1}</td> : null}
                   <td className={`sticky ${stickyOffsets.watchlist} z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <div className="flex items-center justify-center gap-0.5">
                       <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
@@ -974,17 +992,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatAdpDelta(player)}</td>
                   <td ref={isTierMenuOpen ? tierMenuRef : undefined} className={`relative ${TIER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
                     {tierAssignment && tierDefinition ? (
-                      <span className="inline-flex flex-col items-center gap-0.5">
-                        <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
-                          {tierDefinition.number} · {tierDefinition.label} #{tierBoardRank}
-                        </button>
-                        {isMyTiersOnly ? (
-                          <span className="inline-flex gap-1">
-                            <button type="button" onClick={() => movePlayerWithinTier(player.id, "up")} disabled={!canMoveTierPlayerUp} aria-label={`Move ${player.name} up within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↑</button>
-                            <button type="button" onClick={() => movePlayerWithinTier(player.id, "down")} disabled={!canMoveTierPlayerDown} aria-label={`Move ${player.name} down within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↓</button>
-                          </span>
-                        ) : null}
-                      </span>
+                      <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
+                        {tierDefinition.number} · {tierDefinition.label} #{tierBoardRank}
+                      </button>
                     ) : (
                       <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Add ${player.name} to a tier`} aria-expanded={isTierMenuOpen} className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold leading-none text-slate-500 hover:border-brand-green hover:text-brand-green">
                         +
@@ -1018,7 +1028,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               );
             })}
             {filteredAndSortedPlayers.length === 0 ? (
-              <tr><td colSpan={isMyRankMode ? 20 : 19} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
+              <tr><td colSpan={tableColumnCount} className="border-b border-slate-200 bg-slate-50 px-4 !py-6 text-center text-slate-500">No players match the current filters.</td></tr>
             ) : null}
             </SortableContext>
             </DndContext>
