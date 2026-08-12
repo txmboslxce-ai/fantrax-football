@@ -74,8 +74,8 @@ const SET_PIECES_COLUMN_WIDTH = "w-24 min-w-24";
 const TIERS: Array<{ number: TierNumber; label: string; className: string; dividerClassName: string }> = [
   { number: 1, label: "Elite", className: "border border-violet-400 bg-violet-100 text-violet-950", dividerClassName: "bg-[#EEEDFE] text-[#26215C]" },
   { number: 2, label: "Great", className: "border border-sky-400 bg-sky-100 text-sky-950", dividerClassName: "bg-[#E6F1FB] text-[#042C53]" },
-  { number: 3, label: "Starter", className: "border border-teal-400 bg-teal-100 text-teal-950", dividerClassName: "bg-[#E1F5EE] text-[#04342C]" },
-  { number: 4, label: "Solid", className: "border border-lime-400 bg-lime-100 text-lime-950", dividerClassName: "bg-[#EAF3DE] text-[#173404]" },
+  { number: 3, label: "Good", className: "border border-teal-400 bg-teal-100 text-teal-950", dividerClassName: "bg-[#E1F5EE] text-[#04342C]" },
+  { number: 4, label: "Fine", className: "border border-lime-400 bg-lime-100 text-lime-950", dividerClassName: "bg-[#EAF3DE] text-[#173404]" },
   { number: 5, label: "Depth", className: "border border-amber-400 bg-amber-100 text-amber-950", dividerClassName: "bg-[#FAEEDA] text-[#412402]" },
   { number: 6, label: "Bench", className: "border border-orange-400 bg-orange-100 text-orange-950", dividerClassName: "bg-[#FAECE7] text-[#4A1B0C]" },
   { number: 7, label: "LateRd", className: "border border-stone-400 bg-stone-100 text-stone-800", dividerClassName: "bg-[#F1EFE8] text-[#2C2C2A]" },
