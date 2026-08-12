@@ -8,7 +8,7 @@ import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor,
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
-import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type DraftToolPlayer = {
@@ -44,6 +44,7 @@ type SortKey =
   | "adp"
   | "rank"
   | "adpVsRank"
+  | "tier"
   | "seasonPts"
   | "fantasyPtsPerStart"
   | "ghostPtsPerStart"
@@ -128,12 +129,22 @@ function matchesAnySelectedRole(player: DraftToolPlayer, selectedRoles: Set<Role
   );
 }
 
-function sortValue(player: DraftToolPlayer, key: SortKey): string | number | null {
+function sortValue(
+  player: DraftToolPlayer,
+  key: SortKey,
+  tierAssignments: Map<string, TierAssignment>,
+  tieredBoardRanks: Map<string, number>
+): string | number | null {
   switch (key) {
     case "name": return player.name;
     case "adp": return player.adp;
     case "rank": return player.rank;
     case "adpVsRank": return adpVsRank(player);
+    case "tier": {
+      const assignment = tierAssignments.get(player.id);
+      const boardRank = tieredBoardRanks.get(player.id);
+      return assignment && boardRank != null ? assignment.tier * 100000 + boardRank : null;
+    }
     case "seasonPts": return player.stats.season_pts;
     case "fantasyPtsPerStart": return player.stats.fantasy_pts_per_start;
     case "ghostPtsPerStart": return player.stats.ghost_pts_per_start;
@@ -220,6 +231,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("adp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [isMyTiersOnly, setIsMyTiersOnly] = useState(false);
   const [isMyRankMode, setIsMyRankMode] = useState(false);
   const [isSavingCustomRank, setIsSavingCustomRank] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -227,6 +239,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [isResetting, setIsResetting] = useState(false);
   const [isRankResetDialogOpen, setIsRankResetDialogOpen] = useState(false);
   const [isResettingRank, setIsResettingRank] = useState(false);
+  const [isTierResetDialogOpen, setIsTierResetDialogOpen] = useState(false);
+  const [isResettingTiers, setIsResettingTiers] = useState(false);
 
   const teams = useMemo(
     () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
@@ -259,7 +273,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   }, [tierMenuPlayerId]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const dragEnabled = isMyRankMode && !isSavingCustomRank;
+  const dragEnabled = isMyRankMode && !isMyTiersOnly && !isSavingCustomRank;
 
   const globalRankedPlayers = useMemo(() => [...players].sort((a, b) => {
     const aValue = myRankValue(a, customRanks);
@@ -287,10 +301,17 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesDrafted = !hideDrafted || !pickedPlayerIds.has(player.id);
       const matchesWatchlist = !watchlistOnly || watchlistedPlayerIds.has(player.id);
-      return matchesSearch && matchesPosition && matchesTeam && matchesAnySelectedRole(player, selectedRoles) && matchesDrafted && matchesWatchlist;
+      const matchesTier = !isMyTiersOnly || tierAssignments.has(player.id);
+      return matchesSearch && matchesPosition && matchesTeam && matchesAnySelectedRole(player, selectedRoles) && matchesDrafted && matchesWatchlist && matchesTier;
     });
 
     return [...filtered].sort((a, b) => {
+      if (isMyTiersOnly) {
+        const aAssignment = tierAssignments.get(a.id)!;
+        const bAssignment = tierAssignments.get(b.id)!;
+        return aAssignment.tier - bAssignment.tier || aAssignment.tierOrder - bAssignment.tierOrder || a.name.localeCompare(b.name);
+      }
+
       if (isMyRankMode) {
         const aValue = myRankValue(a, customRanks);
         const bValue = myRankValue(b, customRanks);
@@ -299,8 +320,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         return aValue - bValue || a.name.localeCompare(b.name);
       }
 
-      const aValue = sortValue(a, sortKey);
-      const bValue = sortValue(b, sortKey);
+      const aValue = sortValue(a, sortKey, tierAssignments, tieredBoardRanks);
+      const bValue = sortValue(b, sortKey, tierAssignments, tieredBoardRanks);
       if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
       if (bValue == null) return -1;
       if (typeof aValue === "string" && typeof bValue === "string") {
@@ -308,7 +329,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, watchlistOnly, watchlistedPlayerIds]);
+  }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, isMyTiersOnly, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
 
   function applyCustomRanks(next: Map<string, number>) {
     customRanksRef.current = next;
@@ -378,6 +399,59 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     applyTierAssignments(next);
     setTierMenuPlayerId(null);
     void persistTierAssignment(playerId, previous, next);
+  }
+
+  async function persistTierReorder(playerIds: [string, string], previous: Map<string, TierAssignment>, next: Map<string, TierAssignment>) {
+    const versions = playerIds.map((playerId) => {
+      const version = (tierSaveVersionRef.current.get(playerId) ?? 0) + 1;
+      tierSaveVersionRef.current.set(playerId, version);
+      return version;
+    });
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      const { error } = await supabase.from("draft_picks").upsert(
+        playerIds.map((playerId) => {
+          const assignment = next.get(playerId)!;
+          return {
+            user_id: user.id,
+            player_id: playerId,
+            tier: assignment.tier,
+            tier_order: assignment.tierOrder,
+            updated_at: new Date().toISOString(),
+          };
+        }),
+        { onConflict: "user_id,player_id" }
+      );
+      if (error) throw error;
+    } catch (error) {
+      if (playerIds.every((playerId, index) => tierSaveVersionRef.current.get(playerId) === versions[index])) {
+        applyTierAssignments(previous);
+        setSaveError(error instanceof Error ? error.message : "Unable to reorder your tiers.");
+      }
+    }
+  }
+
+  function movePlayerWithinTier(playerId: string, direction: "up" | "down") {
+    const playerIndex = filteredAndSortedPlayers.findIndex((player) => player.id === playerId);
+    const adjacentPlayer = filteredAndSortedPlayers[playerIndex + (direction === "up" ? -1 : 1)];
+    const playerAssignment = tierAssignmentsRef.current.get(playerId);
+    const adjacentAssignment = adjacentPlayer ? tierAssignmentsRef.current.get(adjacentPlayer.id) : undefined;
+    if (!playerAssignment || !adjacentPlayer || !adjacentAssignment || playerAssignment.tier !== adjacentAssignment.tier) return;
+
+    setSaveError(null);
+    const previous = new Map(tierAssignmentsRef.current);
+    const next = new Map(previous);
+    next.set(playerId, { ...playerAssignment, tierOrder: adjacentAssignment.tierOrder });
+    next.set(adjacentPlayer.id, { ...adjacentAssignment, tierOrder: playerAssignment.tierOrder });
+    applyTierAssignments(next);
+    void persistTierReorder([playerId, adjacentPlayer.id], previous, next);
   }
 
   async function handleRankDragEnd(event: DragEndEvent) {
@@ -572,6 +646,33 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     }
   }
 
+  async function resetTiers() {
+    setIsResettingTiers(true);
+    setSaveError(null);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      const { error } = await supabase
+        .from("draft_picks")
+        .update({ tier: null, tier_order: null, updated_at: new Date().toISOString() })
+        .eq("user_id", user.id);
+      if (error) throw error;
+
+      applyTierAssignments(new Map());
+      setIsTierResetDialogOpen(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to reset your tiers.");
+    } finally {
+      setIsResettingTiers(false);
+    }
+  }
+
   function toggleRole(role: RoleFilter) {
     setSelectedRoles((current) => {
       const next = new Set(current);
@@ -582,6 +683,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   }
 
   function handleSort(nextKey: SortKey) {
+    if (isMyTiersOnly && nextKey === "tier") return;
+
     if (isMyRankMode) {
       setIsMyRankMode(false);
       setSortKey(nextKey);
@@ -690,25 +793,41 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <span>Hide Drafted</span>
           </label>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsMyRankMode((current) => !current)}
-          aria-pressed={isMyRankMode}
-          className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
-            isMyRankMode
-              ? "border-brand-green bg-brand-green text-brand-cream"
-              : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
-          }`}
-        >
-          Rank Players
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsResetDialogOpen(true)}
-          className="ml-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
-        >
-          New Draft
-        </button>
+        <div className="flex w-full">
+          <button
+            type="button"
+            onClick={() => setIsMyTiersOnly((current) => !current)}
+            aria-pressed={isMyTiersOnly}
+            className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
+              isMyTiersOnly
+                ? "border-brand-green bg-brand-green text-brand-cream"
+                : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+            }`}
+          >
+            Show My Tiers Only
+          </button>
+        </div>
+        <div className="flex w-full items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsMyRankMode((current) => !current)}
+            aria-pressed={isMyRankMode}
+            className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
+              isMyRankMode
+                ? "border-brand-green bg-brand-green text-brand-cream"
+                : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+            }`}
+          >
+            Rank Players
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsResetDialogOpen(true)}
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
+          >
+            New Draft
+          </button>
+        </div>
       </div>
 
       {saveError ? (
@@ -726,6 +845,19 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             className="shrink-0 rounded border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
           >
             Reset Rankings
+          </button>
+        </div>
+      ) : null}
+
+      {isMyTiersOnly ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-[#7F77DD] bg-[#CECBF6] px-3 py-1.5 text-xs font-semibold text-[#26215C]">
+          <span>Showing only players with a tier assigned. Toggle off to see the full board.</span>
+          <button
+            type="button"
+            onClick={() => setIsTierResetDialogOpen(true)}
+            className="shrink-0 rounded border border-red-300 bg-red-50 px-2 py-1 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
+          >
+            Reset Tiers
           </button>
         </div>
       ) : null}
@@ -758,7 +890,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="ADP" tooltip="Average draft position across current 2026-27 Fantrax drafts. Refreshed daily; lower means drafted earlier." sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Rank (25/26)" tooltip="Player's finish position among the full pool, ranked by total Fantasy Points scored in 2025-26. 1 = highest scorer." sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="ADP v Rank (25/26)" tooltip="Current ADP minus last season's Rank. Positive means the player is being drafted lower than last season's output would justify (potential value). Negative means drafted higher than last season's output justified." sortKey="adpVsRank" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${TIER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Tier</th>
+              <th className={`sticky top-0 z-20 h-16 ${TIER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Tier" tooltip="Your assigned tier. Untiered players sort last." sortKey="tier" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="FPts (25/26)" tooltip="Total Fantasy Points scored in 2025-26." sortKey="seasonPts" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="FPts/S (25/26)" tooltip="Average Fantasy Points per start in 2025-26." sortKey="fantasyPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="GhPts/S (25/26)" tooltip="Average recorded Ghost Points per start in 2025-26." sortKey="ghostPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
@@ -784,11 +916,24 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               const tierDefinition = tierAssignment ? TIERS.find((tier) => tier.number === tierAssignment.tier) : null;
               const tierBoardRank = tieredBoardRanks.get(player.id);
               const isTierMenuOpen = tierMenuPlayerId === player.id;
+              const previousTierAssignment = index > 0 ? tierAssignments.get(filteredAndSortedPlayers[index - 1].id) : null;
+              const nextTierAssignment = index < filteredAndSortedPlayers.length - 1 ? tierAssignments.get(filteredAndSortedPlayers[index + 1].id) : null;
+              const startsTierBlock = isMyTiersOnly && tierAssignment != null && previousTierAssignment?.tier !== tierAssignment.tier;
+              const canMoveTierPlayerUp = isMyTiersOnly && previousTierAssignment?.tier === tierAssignment?.tier;
+              const canMoveTierPlayerDown = isMyTiersOnly && nextTierAssignment?.tier === tierAssignment?.tier;
               const injuryIndicator = injuryStatusIndicator(player.chanceOfPlaying, player.availabilityStatus);
               const injuryTitle = player.availabilityNews?.trim() || injuryIndicator?.label;
 
               return (
-                <SortableRow key={player.id} id={player.id} disabled={!dragEnabled}>
+                <Fragment key={player.id}>
+                  {startsTierBlock && tierDefinition ? (
+                    <tr>
+                      <td colSpan={isMyRankMode ? 20 : 19} className="border-b border-slate-200 bg-slate-50 px-3 py-1.5">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>{tierDefinition.number} · {tierDefinition.label}</span>
+                      </td>
+                    </tr>
+                  ) : null}
+                <SortableRow id={player.id} disabled={!dragEnabled}>
                   {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
                   {isMyRankMode ? <td className={`sticky left-0 z-20 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums ${rowShade} group-hover:bg-brand-green/10`}>{index + 1}</td> : null}
@@ -829,9 +974,17 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatAdpDelta(player)}</td>
                   <td ref={isTierMenuOpen ? tierMenuRef : undefined} className={`relative ${TIER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
                     {tierAssignment && tierDefinition ? (
-                      <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
-                        {tierDefinition.number} · {tierDefinition.label} #{tierBoardRank}
-                      </button>
+                      <span className="inline-flex flex-col items-center gap-0.5">
+                        <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
+                          {tierDefinition.number} · {tierDefinition.label} #{tierBoardRank}
+                        </button>
+                        {isMyTiersOnly ? (
+                          <span className="inline-flex gap-1">
+                            <button type="button" onClick={() => movePlayerWithinTier(player.id, "up")} disabled={!canMoveTierPlayerUp} aria-label={`Move ${player.name} up within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↑</button>
+                            <button type="button" onClick={() => movePlayerWithinTier(player.id, "down")} disabled={!canMoveTierPlayerDown} aria-label={`Move ${player.name} down within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↓</button>
+                          </span>
+                        ) : null}
+                      </span>
                     ) : (
                       <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Add ${player.name} to a tier`} aria-expanded={isTierMenuOpen} className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold leading-none text-slate-500 hover:border-brand-green hover:text-brand-green">
                         +
@@ -861,6 +1014,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                 </tr>
                   )}
                 </SortableRow>
+                </Fragment>
               );
             })}
             {filteredAndSortedPlayers.length === 0 ? (
@@ -872,6 +1026,42 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </table>
         </div>
       </div>
+
+      {isTierResetDialogOpen ? createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-tiers-title"
+            aria-describedby="reset-tiers-description"
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <h2 id="reset-tiers-title" className="text-lg font-black text-brand-dark">Reset your tiers?</h2>
+            <p id="reset-tiers-description" className="mt-2 text-sm leading-relaxed text-slate-600">
+              This clears your tier assignments and tier order for all players. Your Picked, Watchlist, and personal rankings are NOT affected. This cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTierResetDialogOpen(false)}
+                disabled={isResettingTiers}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void resetTiers()}
+                disabled={isResettingTiers}
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isResettingTiers ? "Resetting…" : "Yes, reset my tiers"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      ) : null}
 
       {isRankResetDialogOpen ? createPortal(
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
