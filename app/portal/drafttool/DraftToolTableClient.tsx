@@ -829,12 +829,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatAdpDelta(player)}</td>
                   <td ref={isTierMenuOpen ? tierMenuRef : undefined} className={`relative ${TIER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
                     {tierAssignment && tierDefinition ? (
-                      <span className="inline-flex items-center gap-1">
-                        <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
-                          {tierDefinition.label}
-                        </button>
-                        <span className="text-[10px] font-semibold tabular-nums text-slate-500">#{tierBoardRank}</span>
-                      </span>
+                      <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
+                        {tierDefinition.number} · {tierDefinition.label} #{tierBoardRank}
+                      </button>
                     ) : (
                       <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Add ${player.name} to a tier`} aria-expanded={isTierMenuOpen} className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-sm font-semibold leading-none text-slate-500 hover:border-brand-green hover:text-brand-green">
                         +
