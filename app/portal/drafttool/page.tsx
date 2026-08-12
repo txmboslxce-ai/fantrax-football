@@ -222,9 +222,9 @@ export default async function DraftToolPage() {
       <div>
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Draft Tool</h1>
         <p className="mt-2 text-sm text-brand-dark/70">
-          {players.length} eligible players from the {DRAFT_POOL_SEASON} draft pool. Statistics use {DRAFT_STATS_SEASON}; players are sorted by ADP by default, every column is sortable, and Rank Players lets you save your own custom order.
+          Statistics are from the {DRAFT_STATS_SEASON} season. Players are sorted by ADP by default, and every column is sortable. Add a tier to any player in the Tier column, then click Show My Tiers Only to reorder players within their tiers. Prefer a single ranking without tiers? Use Rank Players instead.
         </p>
-        <p className="mt-1 text-sm text-slate-500">Your Watchlist and Picked players are saved automatically too.</p>
+        <p className="mt-1 text-sm text-slate-500">Your Watchlist, Picked, Tier, and Rank selections are all saved automatically.</p>
       </div>
 
       <DraftToolTableClient players={players} />
