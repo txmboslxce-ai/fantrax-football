@@ -68,15 +68,16 @@ const PLAYER_COLUMN_WIDTH = "w-48 min-w-48";
 const POSITION_COLUMN_WIDTH = "w-10 min-w-10";
 const TEAM_COLUMN_WIDTH = "w-14 min-w-14";
 const NUMERIC_COLUMN_WIDTH = "w-20 min-w-20";
+const TIER_COLUMN_WIDTH = "w-28 min-w-28";
 const SET_PIECES_COLUMN_WIDTH = "w-24 min-w-24";
 const TIERS: Array<{ number: TierNumber; label: string; className: string }> = [
-  { number: 1, label: "Elite", className: "bg-indigo-50 text-indigo-950" },
-  { number: 2, label: "High-end", className: "bg-sky-50 text-sky-950" },
-  { number: 3, label: "Starter", className: "bg-teal-50 text-teal-950" },
-  { number: 4, label: "Solid", className: "bg-lime-50 text-lime-950" },
-  { number: 5, label: "Rotation", className: "bg-amber-100 text-amber-950" },
-  { number: 6, label: "Depth", className: "bg-orange-50 text-orange-950" },
-  { number: 7, label: "Late Target", className: "bg-stone-100 text-stone-800" },
+  { number: 1, label: "Elite", className: "border border-violet-400 bg-violet-100 text-violet-950" },
+  { number: 2, label: "High-end", className: "border border-sky-400 bg-sky-100 text-sky-950" },
+  { number: 3, label: "Starter", className: "border border-teal-400 bg-teal-100 text-teal-950" },
+  { number: 4, label: "Solid", className: "border border-lime-400 bg-lime-100 text-lime-950" },
+  { number: 5, label: "Rotation", className: "border border-amber-400 bg-amber-100 text-amber-950" },
+  { number: 6, label: "Depth", className: "border border-orange-400 bg-orange-100 text-orange-950" },
+  { number: 7, label: "Late Target", className: "border border-stone-400 bg-stone-100 text-stone-800" },
 ];
 
 function positionLetter(position: DraftToolPlayer["position"]): "G" | "D" | "M" | "F" {
@@ -572,7 +573,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   }
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
-  const tableWidth = isMyRankMode ? "1560px" : "1520px";
+  const tableWidth = isMyRankMode ? "1592px" : "1552px";
   const stickyOffsets = isMyRankMode
     ? { watchlist: "left-10", picked: "left-20", player: "left-[136px]", position: "left-[328px]" }
     : { watchlist: "left-0", picked: "left-10", player: "left-24", position: "left-[288px]" };
@@ -713,7 +714,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <col style={{ width: "192px" }} />
             <col style={{ width: "40px" }} />
             <col style={{ width: "56px" }} />
-            {Array.from({ length: 13 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
+            {Array.from({ length: 3 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
+            <col style={{ width: "112px" }} />
+            {Array.from({ length: 9 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
             <col style={{ width: "96px" }} />
           </colgroup>
           <thead>
@@ -729,7 +732,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="ADP" tooltip="Average draft position across current 2026-27 Fantrax drafts. Refreshed daily; lower means drafted earlier." sortKey="adp" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Rank (25/26)" tooltip="Player's finish position among the full pool, ranked by total Fantasy Points scored in 2025-26. 1 = highest scorer." sortKey="rank" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="ADP v Rank (25/26)" tooltip="Current ADP minus last season's Rank. Positive means the player is being drafted lower than last season's output would justify (potential value). Negative means drafted higher than last season's output justified." sortKey="adpVsRank" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Tier</th>
+              <th className={`sticky top-0 z-20 h-16 ${TIER_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}>Tier</th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="FPts (25/26)" tooltip="Total Fantasy Points scored in 2025-26." sortKey="seasonPts" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="FPts/S (25/26)" tooltip="Average Fantasy Points per start in 2025-26." sortKey="fantasyPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="GhPts/S (25/26)" tooltip="Average recorded Ghost Points per start in 2025-26." sortKey="ghostPtsPerStart" onSort={handleSort} sortArrow={sortArrow} /></th>
@@ -798,7 +801,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatAdpDelta(player)}</td>
-                  <td className={`relative ${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
+                  <td className={`relative ${TIER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-center`}>
                     {tierAssignment && tierDefinition ? (
                       <span className="inline-flex items-center gap-1">
                         <button type="button" onClick={() => setTierMenuPlayerId(isTierMenuOpen ? null : player.id)} aria-label={`Change ${player.name}'s tier`} aria-expanded={isTierMenuOpen} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tierDefinition.className}`}>
