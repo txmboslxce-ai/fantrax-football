@@ -31,6 +31,8 @@ type DraftPlayer = {
   picked: boolean;
   watchlisted: boolean;
   customRank: number | null;
+  tier: number | null;
+  tierOrder: number | null;
 };
 
 const PLAYER_GAMEWEEK_QUERY_COLUMNS =
@@ -166,6 +168,8 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       picked: false,
       watchlisted: false,
       customRank: null,
+      tier: null,
+      tierOrder: null,
     };
   });
 
@@ -188,7 +192,7 @@ export default async function DraftToolPage() {
     loadDraftPlayers(),
     supabase
       .from("draft_picks")
-      .select("player_id, picked, watchlisted, custom_rank")
+      .select("player_id, picked, watchlisted, custom_rank, tier, tier_order")
       .eq("user_id", user.id),
   ]);
 
@@ -203,6 +207,8 @@ export default async function DraftToolPage() {
         picked: draftPick.picked === true,
         watchlisted: draftPick.watchlisted === true,
         customRank: normalizeCustomRank(draftPick.custom_rank),
+        tier: normalizeCustomRank(draftPick.tier),
+        tierOrder: normalizeCustomRank(draftPick.tier_order),
       },
     ])
   );
