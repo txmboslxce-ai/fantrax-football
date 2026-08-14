@@ -29,6 +29,8 @@ type DraftToolPlayer = {
   stats: PlayerWindowStats;
   corners: number;
   freeKickShots: number;
+  goals: number;
+  assists: number;
   adp: number | null;
   rank: number;
   picked: boolean;
@@ -55,7 +57,9 @@ type SortKey =
   | "tenthPercentile"
   | "ninetiethPercentile"
   | "corners"
-  | "freeKickShots";
+  | "freeKickShots"
+  | "goals"
+  | "assists";
 
 const POSITION_FILTERS: Array<"All" | DraftToolPlayer["position"]> = ["All", "GK", "DEF", "MID", "FWD"];
 const ROLE_FILTERS: Array<{ key: RoleFilter; label: string }> = [
@@ -178,6 +182,8 @@ function sortValue(
     case "ninetiethPercentile": return player.stats.ninetieth_percentile_per_start;
     case "corners": return player.corners;
     case "freeKickShots": return player.freeKickShots;
+    case "goals": return player.goals;
+    case "assists": return player.assists;
   }
 }
 
@@ -901,9 +907,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕");
   const tableWidth = isMyTiersOnly
-    ? isMyRankMode ? "1632px" : "1592px"
-    : isMyRankMode ? "1592px" : "1552px";
-  const tableColumnCount = (isMyRankMode ? 20 : 19) + (isMyTiersOnly ? 1 : 0);
+    ? isMyRankMode ? "1792px" : "1752px"
+    : isMyRankMode ? "1752px" : "1712px";
+  const tableColumnCount = (isMyRankMode ? 22 : 21) + (isMyTiersOnly ? 1 : 0);
   const stickyOffsets = isMyTiersOnly
     ? isMyRankMode
       ? { myRank: "left-10", watchlist: "left-20", picked: "left-[120px]", player: "left-[176px]", position: "left-[368px]" }
@@ -1135,8 +1141,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </div>
       ) : null}
 
-      <div className="max-w-full overflow-x-auto">
-        <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+      <div className="max-h-[75vh] w-full max-w-full overflow-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         <table style={{ width: tableWidth }} className="table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
             {isMyTiersOnly ? <col style={{ width: "40px" }} /> : null}
@@ -1148,8 +1153,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <col style={{ width: "56px" }} />
             {Array.from({ length: 3 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
             <col style={{ width: "112px" }} />
-            {Array.from({ length: 9 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
+            {Array.from({ length: 7 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
             <col style={{ width: "96px" }} />
+            {Array.from({ length: 4 }, (_, index) => <col key={index} style={{ width: "80px" }} />)}
           </colgroup>
           <thead>
             <tr>
@@ -1173,9 +1179,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="GS (25/26)" tooltip="Games started in 2025-26." sortKey="gamesStarted" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Floor" subLabel="(10th pct)" tooltip="10th percentile of Fantasy Points in starts during 2025-26." sortKey="tenthPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Ceiling" subLabel="(90th pct)" tooltip="90th percentile of Fantasy Points in starts during 2025-26." sortKey="ninetiethPercentile" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${SET_PIECES_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><HeaderTooltip description="Current 2026-27 set-piece duty order at the player's club — P = penalties, C = corners, FK = direct free kicks. Lower number = higher priority."><span className="leading-tight">Set<br />Pieces</span></HeaderTooltip></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Corners (25/26)" tooltip="Total corner kicks taken across the 2025-26 season." sortKey="corners" onSort={handleSort} sortArrow={sortArrow} /></th>
               <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="FK Shots (25/26)" tooltip="Total direct free-kick shots taken across the 2025-26 season." sortKey="freeKickShots" onSort={handleSort} sortArrow={sortArrow} /></th>
-              <th className={`sticky top-0 z-20 h-16 ${SET_PIECES_COLUMN_WIDTH} border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><HeaderTooltip description="Current 2026-27 set-piece duty order at the player's club — P = penalties, C = corners, FK = direct free kicks. Lower number = higher priority."><span className="leading-tight">Set<br />Pieces</span></HeaderTooltip></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Goals (25/26)" tooltip="Total goals scored in 2025-26." sortKey="goals" onSort={handleSort} sortArrow={sortArrow} /></th>
+              <th className={`sticky top-0 z-20 h-16 ${NUMERIC_COLUMN_WIDTH} border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold tracking-wide text-brand-cream`}><SortableHeader label="Assists (25/26)" tooltip="Total assists in 2025-26." sortKey="assists" onSort={handleSort} sortArrow={sortArrow} /></th>
             </tr>
           </thead>
           <tbody className="[&>tr>td]:!py-1">
@@ -1300,9 +1308,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.stats.games_started}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatNumber(player.stats.tenth_percentile_per_start)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatNumber(player.stats.ninetieth_percentile_per_start)}</td>
+                  <td className={`${SET_PIECES_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5`}>{setPieces ? <span className="inline-flex max-w-full truncate rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-semibold text-brand-green">{setPieces}</span> : "—"}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.corners}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.freeKickShots}</td>
-                  <td className={`${SET_PIECES_COLUMN_WIDTH} border-b border-slate-200 px-2 py-1.5`}>{setPieces ? <span className="inline-flex max-w-full truncate rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-semibold text-brand-green">{setPieces}</span> : "—"}</td>
+                  <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.goals}</td>
+                  <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.assists}</td>
                 </tr>
                   )}
                 </SortableRow>
@@ -1316,7 +1326,6 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             </DndContext>
           </tbody>
         </table>
-        </div>
       </div>
 
       {isTierResetDialogOpen ? createPortal(

@@ -28,6 +28,8 @@ type DraftPlayer = {
   stats: PlayerWindowStats;
   corners: number;
   freeKickShots: number;
+  goals: number;
+  assists: number;
   adp: number | null;
   rank: number;
   picked: boolean;
@@ -168,6 +170,8 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       stats: summarizePlayerWindow(decoratedRows, position),
       corners: decoratedRows.reduce((sum, row) => sum + row.corner_kicks, 0),
       freeKickShots: decoratedRows.reduce((sum, row) => sum + row.free_kick_shots, 0),
+      goals: decoratedRows.reduce((sum, row) => sum + row.goals, 0),
+      assists: decoratedRows.reduce((sum, row) => sum + row.assists, 0),
       adp: adpByFantraxId.get(player.fantrax_id) ?? null,
       rank: 0,
       picked: false,
