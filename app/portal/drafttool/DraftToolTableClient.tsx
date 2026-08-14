@@ -81,6 +81,15 @@ const TIERS: Array<{ number: TierNumber; label: string; className: string; divid
   { number: 7, label: "LateRd", className: "border border-stone-400 bg-stone-100 text-stone-800", dividerClassName: "bg-[#F1EFE8] text-[#2C2C2A]" },
 ];
 
+function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(Math.round(value), min), max);
+}
+
+function snakePick(numTeams: number, slot: number, round: number): number {
+  return round % 2 === 1 ? (round - 1) * numTeams + slot : round * numTeams - slot + 1;
+}
+
 function positionLetter(position: DraftToolPlayer["position"]): "G" | "D" | "M" | "F" {
   if (position === "GK") return "G";
   if (position === "DEF") return "D";
@@ -225,6 +234,9 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("All");
+  const [numTeams, setNumTeams] = useState<number>(12);
+  const [draftSlot, setDraftSlot] = useState<number | null>(null);
+  const [draftRounds, setDraftRounds] = useState<number>(16);
   const [teamFilter, setTeamFilter] = useState("All");
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
@@ -246,6 +258,27 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     () => [...new Set(players.map((player) => player.team))].sort((a, b) => a.localeCompare(b)),
     [players]
   );
+
+  useEffect(() => {
+    const savedTeams = window.localStorage.getItem("da_draft_num_teams");
+    const savedSlot = window.localStorage.getItem("da_draft_slot");
+    const savedRounds = window.localStorage.getItem("da_draft_rounds");
+    if (savedTeams != null) setNumTeams(clampInt(Number(savedTeams), 2, 30));
+    if (savedSlot != null && savedSlot !== "") setDraftSlot(clampInt(Number(savedSlot), 1, 30));
+    if (savedRounds != null) setDraftRounds(clampInt(Number(savedRounds), 1, 40));
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("da_draft_num_teams", String(numTeams));
+  }, [numTeams]);
+
+  useEffect(() => {
+    window.localStorage.setItem("da_draft_rounds", String(draftRounds));
+  }, [draftRounds]);
+
+  useEffect(() => {
+    window.localStorage.setItem("da_draft_slot", draftSlot == null ? "" : String(draftSlot));
+  }, [draftSlot]);
 
   useEffect(() => {
     if (tierMenuPlayerId == null) return;
@@ -335,6 +368,37 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
   }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, isMyTiersOnly, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
+
+  const myPicks = useMemo(
+    () =>
+      draftSlot == null
+        ? []
+        : Array.from({ length: draftRounds }, (_, i) => snakePick(numTeams, draftSlot, i + 1)),
+    [numTeams, draftSlot, draftRounds]
+  );
+
+  const picksMade = pickedPlayerIds.size;
+  const myPicksRemaining = myPicks.filter((p) => p > picksMade).length;
+  const yourNextPick = draftSlot == null ? null : (myPicks.find((p) => p > picksMade) ?? null);
+  const onTheClockIn = yourNextPick == null ? null : yourNextPick - picksMade - 1;
+  const isLastPick = yourNextPick != null && yourNextPick === myPicks[myPicks.length - 1];
+
+  // Show the divider on every sort except tiers-only; it pins to pick depth.
+  const showPickLine = !isMyTiersOnly && draftSlot != null && onTheClockIn != null;
+  const draftOrderSort = isMyRankMode || sortKey === "adp" || sortKey === "rank";
+
+  // Index in filteredAndSortedPlayers BEFORE which to draw the line: the row
+  // that has exactly onTheClockIn undrafted players above it.
+  const pickLineBeforeIndex = useMemo(() => {
+    if (!showPickLine || onTheClockIn == null) return null;
+    let undrafted = 0;
+    for (let i = 0; i < filteredAndSortedPlayers.length; i++) {
+      if (pickedPlayerIds.has(filteredAndSortedPlayers[i].id)) continue;
+      if (undrafted === onTheClockIn) return i;
+      undrafted++;
+    }
+    return null; // fewer undrafted rows than onTheClockIn: no line in current view
+  }, [showPickLine, onTheClockIn, filteredAndSortedPlayers, pickedPlayerIds]);
 
   function applyCustomRanks(next: Map<string, number>) {
     customRanksRef.current = next;
@@ -784,6 +848,53 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
+        <div className="h-[76px] space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">My Pick</span>
+          <div className="flex flex-nowrap gap-1">
+            <label className="flex flex-col text-[10px] font-semibold text-slate-500">
+              Teams
+              <input
+                type="number"
+                min={2}
+                max={30}
+                value={numTeams}
+                onChange={(event) => {
+                  const teams = clampInt(Number(event.target.value), 2, 30);
+                  setNumTeams(teams);
+                  setDraftSlot((slot) => (slot == null ? slot : Math.min(slot, teams)));
+                }}
+                className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
+              />
+            </label>
+            <label className="flex flex-col text-[10px] font-semibold text-slate-500">
+              Slot
+              <input
+                type="number"
+                min={1}
+                max={numTeams}
+                value={draftSlot ?? ""}
+                placeholder="—"
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  setDraftSlot(raw === "" ? null : clampInt(Number(raw), 1, numTeams));
+                }}
+                className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
+              />
+            </label>
+            <label className="flex flex-col text-[10px] font-semibold text-slate-500">
+              Rounds
+              <input
+                type="number"
+                min={1}
+                max={40}
+                value={draftRounds}
+                onChange={(event) => setDraftRounds(clampInt(Number(event.target.value), 1, 40))}
+                className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
+              />
+            </label>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
@@ -871,6 +982,19 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </div>
       ) : null}
 
+      {draftSlot != null && yourNextPick != null ? (
+        <div className="flex items-center gap-3 rounded-lg border border-brand-green/20 bg-brand-green/10 px-3 py-1.5 text-xs font-semibold text-brand-green">
+          {onTheClockIn === 0 ? (
+            <span>Slot {draftSlot} of {numTeams} · you&apos;re on the clock — pick #{yourNextPick} overall · {myPicksRemaining} picks left</span>
+          ) : (
+            <span>
+              Slot {draftSlot} of {numTeams} · next pick #{yourNextPick} overall · {onTheClockIn} away · {myPicksRemaining} picks left
+              {" "}({picksMade} drafted so far)
+            </span>
+          )}
+        </div>
+      ) : null}
+
       <div className="max-w-full overflow-x-auto">
         <div className="max-h-[75vh] w-max overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         <table style={{ width: tableWidth }} className="table-fixed border-separate border-spacing-0 text-left text-xs">
@@ -937,6 +1061,18 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
               return (
                 <Fragment key={player.id}>
+                  {showPickLine && index === pickLineBeforeIndex ? (
+                    <tr>
+                      <td
+                        colSpan={tableColumnCount}
+                        className="border-y-2 border-brand-green bg-brand-green/15 px-3 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-brand-green"
+                      >
+                        {onTheClockIn === 0
+                          ? `${isLastPick ? "Your last pick · on the clock" : "You're on the clock"} · pick #${yourNextPick} overall`
+                          : `${isLastPick ? "Your last pick" : "Your next pick"} · #${yourNextPick} overall${draftOrderSort ? " · your pool below" : ""}`}
+                      </td>
+                    </tr>
+                  ) : null}
                   {startsTierBlock && tierDefinition ? (
                     <tr>
                       <td colSpan={tableColumnCount} className={`border-b border-slate-200 py-1 pl-[136px] pr-3 text-left text-[10px] font-semibold ${tierDefinition.dividerClassName}`}>
