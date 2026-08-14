@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 
 type DraftToolPlayer = {
   id: string;
+  fantrax_id: string;
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
@@ -237,6 +238,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [numTeams, setNumTeams] = useState<number>(12);
   const [draftSlot, setDraftSlot] = useState<number | null>(null);
   const [draftRounds, setDraftRounds] = useState<number>(16);
+  const [liveLeagueId, setLiveLeagueId] = useState<string>("");
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [liveDraftedIds, setLiveDraftedIds] = useState<Set<string>>(() => new Set());
+  const [liveStatus, setLiveStatus] = useState<{ pickCount: number; totalSlots: number } | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const livePollInFlight = useRef(false);
   const [teamFilter, setTeamFilter] = useState("All");
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
@@ -263,9 +270,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     const savedTeams = window.localStorage.getItem("da_draft_num_teams");
     const savedSlot = window.localStorage.getItem("da_draft_slot");
     const savedRounds = window.localStorage.getItem("da_draft_rounds");
+    const savedLive = window.localStorage.getItem("da_draft_live_league");
     if (savedTeams != null) setNumTeams(clampInt(Number(savedTeams), 2, 30));
     if (savedSlot != null && savedSlot !== "") setDraftSlot(clampInt(Number(savedSlot), 1, 30));
     if (savedRounds != null) setDraftRounds(clampInt(Number(savedRounds), 1, 40));
+    if (savedLive != null) setLiveLeagueId(savedLive);
   }, []);
 
   useEffect(() => {
@@ -275,6 +284,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   useEffect(() => {
     window.localStorage.setItem("da_draft_rounds", String(draftRounds));
   }, [draftRounds]);
+
+  useEffect(() => {
+    window.localStorage.setItem("da_draft_live_league", liveLeagueId);
+  }, [liveLeagueId]);
 
   useEffect(() => {
     window.localStorage.setItem("da_draft_slot", draftSlot == null ? "" : String(draftSlot));
@@ -332,7 +345,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       const matchesSearch = !searchTerm || player.name.toLowerCase().includes(searchTerm);
       const matchesPosition = positionFilter === "All" || player.position === positionFilter;
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
-      const matchesDrafted = !hideDrafted || !pickedPlayerIds.has(player.id);
+      const matchesDrafted = !hideDrafted || !(pickedPlayerIds.has(player.id) || liveDraftedIds.has(player.id));
       const matchesWatchlist = !watchlistOnly || watchlistedPlayerIds.has(player.id);
       const matchesTier = !isMyTiersOnly || tierAssignments.has(player.id);
       return matchesSearch && matchesPosition && matchesTeam && matchesAnySelectedRole(player, selectedRoles) && matchesDrafted && matchesWatchlist && matchesTier;
@@ -367,7 +380,46 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, isMyTiersOnly, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
+  }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, isMyTiersOnly, liveDraftedIds, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
+
+  const playerIdByFantraxId = useMemo(
+    () => new Map(players.map((p) => [p.fantrax_id, p.id])),
+    [players]
+  );
+
+  useEffect(() => {
+    if (!isLiveConnected || !liveLeagueId) return;
+    let cancelled = false;
+    async function poll() {
+      if (livePollInFlight.current) return;
+      livePollInFlight.current = true;
+      try {
+        const res = await fetch("/api/draft/live", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leagueId: liveLeagueId }),
+        });
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok) { setLiveError(json?.error ?? "Live draft fetch failed"); return; }
+        setLiveError(null);
+        const ids = new Set<string>();
+        for (const scorerId of json.draftedScorerIds as string[]) {
+          const pid = playerIdByFantraxId.get(`*${scorerId}*`);
+          if (pid) ids.add(pid);
+        }
+        setLiveDraftedIds(ids);
+        setLiveStatus({ pickCount: json.pickCount, totalSlots: json.totalSlots });
+      } catch (e) {
+        if (!cancelled) setLiveError(e instanceof Error ? e.message : "Live draft fetch failed");
+      } finally {
+        livePollInFlight.current = false;
+      }
+    }
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isLiveConnected, liveLeagueId, playerIdByFantraxId]);
 
   const myPicks = useMemo(
     () =>
@@ -391,6 +443,17 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     }
     return map;
   }, [draftSlot, myPicks, filteredAndSortedPlayers.length]);
+
+  function toggleLiveConnection() {
+    if (isLiveConnected) {
+      setIsLiveConnected(false);
+      setLiveDraftedIds(new Set());
+      setLiveStatus(null);
+      setLiveError(null);
+    } else if (liveLeagueId.trim()) {
+      setIsLiveConnected(true);
+    }
+  }
 
   function applyCustomRanks(next: Map<string, number>) {
     customRanksRef.current = next;
@@ -887,7 +950,34 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
-        <div className="grid h-[76px] grid-cols-2 content-center gap-1.5">
+        <div className="h-[76px] space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">Live Draft</span>
+          <div className="flex flex-nowrap items-center gap-1">
+            <input
+              type="text"
+              value={liveLeagueId}
+              onChange={(e) => setLiveLeagueId(e.target.value.trim())}
+              disabled={isLiveConnected}
+              placeholder="League ID"
+              className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none disabled:bg-slate-100"
+            />
+            <button
+              type="button"
+              onClick={toggleLiveConnection}
+              className={`rounded border px-2 py-1 text-[11px] font-bold ${isLiveConnected ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100" : "border-brand-green bg-brand-green text-brand-cream hover:opacity-90"}`}
+            >
+              {isLiveConnected ? "Stop" : "Connect"}
+            </button>
+          </div>
+          {isLiveConnected ? (
+            <span className="block truncate text-[10px] font-semibold text-brand-green">
+              {liveError ? <span className="text-red-600">{liveError}</span> : liveStatus ? `Live · ${liveStatus.pickCount}/${liveStatus.totalSlots}` : "Connecting…"}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex h-[76px] items-stretch gap-2">
+        <div className="grid grid-cols-2 content-center gap-1.5">
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
               type="checkbox"
@@ -930,13 +1020,14 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             Rank Players
           </button>
-          <button
-            type="button"
-            onClick={() => setIsResetDialogOpen(true)}
-            className="col-span-2 whitespace-nowrap rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
-          >
-            New Draft
-          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsResetDialogOpen(true)}
+          className="flex w-20 items-center justify-center self-stretch whitespace-nowrap rounded-lg border border-red-300 bg-red-50 px-2 text-center text-[11px] font-bold leading-tight text-red-700 transition-colors hover:bg-red-100"
+        >
+          New Draft
+        </button>
         </div>
       </div>
 
@@ -1020,8 +1111,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <SortableContext items={filteredAndSortedPlayers.map((player) => player.id)} strategy={verticalListSortingStrategy}>
             {filteredAndSortedPlayers.map((player, index) => {
               const isPicked = pickedPlayerIds.has(player.id);
+              const isLiveDrafted = liveDraftedIds.has(player.id);
+              const isEffectivelyPicked = isPicked || isLiveDrafted;
               const isWatchlisted = watchlistedPlayerIds.has(player.id);
-              const rowShade = isPicked ? "bg-slate-100" : index % 2 === 0 ? "bg-white" : "bg-slate-50";
+              const rowShade = isEffectivelyPicked ? "bg-slate-100" : index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const position = positionLetter(player.position);
               const setPieces = setPieceLabel(player.setPieces);
               const tierAssignment = tierAssignments.get(player.id);
@@ -1060,7 +1153,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                   ) : null}
                 <SortableRow id={player.id} disabled={!dragEnabled}>
                   {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
-                <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
+                <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isEffectivelyPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
                   {isMyTiersOnly ? <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className="inline-flex items-center gap-1">
                       <button type="button" onClick={() => movePlayerWithinTier(player.id, "up")} disabled={!canMoveTierPlayerUp} aria-label={`Move ${player.name} up within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↑</button>
@@ -1090,16 +1183,16 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                     </div>
                   </td>
                   <td className={`sticky ${stickyOffsets.picked} z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                    <input type="checkbox" checked={pickedPlayerIds.has(player.id)} onChange={() => toggleBoardFlag(player.id, "picked")} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
+                    <input type="checkbox" checked={isEffectivelyPicked} disabled={isLiveDrafted} title={isLiveDrafted ? "Drafted live via Fantrax" : undefined} onChange={() => toggleBoardFlag(player.id, "picked")} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
                   </td>
-                  <td className={`sticky ${stickyOffsets.player} z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky ${stickyOffsets.player} z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isEffectivelyPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-                      <Link href={`/portal/players/${player.id}`} prefetch={false} className={`min-w-0 flex-1 truncate ${isPicked ? "line-through hover:text-slate-500" : "hover:text-brand-green"}`} title={player.name}>{player.name}</Link>
+                      <Link href={`/portal/players/${player.id}`} prefetch={false} className={`min-w-0 flex-1 truncate ${isEffectivelyPicked ? "line-through hover:text-slate-500" : "hover:text-brand-green"}`} title={player.name}>{player.name}</Link>
                       {injuryIndicator ? <span title={injuryTitle} aria-label={injuryTitle} className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`} /> : null}
                     </span>
                   </td>
                   <td className={`sticky ${stickyOffsets.position} z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
-                  <td className={`${TEAM_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-medium ${isPicked ? "text-slate-500" : "text-slate-600"}`}>{player.team}</td>
+                  <td className={`${TEAM_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-medium ${isEffectivelyPicked ? "text-slate-500" : "text-slate-600"}`}>{player.team}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{formatAdpDelta(player)}</td>

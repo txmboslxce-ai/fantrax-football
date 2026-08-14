@@ -12,6 +12,7 @@ import DraftToolTableClient from "./DraftToolTableClient";
 
 type DraftPlayer = {
   id: string;
+  fantrax_id: string;
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
@@ -149,6 +150,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
     const decoratedRows = decorateGameweeks(rowsByPlayer.get(player.id) ?? [], player.team, []);
     return {
       id: player.id,
+      fantrax_id: player.fantrax_id,
       name: player.name,
       team: player.team,
       position,
