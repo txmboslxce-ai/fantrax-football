@@ -67,6 +67,14 @@ type AdpRefreshResponse = {
   message?: string;
 };
 
+type MultiPositionSyncResponse = {
+  success: boolean;
+  playersFound?: number;
+  updated?: number;
+  unmatched?: string[];
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -494,6 +502,57 @@ function FantraxPlayerSyncPanel({ seasons, defaultSeason }: { seasons: string[];
   );
 }
 
+function MultiPositionSyncPanel() {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [result, setResult] = useState<MultiPositionSyncResponse | null>(null);
+
+  async function handleSyncMultiPositions() {
+    setIsSyncing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/fantrax/sync-multi-position", { method: "POST" });
+      setResult((await response.json()) as MultiPositionSyncResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Fantrax multi-position sync failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Fetch Multi-Position Data</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Fetch multi-position eligibility from the dedicated Fantrax league. This updates only `players.multi_position`.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <button
+          type="button"
+          onClick={handleSyncMultiPositions}
+          disabled={isSyncing}
+          className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isSyncing ? "Fetching Multi-Position Data..." : "Fetch Multi-Position Data"}
+        </button>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <>
+                <p className="font-semibold">Players found: {result.playersFound ?? 0}. Updated: {result.updated ?? 0}.</p>
+                <p className="mt-1 text-brand-creamDark">Unmatched Fantrax IDs: {(result.unmatched ?? []).join(", ") || "None"}</p>
+              </>
+            ) : <p>{result.message ?? "Fantrax multi-position sync failed."}</p>}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function FplSyncNowPanel() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [result, setResult] = useState<FplSyncNowResponse | null>(null);
@@ -608,6 +667,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
 
         <FantraxSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
         <FantraxPlayerSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
+        <MultiPositionSyncPanel />
         <AdpRefreshPanel />
         <FplSyncNowPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />

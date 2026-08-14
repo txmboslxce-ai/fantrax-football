@@ -1,5 +1,6 @@
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { getFantraxLeagueIdForSeason, getFantraxSeasonProjectionCodeForSeason } from "@/lib/fantrax/config";
+import { getCurrentSeason } from "@/lib/season/current";
 import {
   FANTRAX_POSITIONS,
   fetchFantraxCsv,
@@ -68,6 +69,65 @@ export type SyncFantraxPlayersResult = {
   failed: PlayerPoolFailed[];
   unmatched: PlayerPoolUnmatched[];
 };
+
+export type SyncMultiPositionsResult = {
+  playersFound: number;
+  updated: number;
+  unmatched: string[];
+};
+
+export async function syncMultiPositions(): Promise<SyncMultiPositionsResult> {
+  const supabase = createAdminSupabaseClient();
+  if (!supabase) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for Fantrax multi-position sync.");
+  }
+
+  const leagueId = process.env.FANTRAX_MULTI_POSITION_LEAGUE_ID?.trim();
+  if (!leagueId) {
+    throw new Error("FANTRAX_MULTI_POSITION_LEAGUE_ID is required for Fantrax multi-position sync.");
+  }
+
+  const season = await getCurrentSeason(supabase);
+  const seasonProjectionCode = await getFantraxSeasonProjectionCodeForSeason(supabase, season);
+  const downloadedRows = await Promise.all(
+    FANTRAX_POSITIONS.map(async (positionGroup) => {
+      const csv = await fetchFantraxCsv(POOL_DOWNLOAD_GAMEWEEK, positionGroup, leagueId, seasonProjectionCode);
+      const type = getUploadType(positionGroup);
+      return parseFantraxCsv(csv)
+        .map((row) => mapFantraxCsvRow(row, type, POOL_DOWNLOAD_GAMEWEEK))
+        .filter((row) => row.fantrax_id)
+        .map((row) => ({
+          fantraxId: row.fantrax_id.trim(),
+          rawPositionString: row.position.trim().toUpperCase(),
+        }));
+    })
+  );
+
+  const positionsByFantraxId = new Map<string, string>();
+  for (const row of downloadedRows.flat()) {
+    positionsByFantraxId.set(row.fantraxId, row.rawPositionString);
+  }
+
+  const fantraxIds = [...positionsByFantraxId.keys()];
+  const { data: matchedPlayers, error: playersError } = fantraxIds.length
+    ? await supabase.from("players").select("fantrax_id").in("fantrax_id", fantraxIds)
+    : { data: [], error: null };
+  if (playersError) throw new Error(`Unable to load players for multi-position sync: ${playersError.message}`);
+
+  const matchedIds = new Set((matchedPlayers ?? []).map((player) => player.fantrax_id as string));
+  const unmatched = fantraxIds.filter((fantraxId) => !matchedIds.has(fantraxId));
+  const updates = await Promise.all(
+    [...matchedIds].map(async (fantraxId) => {
+      const { error } = await supabase
+        .from("players")
+        .update({ multi_position: positionsByFantraxId.get(fantraxId) || null })
+        .eq("fantrax_id", fantraxId);
+      if (error) throw new Error(`Unable to update multi-position eligibility for ${fantraxId}: ${error.message}`);
+    })
+  );
+
+  return { playersFound: fantraxIds.length, updated: updates.length, unmatched };
+}
 
 export async function syncFantraxPlayers(season: string): Promise<SyncFantraxPlayersResult> {
   const supabase = createAdminSupabaseClient();
