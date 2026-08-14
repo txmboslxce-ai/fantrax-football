@@ -777,8 +777,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
-        <label className="h-[76px] w-full space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 sm:w-64 sm:shrink-0">
+      <div className="flex flex-wrap items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
+        <label className="h-[76px] w-full space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 sm:w-40 sm:shrink-0">
           <span className="block font-semibold uppercase tracking-wide text-slate-500">Search</span>
           <input
             value={search}
@@ -887,7 +887,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid h-[76px] grid-cols-2 content-center gap-1.5">
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
               type="checkbox"
