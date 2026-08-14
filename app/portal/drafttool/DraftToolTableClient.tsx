@@ -1237,14 +1237,14 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                 <SortableRow id={player.id} disabled={!dragEnabled}>
                   {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isEffectivelyPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
-                  {isMyTiersOnly ? <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  {isMyTiersOnly ? <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-emerald-50`}>
                     <span className="inline-flex items-center gap-1">
                       <button type="button" onClick={() => movePlayerWithinTier(player.id, "up")} disabled={!canMoveTierPlayerUp} aria-label={`Move ${player.name} up within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↑</button>
                       <button type="button" onClick={() => movePlayerWithinTier(player.id, "down")} disabled={!canMoveTierPlayerDown} aria-label={`Move ${player.name} down within tier`} className="leading-none text-slate-600 hover:text-brand-green disabled:cursor-not-allowed disabled:text-slate-300">↓</button>
                     </span>
                   </td> : null}
-                  {isMyRankMode ? <td className={`sticky ${stickyOffsets.myRank} z-20 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums ${rowShade} group-hover:bg-brand-green/10`}>{index + 1}</td> : null}
-                  <td className={`sticky ${stickyOffsets.watchlist} z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  {isMyRankMode ? <td className={`sticky ${stickyOffsets.myRank} z-20 ${MY_RANK_POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums ${rowShade} group-hover:bg-emerald-50`}>{index + 1}</td> : null}
+                  <td className={`sticky ${stickyOffsets.watchlist} z-20 ${WATCHLIST_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-emerald-50`}>
                     <div className="flex items-center justify-center gap-0.5">
                       <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
                         <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
@@ -1265,16 +1265,16 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       ) : null}
                     </div>
                   </td>
-                  <td className={`sticky ${stickyOffsets.picked} z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky ${stickyOffsets.picked} z-20 ${PICKED_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-emerald-50`}>
                     <input type="checkbox" checked={isEffectivelyPicked} disabled={isLiveDrafted} title={isLiveDrafted ? "Drafted live via Fantrax" : undefined} onChange={() => toggleBoardFlag(player.id, "picked")} aria-label={`Mark ${player.name} as picked`} className="h-4 w-4 accent-brand-green" />
                   </td>
-                  <td className={`sticky ${stickyOffsets.player} z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isEffectivelyPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky ${stickyOffsets.player} z-20 ${PLAYER_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${isEffectivelyPicked ? "text-slate-500" : "text-brand-dark"} ${rowShade} group-hover:bg-emerald-50`}>
                     <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap">
                       <Link href={`/portal/players/${player.id}`} prefetch={false} className={`min-w-0 flex-1 truncate ${isEffectivelyPicked ? "line-through hover:text-slate-500" : "hover:text-brand-green"}`} title={player.name}>{player.name}</Link>
                       {injuryIndicator ? <span title={injuryTitle} aria-label={injuryTitle} className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`} /> : null}
                     </span>
                   </td>
-                  <td className={`sticky ${stickyOffsets.position} z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex min-w-5 h-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{positionDisplay}</span></td>
+                  <td className={`sticky ${stickyOffsets.position} z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-emerald-50`}><span className={`inline-flex min-w-5 h-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{positionDisplay}</span></td>
                   <td className={`${TEAM_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-medium ${isEffectivelyPicked ? "text-slate-500" : "text-slate-600"}`}>{player.team}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
