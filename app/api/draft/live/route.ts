@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,9 +8,11 @@ const LEAGUE_ID_RE = /^[a-z0-9]+$/i;
 
 export async function POST(request: Request) {
   let leagueId = "";
+  let logConnection = false;
   try {
     const body = await request.json();
     leagueId = String(body?.leagueId ?? "").trim();
+    logConnection = body?.logConnection === true;
   } catch {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
@@ -42,6 +45,20 @@ export async function POST(request: Request) {
     const draftedScorerIds = picks
       .map((p: { scorerId?: unknown }) => p?.scorerId)
       .filter((s: unknown): s is string => typeof s === "string" && s.length > 0);
+    if (logConnection) {
+      try {
+        const supabase = await createServerSupabaseClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { error } = await supabase.from("live_draft_connections").insert({ user_id: user.id, league_id: leagueId });
+          if (error) console.warn("[draft/live] Failed to log live draft connection:", error.message);
+        }
+      } catch (error) {
+        console.warn("[draft/live] Failed to log live draft connection:", error);
+      }
+    }
     return NextResponse.json({
       draftedScorerIds,
       pickCount: draftedScorerIds.length,

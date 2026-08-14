@@ -246,6 +246,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [liveStatus, setLiveStatus] = useState<{ pickCount: number; totalSlots: number } | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
   const livePollInFlight = useRef(false);
+  const hasLoggedConnectionRef = useRef(false);
   const [teamFilter, setTeamFilter] = useState("All");
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
@@ -413,7 +414,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         const res = await fetch("/api/draft/live", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leagueId: liveLeagueId }),
+          body: JSON.stringify({ leagueId: liveLeagueId, logConnection: !hasLoggedConnectionRef.current }),
         });
         const json = await res.json();
         if (cancelled) return;
@@ -426,6 +427,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         }
         setLiveDraftedIds(ids);
         setLiveStatus({ pickCount: json.pickCount, totalSlots: json.totalSlots });
+        hasLoggedConnectionRef.current = true;
       } catch (e) {
         if (!cancelled) setLiveError(e instanceof Error ? e.message : "Live draft fetch failed");
       } finally {
@@ -463,10 +465,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   function toggleLiveConnection() {
     if (isLiveConnected) {
       setIsLiveConnected(false);
+      hasLoggedConnectionRef.current = false;
       setLiveDraftedIds(new Set());
       setLiveStatus(null);
       setLiveError(null);
     } else if (liveLeagueId.trim()) {
+      hasLoggedConnectionRef.current = false;
       setIsLiveConnected(true);
     }
   }
@@ -969,6 +973,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       {isLiveConnected ? "Stop" : "Connect"}
                     </button>
                   </div>
+                  <p className="mt-1 text-[10px] leading-tight text-slate-500">
+                    Find this in your Fantrax draft URL:{" "}
+                    <span className="font-semibold text-slate-600">fantrax.com/fantasy/league/</span>
+                    <span className="font-semibold text-brand-green">ID</span>
+                    <span className="font-semibold text-slate-600">/draft</span>
+                  </p>
                 </div>
               </div>
             </div>
