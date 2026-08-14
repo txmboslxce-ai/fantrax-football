@@ -232,6 +232,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const tierSaveVersionRef = useRef(new Map<string, number>());
   const [tierMenuPlayerId, setTierMenuPlayerId] = useState<string | null>(null);
   const tierMenuRef = useRef<HTMLTableCellElement | null>(null);
+  const [isDraftSetupOpen, setIsDraftSetupOpen] = useState(false);
+  const draftSetupRef = useRef<HTMLDivElement | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("All");
@@ -317,6 +319,20 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       document.removeEventListener("scroll", closeTierMenuOnScroll, true);
     };
   }, [tierMenuPlayerId]);
+
+  useEffect(() => {
+    if (!isDraftSetupOpen) return;
+    function onClick(e: MouseEvent) {
+      if (!draftSetupRef.current?.contains(e.target as Node)) setIsDraftSetupOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) { if (e.key === "Escape") setIsDraftSetupOpen(false); }
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [isDraftSetupOpen]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const dragEnabled = isMyRankMode && !isMyTiersOnly && !isSavingCustomRank;
@@ -417,7 +433,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
     }
     poll();
-    const interval = setInterval(poll, 3000);
+    const interval = setInterval(poll, 5000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [isLiveConnected, liveLeagueId, playerIdByFantraxId]);
 
@@ -903,76 +919,59 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </div>
         </div>
 
-        <div className="h-[76px] space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
-          <span className="block font-semibold uppercase tracking-wide text-slate-500">My Pick</span>
-          <div className="flex flex-nowrap gap-1">
-            <label className="flex flex-col text-[10px] font-semibold text-slate-500">
-              Teams
-              <input
-                type="number"
-                min={2}
-                max={30}
-                value={numTeams}
-                onChange={(event) => {
-                  const teams = clampInt(Number(event.target.value), 2, 30);
-                  setNumTeams(teams);
-                  setDraftSlot((slot) => (slot == null ? slot : Math.min(slot, teams)));
-                }}
-                className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
-              />
-            </label>
-            <label className="flex flex-col text-[10px] font-semibold text-slate-500">
-              Slot
-              <input
-                type="number"
-                min={1}
-                max={numTeams}
-                value={draftSlot ?? ""}
-                placeholder="—"
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  setDraftSlot(raw === "" ? null : clampInt(Number(raw), 1, numTeams));
-                }}
-                className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
-              />
-            </label>
-            <label className="flex flex-col text-[10px] font-semibold text-slate-500">
-              Rounds
-              <input
-                type="number"
-                min={1}
-                max={40}
-                value={draftRounds}
-                onChange={(event) => setDraftRounds(clampInt(Number(event.target.value), 1, 40))}
-                className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="h-[76px] space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
-          <span className="block font-semibold uppercase tracking-wide text-slate-500">Live Draft</span>
-          <div className="flex flex-nowrap items-center gap-1">
-            <input
-              type="text"
-              value={liveLeagueId}
-              onChange={(e) => setLiveLeagueId(e.target.value.trim())}
-              disabled={isLiveConnected}
-              placeholder="League ID"
-              className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none disabled:bg-slate-100"
-            />
-            <button
-              type="button"
-              onClick={toggleLiveConnection}
-              className={`rounded border px-2 py-1 text-[11px] font-bold ${isLiveConnected ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100" : "border-brand-green bg-brand-green text-brand-cream hover:opacity-90"}`}
-            >
-              {isLiveConnected ? "Stop" : "Connect"}
-            </button>
-          </div>
+        <div ref={draftSetupRef} className="relative flex h-[76px] flex-col justify-center gap-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <span className="block font-semibold uppercase tracking-wide text-slate-500">Draft Setup</span>
+          <button
+            type="button"
+            onClick={() => setIsDraftSetupOpen((v) => !v)}
+            aria-expanded={isDraftSetupOpen}
+            className="rounded border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-brand-dark hover:bg-slate-50"
+          >
+            My Pick &amp; Live Draft
+          </button>
           {isLiveConnected ? (
             <span className="block truncate text-[10px] font-semibold text-brand-green">
-              {liveError ? <span className="text-red-600">{liveError}</span> : liveStatus ? `Live · ${liveStatus.pickCount}/${liveStatus.totalSlots}` : "Connecting…"}
+              {liveError ? <span className="text-red-600">{liveError}</span>
+                : liveStatus ? `Live · ${liveStatus.pickCount}/${liveStatus.totalSlots}` : "Connecting…"}
             </span>
+          ) : null}
+          {isDraftSetupOpen ? (
+            <div className="absolute left-0 top-full z-40 mt-1 w-72 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+              <div className="space-y-3">
+                <div>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">My Pick</span>
+                  <div className="flex gap-2">
+                    <label className="flex flex-col text-[10px] font-semibold text-slate-500">Teams
+                      <input type="number" min={2} max={30} value={numTeams}
+                        onChange={(e) => { const t = clampInt(Number(e.target.value), 2, 30); setNumTeams(t); setDraftSlot((s) => s == null ? s : Math.min(s, t)); }}
+                        className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none" />
+                    </label>
+                    <label className="flex flex-col text-[10px] font-semibold text-slate-500">Slot
+                      <input type="number" min={1} max={numTeams} value={draftSlot ?? ""} placeholder="—"
+                        onChange={(e) => { const r = e.target.value; setDraftSlot(r === "" ? null : clampInt(Number(r), 1, numTeams)); }}
+                        className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none" />
+                    </label>
+                    <label className="flex flex-col text-[10px] font-semibold text-slate-500">Rounds
+                      <input type="number" min={1} max={40} value={draftRounds}
+                        onChange={(e) => setDraftRounds(clampInt(Number(e.target.value), 1, 40))}
+                        className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none" />
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Live Draft</span>
+                  <div className="flex items-center gap-2">
+                    <input type="text" value={liveLeagueId} onChange={(e) => setLiveLeagueId(e.target.value.trim())}
+                      disabled={isLiveConnected} placeholder="League ID"
+                      className="w-40 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none disabled:bg-slate-100" />
+                    <button type="button" onClick={toggleLiveConnection}
+                      className={`rounded border px-2 py-1 text-[11px] font-bold ${isLiveConnected ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100" : "border-brand-green bg-brand-green text-brand-cream hover:opacity-90"}`}>
+                      {isLiveConnected ? "Stop" : "Connect"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : null}
         </div>
 
