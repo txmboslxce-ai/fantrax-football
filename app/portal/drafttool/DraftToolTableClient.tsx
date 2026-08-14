@@ -373,32 +373,24 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     () =>
       draftSlot == null
         ? []
-        : Array.from({ length: draftRounds }, (_, i) => snakePick(numTeams, draftSlot, i + 1)),
+        : Array.from({ length: draftRounds }, (_, i) => ({
+            round: i + 1,
+            overall: snakePick(numTeams, draftSlot, i + 1),
+          })),
     [numTeams, draftSlot, draftRounds]
   );
 
-  const picksMade = pickedPlayerIds.size;
-  const myPicksRemaining = myPicks.filter((p) => p > picksMade).length;
-  const yourNextPick = draftSlot == null ? null : (myPicks.find((p) => p > picksMade) ?? null);
-  const onTheClockIn = yourNextPick == null ? null : yourNextPick - picksMade - 1;
-  const isLastPick = yourNextPick != null && yourNextPick === myPicks[myPicks.length - 1];
-
-  // Show the divider on every sort except tiers-only; it pins to pick depth.
-  const showPickLine = !isMyTiersOnly && draftSlot != null && onTheClockIn != null;
-  const draftOrderSort = isMyRankMode || sortKey === "adp" || sortKey === "rank";
-
-  // Index in filteredAndSortedPlayers BEFORE which to draw the line: the row
-  // that has exactly onTheClockIn undrafted players above it.
-  const pickLineBeforeIndex = useMemo(() => {
-    if (!showPickLine || onTheClockIn == null) return null;
-    let undrafted = 0;
-    for (let i = 0; i < filteredAndSortedPlayers.length; i++) {
-      if (pickedPlayerIds.has(filteredAndSortedPlayers[i].id)) continue;
-      if (undrafted === onTheClockIn) return i;
-      undrafted++;
+  const pickLineByIndex = useMemo(() => {
+    const map = new Map<number, { round: number; overall: number }>();
+    if (draftSlot == null) return map;
+    for (const pick of myPicks) {
+      const rowIndex = pick.overall - 1; // 0-based row this pick sits on
+      if (rowIndex >= 0 && rowIndex < filteredAndSortedPlayers.length) {
+        map.set(rowIndex, pick);
+      }
     }
-    return null; // fewer undrafted rows than onTheClockIn: no line in current view
-  }, [showPickLine, onTheClockIn, filteredAndSortedPlayers, pickedPlayerIds]);
+    return map;
+  }, [draftSlot, myPicks, filteredAndSortedPlayers.length]);
 
   function applyCustomRanks(next: Map<string, number>) {
     customRanksRef.current = next;
@@ -938,12 +930,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             Rank Players
           </button>
-        </div>
-        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setIsResetDialogOpen(true)}
-            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
+            className="col-span-2 whitespace-nowrap rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition-colors hover:bg-red-100"
           >
             New Draft
           </button>
@@ -979,19 +969,6 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             Reset Tiers
           </button>
-        </div>
-      ) : null}
-
-      {draftSlot != null && yourNextPick != null ? (
-        <div className="flex items-center gap-3 rounded-lg border border-brand-green/20 bg-brand-green/10 px-3 py-1.5 text-xs font-semibold text-brand-green">
-          {onTheClockIn === 0 ? (
-            <span>Slot {draftSlot} of {numTeams} · you&apos;re on the clock — pick #{yourNextPick} overall · {myPicksRemaining} picks left</span>
-          ) : (
-            <span>
-              Slot {draftSlot} of {numTeams} · next pick #{yourNextPick} overall · {onTheClockIn} away · {myPicksRemaining} picks left
-              {" "}({picksMade} drafted so far)
-            </span>
-          )}
         </div>
       ) : null}
 
@@ -1061,15 +1038,16 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
               return (
                 <Fragment key={player.id}>
-                  {showPickLine && index === pickLineBeforeIndex ? (
+                  {pickLineByIndex.has(index) ? (
                     <tr>
                       <td
                         colSpan={tableColumnCount}
                         className="border-y-2 border-brand-green bg-brand-green/15 px-3 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-brand-green"
                       >
-                        {onTheClockIn === 0
-                          ? `${isLastPick ? "Your last pick · on the clock" : "You're on the clock"} · pick #${yourNextPick} overall`
-                          : `${isLastPick ? "Your last pick" : "Your next pick"} · #${yourNextPick} overall${draftOrderSort ? " · your pool below" : ""}`}
+                        {(() => {
+                          const pick = pickLineByIndex.get(index)!;
+                          return `R${pick.round} · pick #${pick.overall} overall`;
+                        })()}
                       </td>
                     </tr>
                   ) : null}
