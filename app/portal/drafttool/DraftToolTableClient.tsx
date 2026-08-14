@@ -384,7 +384,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     const map = new Map<number, { round: number; overall: number }>();
     if (draftSlot == null) return map;
     for (const pick of myPicks) {
-      const rowIndex = pick.overall - 1; // 0-based row this pick sits on
+      const rowIndex = pick.overall; // row AFTER the pick — line sits below it
       if (rowIndex >= 0 && rowIndex < filteredAndSortedPlayers.length) {
         map.set(rowIndex, pick);
       }
@@ -1046,7 +1046,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       >
                         {(() => {
                           const pick = pickLineByIndex.get(index)!;
-                          return `R${pick.round} · pick #${pick.overall} overall`;
+                          return `↑ R${pick.round} · pick #${pick.overall} overall · your pool above`;
                         })()}
                       </td>
                     </tr>
