@@ -16,6 +16,7 @@ type DraftPlayer = {
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  multi_position: string | null;
   setPieces: {
     penaltiesOrder: number | null;
     cornersOrder: number | null;
@@ -74,7 +75,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   const { data: players, error: playersError } = await supabase
     .from("players")
     .select(
-      "id, fantrax_id, name, team, position, fpl_player_data(penalties_order, corners_order, direct_freekicks_order, chance_of_playing_next_round, status, news)"
+      "id, fantrax_id, name, team, position, multi_position, fpl_player_data(penalties_order, corners_order, direct_freekicks_order, chance_of_playing_next_round, status, news)"
     )
     .in("fantrax_id", poolFantraxIds)
     .order("name");
@@ -89,6 +90,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
     name: string;
     team: string;
     position: string;
+    multi_position: string | null;
     fpl_player_data:
       | {
           penalties_order: number | null;
@@ -154,6 +156,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       name: player.name,
       team: player.team,
       position,
+      multi_position: player.multi_position,
       setPieces: {
         penaltiesOrder: fplData?.penalties_order ?? null,
         cornersOrder: fplData?.corners_order ?? null,

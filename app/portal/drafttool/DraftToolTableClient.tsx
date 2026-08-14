@@ -17,6 +17,7 @@ type DraftToolPlayer = {
   name: string;
   team: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  multi_position: string | null;
   setPieces: {
     penaltiesOrder: number | null;
     cornersOrder: number | null;
@@ -96,6 +97,19 @@ function positionLetter(position: DraftToolPlayer["position"]): "G" | "D" | "M" 
   if (position === "DEF") return "D";
   if (position === "MID") return "M";
   return "F";
+}
+
+function eligiblePositionLetters(
+  player: DraftToolPlayer,
+  multiMode: boolean
+): Set<"G" | "D" | "M" | "F"> {
+  const primary = positionLetter(player.position);
+  if (!multiMode || !player.multi_position) return new Set([primary]);
+  const letters = player.multi_position
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter((s): s is "G" | "D" | "M" | "F" => ["G", "D", "M", "F"].includes(s));
+  return letters.length > 0 ? new Set(letters) : new Set([primary]);
 }
 
 function positionBadgeClass(position: DraftToolPlayer["position"]): string {
@@ -255,6 +269,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
+  const [isMultiPositionMode, setIsMultiPositionMode] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("adp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [isMyTiersOnly, setIsMyTiersOnly] = useState(false);
@@ -364,7 +379,15 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     const searchTerm = deferredSearch.trim().toLowerCase();
     const filtered = players.filter((player) => {
       const matchesSearch = !searchTerm || player.name.toLowerCase().includes(searchTerm);
-      const matchesPosition = positionFilter === "All" || player.position === positionFilter;
+      const positionFilterLetter =
+        positionFilter === "All" ? null
+          : positionFilter === "GK" ? "G"
+            : positionFilter === "DEF" ? "D"
+              : positionFilter === "MID" ? "M"
+                : "F";
+      const matchesPosition =
+        positionFilterLetter === null ||
+        eligiblePositionLetters(player, isMultiPositionMode).has(positionFilterLetter);
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesDrafted = !hideDrafted || !(pickedPlayerIds.has(player.id) || liveDraftedIds.has(player.id));
       const matchesWatchlist = !watchlistOnly || watchlistedPlayerIds.has(player.id);
@@ -401,7 +424,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [customRanks, deferredSearch, hideDrafted, isMyRankMode, isMyTiersOnly, liveDraftedIds, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
+  }, [customRanks, deferredSearch, hideDrafted, isMultiPositionMode, isMyRankMode, isMyTiersOnly, liveDraftedIds, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
 
   const playerIdByFantraxId = useMemo(
     () => new Map(players.map((p) => [p.fantrax_id, p.id])),
@@ -1048,6 +1071,15 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             />
             <span>Hide Drafted</span>
           </label>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
+            <input
+              type="checkbox"
+              checked={isMultiPositionMode}
+              onChange={(event) => setIsMultiPositionMode(event.target.checked)}
+              className="h-4 w-4 accent-brand-green"
+            />
+            <span>Multi-Position</span>
+          </label>
           <button
             type="button"
             onClick={() => setIsMyRankMode((current) => !current)}
@@ -1155,7 +1187,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
               const isEffectivelyPicked = isPicked || isLiveDrafted;
               const isWatchlisted = watchlistedPlayerIds.has(player.id);
               const rowShade = isEffectivelyPicked ? "bg-slate-100" : index % 2 === 0 ? "bg-white" : "bg-slate-50";
-              const position = positionLetter(player.position);
+              const positionDisplay =
+                isMultiPositionMode && player.multi_position && player.multi_position.includes(",")
+                  ? player.multi_position
+                  : positionLetter(player.position);
               const setPieces = setPieceLabel(player.setPieces);
               const tierAssignment = tierAssignments.get(player.id);
               const tierDefinition = tierAssignment ? TIERS.find((tier) => tier.number === tierAssignment.tier) : null;
@@ -1231,7 +1266,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       {injuryIndicator ? <span title={injuryTitle} aria-label={injuryTitle} className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-inset ${injuryIndicator.className}`} /> : null}
                     </span>
                   </td>
-                  <td className={`sticky ${stickyOffsets.position} z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{position}</span></td>
+                  <td className={`sticky ${stickyOffsets.position} z-20 ${POSITION_COLUMN_WIDTH} border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}><span className={`inline-flex min-w-5 h-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ${positionBadgeClass(player.position)}`}>{positionDisplay}</span></td>
                   <td className={`${TEAM_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 font-medium ${isEffectivelyPicked ? "text-slate-500" : "text-slate-600"}`}>{player.team}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.adp == null ? "—" : formatNumber(player.adp, 1)}</td>
                   <td className={`${NUMERIC_COLUMN_WIDTH} border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums`}>{player.rank}</td>
