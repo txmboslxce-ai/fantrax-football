@@ -247,6 +247,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const [liveError, setLiveError] = useState<string | null>(null);
   const livePollInFlight = useRef(false);
   const hasLoggedConnectionRef = useRef(false);
+  const lastPickCountRef = useRef<number | null>(null);
+  const lastChangeAtRef = useRef<number>(Date.now());
+  const pollIntervalMsRef = useRef<number>(5000);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [teamFilter, setTeamFilter] = useState("All");
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [hideDrafted, setHideDrafted] = useState(false);
@@ -407,6 +411,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   useEffect(() => {
     if (!isLiveConnected || !liveLeagueId) return;
     let cancelled = false;
+    lastPickCountRef.current = null;
+    lastChangeAtRef.current = Date.now();
+    pollIntervalMsRef.current = 5000;
+
     async function poll() {
       if (livePollInFlight.current) return;
       livePollInFlight.current = true;
@@ -414,12 +422,17 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         const res = await fetch("/api/draft/live", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leagueId: liveLeagueId, logConnection: !hasLoggedConnectionRef.current }),
+          body: JSON.stringify({
+            leagueId: liveLeagueId,
+            logConnection: !hasLoggedConnectionRef.current,
+          }),
         });
         const json = await res.json();
         if (cancelled) return;
         if (!res.ok) { setLiveError(json?.error ?? "Live draft fetch failed"); return; }
         setLiveError(null);
+        hasLoggedConnectionRef.current = true;
+
         const ids = new Set<string>();
         for (const scorerId of json.draftedScorerIds as string[]) {
           const pid = playerIdByFantraxId.get(`*${scorerId}*`);
@@ -427,16 +440,34 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         }
         setLiveDraftedIds(ids);
         setLiveStatus({ pickCount: json.pickCount, totalSlots: json.totalSlots });
-        hasLoggedConnectionRef.current = true;
+
+        if (json.pickCount >= json.totalSlots && json.totalSlots > 0) {
+          setIsLiveConnected(false);
+          return;
+        }
+
+        const now = Date.now();
+        if (lastPickCountRef.current !== json.pickCount) {
+          lastPickCountRef.current = json.pickCount;
+          lastChangeAtRef.current = now;
+          pollIntervalMsRef.current = 5000;
+        } else if (now - lastChangeAtRef.current > 120000) {
+          pollIntervalMsRef.current = 60000;
+        }
       } catch (e) {
         if (!cancelled) setLiveError(e instanceof Error ? e.message : "Live draft fetch failed");
       } finally {
         livePollInFlight.current = false;
+        if (!cancelled) {
+          pollTimeoutRef.current = setTimeout(poll, pollIntervalMsRef.current);
+        }
       }
     }
     poll();
-    const interval = setInterval(poll, 5000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => {
+      cancelled = true;
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
   }, [isLiveConnected, liveLeagueId, playerIdByFantraxId]);
 
   const myPicks = useMemo(
@@ -933,10 +964,10 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             My Pick &amp; Live Draft
           </button>
-          {isLiveConnected ? (
+          {isLiveConnected || (liveStatus != null && liveStatus.pickCount >= liveStatus.totalSlots) ? (
             <span className="block truncate text-[10px] font-semibold text-brand-green">
               {liveError ? <span className="text-red-600">{liveError}</span>
-                : liveStatus ? `Live · ${liveStatus.pickCount}/${liveStatus.totalSlots}` : "Connecting…"}
+                : liveStatus ? liveStatus.pickCount >= liveStatus.totalSlots ? "Draft complete" : `Live · ${liveStatus.pickCount}/${liveStatus.totalSlots}` : "Connecting…"}
             </span>
           ) : null}
           {isDraftSetupOpen ? (
