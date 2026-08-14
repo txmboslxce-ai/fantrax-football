@@ -1040,7 +1040,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </div>
 
         <div className="flex h-[76px] items-stretch gap-2">
-        <div className="grid grid-cols-2 content-center gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2 text-[11px] font-semibold text-brand-dark">
             <input
               type="checkbox"
@@ -1092,14 +1092,14 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           >
             Rank Players
           </button>
+          <button
+            type="button"
+            onClick={() => setIsResetDialogOpen(true)}
+            className="flex w-20 items-center justify-center self-stretch whitespace-nowrap rounded-lg border border-red-300 bg-red-50 px-2 text-center text-[11px] font-bold leading-tight text-red-700 transition-colors hover:bg-red-100"
+          >
+            New Draft
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsResetDialogOpen(true)}
-          className="flex w-20 items-center justify-center self-stretch whitespace-nowrap rounded-lg border border-red-300 bg-red-50 px-2 text-center text-[11px] font-bold leading-tight text-red-700 transition-colors hover:bg-red-100"
-        >
-          New Draft
-        </button>
         </div>
       </div>
 
