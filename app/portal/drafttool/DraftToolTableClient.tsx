@@ -432,6 +432,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     });
   }, [customRanks, deferredSearch, hideDrafted, isMultiPositionMode, isMyRankMode, isMyTiersOnly, liveDraftedIds, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
 
+  const totalDrafted = players.reduce(
+    (n, player) => n + (pickedPlayerIds.has(player.id) || liveDraftedIds.has(player.id) ? 1 : 0),
+    0
+  );
+
   const playerIdByFantraxId = useMemo(
     () => new Map(players.map((p) => [p.fantrax_id, p.id])),
     [players]
@@ -511,16 +516,33 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   );
 
   const pickLineByIndex = useMemo(() => {
-    const map = new Map<number, { round: number; overall: number }>();
-    if (draftSlot == null) return map;
+    const map = new Map<number, { round: number; overall: number; onClock: boolean }>();
+    if (draftSlot == null || isMyTiersOnly) return map;
+
     for (const pick of myPicks) {
-      const rowIndex = pick.overall; // row AFTER the pick — line sits below it
-      if (rowIndex >= 0 && rowIndex < filteredAndSortedPlayers.length) {
-        map.set(rowIndex, pick);
+      if (pick.overall <= totalDrafted) continue;
+
+      const undraftedBefore = pick.overall - totalDrafted - 1;
+      let undraftedCount = 0;
+      let targetIndex: number | null = null;
+
+      for (let index = 0; index < filteredAndSortedPlayers.length; index += 1) {
+        const player = filteredAndSortedPlayers[index];
+        const isUndrafted = !pickedPlayerIds.has(player.id) && !liveDraftedIds.has(player.id);
+        if (!isUndrafted) continue;
+        if (undraftedCount === undraftedBefore) {
+          targetIndex = index;
+          break;
+        }
+        undraftedCount += 1;
+      }
+
+      if (targetIndex != null && !map.has(targetIndex)) {
+        map.set(targetIndex, { ...pick, onClock: undraftedBefore === 0 });
       }
     }
     return map;
-  }, [draftSlot, myPicks, filteredAndSortedPlayers.length]);
+  }, [draftSlot, filteredAndSortedPlayers, isMyTiersOnly, liveDraftedIds, myPicks, pickedPlayerIds, totalDrafted]);
 
   function toggleLiveConnection() {
     if (isLiveConnected) {
@@ -1216,15 +1238,21 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                 <Fragment key={player.id}>
                   {pickLineByIndex.has(index) ? (
                     <tr>
-                      <td
-                        colSpan={tableColumnCount}
-                        className="border-y-2 border-brand-green bg-brand-green/15 px-3 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-brand-green"
-                      >
                         {(() => {
                           const pick = pickLineByIndex.get(index)!;
-                          return `↑ R${pick.round} · pick #${pick.overall} overall · your pool above`;
+                          return (
+                            <td
+                              colSpan={tableColumnCount}
+                              className={pick.onClock
+                                ? "border-y-2 border-brand-green bg-brand-green px-3 py-1 text-left text-[10px] font-extrabold uppercase tracking-wide text-brand-cream"
+                                : "border-y-2 border-brand-green bg-brand-green/15 px-3 py-1 text-left text-[10px] font-bold uppercase tracking-wide text-brand-green"}
+                            >
+                              {pick.onClock
+                                ? `↓ YOUR PICK — ON THE CLOCK · #${pick.overall} overall · pool below`
+                                : `↓ R${pick.round} · pick #${pick.overall} overall · your pool below`}
+                            </td>
+                          );
                         })()}
-                      </td>
                     </tr>
                   ) : null}
                   {startsTierBlock && tierDefinition ? (
