@@ -1319,7 +1319,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
         </div>
       ) : null}
 
-      <div className="max-h-[75vh] w-full max-w-full overflow-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+      <div className="h-fit max-h-[75vh] w-full max-w-full overflow-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         <table style={{ width: tableWidth }} className="table-fixed border-separate border-spacing-0 text-left text-xs">
           <colgroup>
             {isMyTiersOnly ? <col style={{ width: "40px" }} /> : null}
