@@ -553,7 +553,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
   const pickLineByIndex = useMemo(() => {
     const map = new Map<number, { round: number; overall: number; onClock: boolean }>();
-    if (draftSlot == null || isMyTiersOnly) return map;
+    if (draftSlot == null) return map;
 
     for (const pick of myPicks) {
       if (pick.overall <= totalDrafted) continue;
@@ -578,7 +578,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
     }
     return map;
-  }, [draftSlot, filteredAndSortedPlayers, isMyTiersOnly, liveDraftedIds, myPicks, pickedPlayerIds, totalDrafted]);
+  }, [draftSlot, filteredAndSortedPlayers, liveDraftedIds, myPicks, pickedPlayerIds, totalDrafted]);
 
   function toggleLiveConnection() {
     if (isLiveConnected) {
