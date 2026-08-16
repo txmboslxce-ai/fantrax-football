@@ -36,6 +36,7 @@ type DraftToolPlayer = {
   picked: boolean;
   watchlisted: boolean;
   customRank: number | null;
+  watchlistOrder: number | null;
   tier: number | null;
   tierOrder: number | null;
 };
@@ -236,6 +237,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   const customRanksRef = useRef(new Map(
     players.flatMap((player) => player.customRank == null ? [] : [[player.id, player.customRank] as const])
   ));
+  const [watchlistOrder, setWatchlistOrder] = useState<Map<string, number>>(
+    () => new Map(players.flatMap((p) => p.watchlistOrder == null ? [] : [[p.id, p.watchlistOrder] as const]))
+  );
+  const watchlistOrderRef = useRef(new Map(
+    players.flatMap((p) => p.watchlistOrder == null ? [] : [[p.id, p.watchlistOrder] as const])
+  ));
   const [pickedPlayerIds, setPickedPlayerIds] = useState<Set<string>>(() => new Set(players.filter((player) => player.picked).map((player) => player.id)));
   const [watchlistedPlayerIds, setWatchlistedPlayerIds] = useState<Set<string>>(() => new Set(players.filter((player) => player.watchlisted).map((player) => player.id)));
   const boardStateRef = useRef({
@@ -362,6 +369,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const dragEnabled = isMyRankMode && !isMyTiersOnly && !isSavingCustomRank;
+  const watchlistDragEnabled = watchlistOnly && !isSavingCustomRank;
 
   const globalRankedPlayers = useMemo(() => [...players].sort((a, b) => {
     const aValue = myRankValue(a, customRanks);
@@ -370,6 +378,21 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     if (bValue == null) return -1;
     return aValue - bValue || a.name.localeCompare(b.name);
   }), [customRanks, players]);
+
+  const globalWatchlistedPlayers = useMemo(() => players
+    .filter((player) => watchlistedPlayerIds.has(player.id))
+    .sort((a, b) => {
+      const aValue = watchlistOrder.get(a.id);
+      const bValue = watchlistOrder.get(b.id);
+      if (aValue == null) {
+        if (bValue != null) return 1;
+        if (a.adp == null) return b.adp == null ? a.name.localeCompare(b.name) : 1;
+        if (b.adp == null) return -1;
+        return a.adp - b.adp || a.name.localeCompare(b.name);
+      }
+      if (bValue == null) return -1;
+      return aValue - bValue || a.name.localeCompare(b.name);
+    }), [players, watchlistOrder, watchlistedPlayerIds]);
 
   const tieredBoardRanks = useMemo(() => new Map(
     players
@@ -402,6 +425,19 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     });
 
     return [...filtered].sort((a, b) => {
+      if (watchlistOnly) {
+        const aValue = watchlistOrder.get(a.id);
+        const bValue = watchlistOrder.get(b.id);
+        if (aValue == null) {
+          if (bValue != null) return 1;
+          if (a.adp == null) return b.adp == null ? a.name.localeCompare(b.name) : 1;
+          if (b.adp == null) return -1;
+          return a.adp - b.adp || a.name.localeCompare(b.name);
+        }
+        if (bValue == null) return -1;
+        return aValue - bValue || a.name.localeCompare(b.name);
+      }
+
       if (isMyTiersOnly) {
         const aAssignment = tierAssignments.get(a.id)!;
         const bAssignment = tierAssignments.get(b.id)!;
@@ -430,7 +466,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       }
       return (Number(aValue) - Number(bValue)) * (sortDir === "asc" ? 1 : -1) || a.name.localeCompare(b.name);
     });
-  }, [customRanks, deferredSearch, hideDrafted, isMultiPositionMode, isMyRankMode, isMyTiersOnly, liveDraftedIds, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistedPlayerIds]);
+  }, [customRanks, deferredSearch, hideDrafted, isMultiPositionMode, isMyRankMode, isMyTiersOnly, liveDraftedIds, pickedPlayerIds, players, positionFilter, selectedRoles, sortDir, sortKey, teamFilter, tierAssignments, tieredBoardRanks, watchlistOnly, watchlistOrder, watchlistedPlayerIds]);
 
   const totalDrafted = players.reduce(
     (n, player) => n + (pickedPlayerIds.has(player.id) || liveDraftedIds.has(player.id) ? 1 : 0),
@@ -560,6 +596,11 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
   function applyCustomRanks(next: Map<string, number>) {
     customRanksRef.current = next;
     setCustomRanks(next);
+  }
+
+  function applyWatchlistOrder(next: Map<string, number>) {
+    watchlistOrderRef.current = next;
+    setWatchlistOrder(next);
   }
 
   function applyBoardState(picked: Set<string>, watchlisted: Set<string>) {
@@ -763,6 +804,100 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       setSaveError(error instanceof Error ? error.message : "Unable to save your custom ranking.");
     } finally {
       setIsSavingCustomRank(false);
+    }
+  }
+
+  async function handleWatchlistDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!watchlistDragEnabled || !over || active.id === over.id) return;
+
+    const visibleOrder = filteredAndSortedPlayers;
+    const oldIndex = visibleOrder.findIndex((player) => player.id === active.id);
+    const newIndex = visibleOrder.findIndex((player) => player.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(visibleOrder, oldIndex, newIndex);
+    const previousOrders = new Map(watchlistOrderRef.current);
+    const needsMaterialization = globalWatchlistedPlayers.some((player) => !previousOrders.has(player.id));
+    const materializedOrders = needsMaterialization
+      ? new Map(globalWatchlistedPlayers.map((player, index) => [player.id, (index + 1) * 10]))
+      : new Map(previousOrders);
+    const movedPlayer = reordered[newIndex];
+    const globalOrderWithoutMoved = globalWatchlistedPlayers.filter((player) => player.id !== movedPlayer.id);
+    const nextVisiblePlayer = reordered[newIndex + 1];
+    const previousVisiblePlayer = reordered[newIndex - 1];
+    const nextVisibleGlobalIndex = nextVisiblePlayer
+      ? globalOrderWithoutMoved.findIndex((player) => player.id === nextVisiblePlayer.id)
+      : -1;
+    const previousVisibleGlobalIndex = previousVisiblePlayer
+      ? globalOrderWithoutMoved.findIndex((player) => player.id === previousVisiblePlayer.id)
+      : -1;
+    const globalAbovePlayer = nextVisibleGlobalIndex >= 0
+      ? globalOrderWithoutMoved[nextVisibleGlobalIndex - 1]
+      : previousVisibleGlobalIndex >= 0
+        ? globalOrderWithoutMoved[previousVisibleGlobalIndex]
+        : undefined;
+    const globalBelowPlayer = nextVisibleGlobalIndex >= 0
+      ? globalOrderWithoutMoved[nextVisibleGlobalIndex]
+      : previousVisibleGlobalIndex >= 0
+        ? globalOrderWithoutMoved[previousVisibleGlobalIndex + 1]
+        : undefined;
+    const aboveOrder = globalAbovePlayer ? materializedOrders.get(globalAbovePlayer.id) : undefined;
+    const belowOrder = globalBelowPlayer ? materializedOrders.get(globalBelowPlayer.id) : undefined;
+    const nextWatchlistOrder = aboveOrder == null
+      ? (belowOrder == null ? 10 : belowOrder - 10)
+      : (belowOrder == null ? aboveOrder + 10 : (aboveOrder + belowOrder) / 2);
+    const nextOrders = new Map(materializedOrders);
+    nextOrders.set(movedPlayer.id, nextWatchlistOrder);
+
+    applyWatchlistOrder(nextOrders);
+    setIsSavingCustomRank(true);
+    setSaveError(null);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
+
+      if (needsMaterialization) {
+        const { error: materializationError } = await supabase.from("draft_picks").upsert(
+          globalWatchlistedPlayers.map((player) => ({
+            user_id: user.id,
+            player_id: player.id,
+            watchlist_order: materializedOrders.get(player.id),
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: "user_id,player_id" }
+        );
+        if (materializationError) throw materializationError;
+      }
+
+      const { error: watchlistOrderError } = await supabase.from("draft_picks").upsert(
+        {
+          user_id: user.id,
+          player_id: movedPlayer.id,
+          watchlist_order: nextWatchlistOrder,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,player_id" }
+      );
+      if (watchlistOrderError) throw watchlistOrderError;
+    } catch (error) {
+      applyWatchlistOrder(previousOrders);
+      setSaveError(error instanceof Error ? error.message : "Unable to save your watchlist order.");
+    } finally {
+      setIsSavingCustomRank(false);
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    if (watchlistOnly) {
+      void handleWatchlistDragEnd(event);
+    } else if (isMyRankMode) {
+      void handleRankDragEnd(event);
     }
   }
 
@@ -1073,14 +1208,28 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             <input
               type="checkbox"
               checked={watchlistOnly}
-              onChange={(event) => setWatchlistOnly(event.target.checked)}
+              onChange={(event) => {
+                const nextWatchlistOnly = event.target.checked;
+                setWatchlistOnly(nextWatchlistOnly);
+                if (nextWatchlistOnly) {
+                  setIsMyTiersOnly(false);
+                  setIsMyRankMode(false);
+                }
+              }}
               className="h-4 w-4 accent-brand-green"
             />
             <span>Watchlist Only</span>
           </label>
           <button
             type="button"
-            onClick={() => setIsMyTiersOnly((current) => !current)}
+            onClick={() => {
+              const nextIsMyTiersOnly = !isMyTiersOnly;
+              setIsMyTiersOnly(nextIsMyTiersOnly);
+              if (nextIsMyTiersOnly) {
+                setWatchlistOnly(false);
+                setIsMyRankMode(false);
+              }
+            }}
             aria-pressed={isMyTiersOnly}
             className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
               isMyTiersOnly
@@ -1110,7 +1259,14 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
           </label>
           <button
             type="button"
-            onClick={() => setIsMyRankMode((current) => !current)}
+            onClick={() => {
+              const nextIsMyRankMode = !isMyRankMode;
+              setIsMyRankMode(nextIsMyRankMode);
+              if (nextIsMyRankMode) {
+                setWatchlistOnly(false);
+                setIsMyTiersOnly(false);
+              }
+            }}
             aria-pressed={isMyRankMode}
             className={`whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors ${
               isMyRankMode
@@ -1209,7 +1365,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
             </tr>
           </thead>
           <tbody className="[&>tr>td]:!py-1">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleRankDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={filteredAndSortedPlayers.map((player) => player.id)} strategy={verticalListSortingStrategy}>
             {filteredAndSortedPlayers.map((player, index) => {
               const isPicked = pickedPlayerIds.has(player.id);
@@ -1262,7 +1418,7 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       </td>
                     </tr>
                   ) : null}
-                <SortableRow id={player.id} disabled={!dragEnabled}>
+                <SortableRow id={player.id} disabled={!(dragEnabled || watchlistDragEnabled)}>
                   {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group ${rowShade} ${isEffectivelyPicked ? "text-slate-500 opacity-60" : "text-brand-dark"} ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}>
                   {isMyTiersOnly ? <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-emerald-50`}>
@@ -1277,16 +1433,16 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
                       <button type="button" onClick={() => toggleBoardFlag(player.id, "watchlisted")} aria-label={isWatchlisted ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted} className={`text-base leading-none ${isWatchlisted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
                         <span aria-hidden="true">{isWatchlisted ? "★" : "☆"}</span>
                       </button>
-                      {isMyRankMode ? (
+                      {isMyRankMode || watchlistOnly ? (
                         <button
                           ref={setActivatorNodeRef}
                           type="button"
                           {...attributes}
                           {...listeners}
-                          disabled={!dragEnabled}
-                          aria-label={dragEnabled ? `Drag ${player.name} to reorder` : "Saving custom ranking"}
-                          title={dragEnabled ? "Drag to reorder" : "Saving custom ranking"}
-                          className={`touch-none text-sm leading-none ${dragEnabled ? "cursor-grab text-slate-500 active:cursor-grabbing" : "cursor-not-allowed text-slate-300"}`}
+                          disabled={!(dragEnabled || watchlistDragEnabled)}
+                          aria-label={dragEnabled || watchlistDragEnabled ? `Drag ${player.name} to reorder` : "Saving custom ranking"}
+                          title={dragEnabled || watchlistDragEnabled ? "Drag to reorder" : "Saving custom ranking"}
+                          className={`touch-none text-sm leading-none ${dragEnabled || watchlistDragEnabled ? "cursor-grab text-slate-500 active:cursor-grabbing" : "cursor-not-allowed text-slate-300"}`}
                         >
                           <span aria-hidden="true">⠿</span>
                         </button>

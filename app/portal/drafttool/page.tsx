@@ -35,6 +35,7 @@ type DraftPlayer = {
   picked: boolean;
   watchlisted: boolean;
   customRank: number | null;
+  watchlistOrder: number | null;
   tier: number | null;
   tierOrder: number | null;
 };
@@ -177,6 +178,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       picked: false,
       watchlisted: false,
       customRank: null,
+      watchlistOrder: null,
       tier: null,
       tierOrder: null,
     };
@@ -201,7 +203,7 @@ export default async function DraftToolPage() {
     loadDraftPlayers(),
     supabase
       .from("draft_picks")
-      .select("player_id, picked, watchlisted, custom_rank, tier, tier_order")
+      .select("player_id, picked, watchlisted, custom_rank, watchlist_order, tier, tier_order")
       .eq("user_id", user.id),
   ]);
 
@@ -216,6 +218,7 @@ export default async function DraftToolPage() {
         picked: draftPick.picked === true,
         watchlisted: draftPick.watchlisted === true,
         customRank: normalizeCustomRank(draftPick.custom_rank),
+        watchlistOrder: normalizeCustomRank(draftPick.watchlist_order),
         tier: normalizeCustomRank(draftPick.tier),
         tierOrder: normalizeCustomRank(draftPick.tier_order),
       },
