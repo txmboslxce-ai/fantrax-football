@@ -12,7 +12,8 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const nextParam = requestUrl.searchParams.get("next");
-  const nextPath = nextParam && nextParam.startsWith("/") ? nextParam : "/portal";
+  const nextPath =
+    nextParam === "/reset-password" || nextParam?.startsWith("/portal") ? nextParam ?? "/portal" : "/portal";
 
   if (code) {
     const cookieStore = await cookies();

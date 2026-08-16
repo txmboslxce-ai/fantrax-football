@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -145,6 +146,12 @@ export default function LoginClient() {
                 placeholder="Your password"
               />
             </div>
+
+            <p className="text-right text-sm text-brand-greenDark">
+              <Link href="/forgot-password" className="font-semibold text-brand-green underline underline-offset-2">
+                Forgot password?
+              </Link>
+            </p>
 
             <button
               type="submit"
