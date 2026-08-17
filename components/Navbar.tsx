@@ -210,15 +210,18 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
 
     async function loadLeagues() {
       try {
-        const response = await fetch("/api/fantrax/leagues");
-        if (!response.ok) return;
+        const response = await fetch("/api/fantrax/leagues", { credentials: "same-origin" });
+        if (!response.ok) {
+          console.error("[LeagueSwitcher] Failed to load leagues:", response.status);
+          return;
+        }
         const data = (await response.json()) as { leagues?: FantraxLeague[]; activeLeagueId?: string | null };
         if (!cancelled) {
           setLeagues(data.leagues ?? []);
           setActiveLeagueId(data.activeLeagueId ?? null);
         }
-      } catch {
-        // The switcher is optional navigation UI, so leave it hidden on fetch failure.
+      } catch (error) {
+        console.error("[LeagueSwitcher] Failed to load leagues:", error);
       }
     }
 

@@ -36,6 +36,11 @@ type MyLeagueClientProps = {
   isConnected: boolean;
 };
 
+type CachedLeague = {
+  league_id: string;
+  league_name: string;
+};
+
 type Tab = "roster" | "standings" | "analytics" | "trade-values";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -104,6 +109,9 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   const [myTeamSaving, setMyTeamSaving] = useState(false);
   const [myTeamSaved, setMyTeamSaved] = useState(false);
   const savedToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [leagues, setLeagues] = useState<CachedLeague[]>([]);
+  const [isLeagueSwitching, setIsLeagueSwitching] = useState(false);
+  const [leagueSwitchError, setLeagueSwitchError] = useState<string | null>(null);
 
   // Keep selectedTeamId valid when teams change (e.g. after re-sync)
   useEffect(() => {
@@ -129,6 +137,52 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       })
       .finally(() => setAnalyticsLoading(false));
   }, [activeTab, leagueId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLeagues() {
+      try {
+        const response = await fetch("/api/fantrax/leagues", { credentials: "same-origin" });
+        if (!response.ok) return;
+        const data = (await response.json()) as { leagues?: CachedLeague[] };
+        if (!cancelled) setLeagues(data.leagues ?? []);
+      } catch (error) {
+        console.error("[MyLeague] Failed to load cached leagues:", error);
+      }
+    }
+
+    void loadLeagues();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function switchLeague(nextLeagueId: string) {
+    if (!nextLeagueId || nextLeagueId === leagueId) return;
+
+    setIsLeagueSwitching(true);
+    setLeagueSwitchError(null);
+    try {
+      const response = await fetch("/api/fantrax/switch-league", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leagueId: nextLeagueId }),
+      });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setLeagueSwitchError(data.message ?? "Unable to switch leagues.");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setLeagueSwitchError("Network error. Please try again.");
+    } finally {
+      setIsLeagueSwitching(false);
+    }
+  }
 
   async function saveMyTeam() {
     const team = teams.find((t) => t.id === myTeamDraft);
@@ -330,30 +384,49 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             League ID: <span className="font-mono text-brand-dark">{leagueId}</span>
           </p>
           <p className="mt-0.5 text-xs text-slate-500">Last synced: {formatSyncDate(lastSyncedAt)}</p>
-          {/* My Team selector */}
-          {teams.length > 0 && (
-            <div className="mt-3 flex items-center gap-2">
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">My Team</span>
-                <select
-                  value={myTeamDraft}
-                  onChange={(e) => setMyTeamDraft(e.target.value)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
+          {(leagues.length > 0 || teams.length > 0) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {leagues.length > 0 && (
+                <label className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">League</span>
+                  <select
+                    value={leagueId}
+                    onChange={(e) => void switchLeague(e.target.value)}
+                    disabled={isLeagueSwitching}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {leagues.map((league) => (
+                      <option key={league.league_id} value={league.league_id}>{league.league_name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {teams.length > 0 && (
+                <label className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Team</span>
+                  <select
+                    value={myTeamDraft}
+                    onChange={(e) => setMyTeamDraft(e.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
+                  >
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>{team.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {teams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void saveMyTeam()}
+                  disabled={myTeamSaving}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {teams.map((team) => (
-                    <option key={team.id} value={team.id}>{team.name}</option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={() => void saveMyTeam()}
-                disabled={myTeamSaving}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {myTeamSaving ? "Saving…" : "Save"}
-              </button>
+                  {myTeamSaving ? "Saving…" : "Save"}
+                </button>
+              )}
               {myTeamSaved && <span className="text-xs text-green-700">Saved</span>}
+              {leagueSwitchError && <span className="text-xs text-red-700">{leagueSwitchError}</span>}
             </div>
           )}
         </div>

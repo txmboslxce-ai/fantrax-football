@@ -80,7 +80,8 @@ export default async function MyLeaguePage() {
   const { data: rosterRows } = await supabase
     .from("league_rosters")
     .select("player_id, team_id, team_name")
-    .eq("profile_id", user.id);
+    .eq("profile_id", user.id)
+    .eq("league_id", leagueId);
 
   const roster = (rosterRows ?? []) as RosterRow[];
   const playerIds = roster.map((r) => r.player_id);
