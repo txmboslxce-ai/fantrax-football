@@ -8,9 +8,12 @@ export default async function AdvicePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
   const [{ players }, leagueRoster] = await Promise.all([
     getAdviceData(),
-    user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
+    user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
   ]);
 
   return (

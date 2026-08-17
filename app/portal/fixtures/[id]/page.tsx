@@ -161,12 +161,15 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
   const SEASON = FIXTURES_SEASON;
 
   const [fixture, { data: teamsData, error: teamsError }, leagueRoster] = await Promise.all([
     loadFixture(supabase, resolvedParams.id, SEASON),
     supabase.from("teams").select("abbrev, full_name, name"),
-    user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
+    user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
   ]);
 
   if (teamsError) {

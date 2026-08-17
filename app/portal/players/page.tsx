@@ -222,13 +222,16 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
   const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
   const { availableSeasons, season } = await resolvePortalSeason(supabase, requestedSeason);
 
   const [playersTableData, formData, leagueRoster] = await Promise.all([
     activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),
     activeTab === "form" ? getGWOverviewData() : Promise.resolve(null),
-    user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
+    user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
   ]);
 
   return (

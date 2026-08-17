@@ -6,11 +6,22 @@ export type LeagueRosterData = {
   myTeamPlayerIds: string[];
 };
 
-export async function getUserLeagueRoster(userId: string): Promise<LeagueRosterData | null> {
+export async function getUserLeagueRoster(
+  userId: string,
+  activeLeagueId: string | null
+): Promise<LeagueRosterData | null> {
+  if (!activeLeagueId) {
+    return null;
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const [{ data, error }, { data: profile }] = await Promise.all([
-    supabase.from("league_rosters").select("player_id, team_id, team_name").eq("profile_id", userId),
+    supabase
+      .from("league_rosters")
+      .select("player_id, team_id, team_name")
+      .eq("profile_id", userId)
+      .eq("league_id", activeLeagueId),
     supabase.from("profiles").select("fantrax_team_id").eq("id", userId).maybeSingle(),
   ]);
 

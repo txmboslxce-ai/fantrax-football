@@ -203,6 +203,10 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
     throw new Error(`Unable to load players: ${playersError.message}`);
   }
 
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
+
   const playerIds = (players ?? []).map((player) => player.id as string);
   const playerIdBatches = Array.from(
     { length: Math.ceil(playerIds.length / PLAYER_ID_BATCH_SIZE) },
@@ -219,7 +223,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
           .range(0, 40000)
       )
     ),
-    user ? getUserLeagueRoster(user.id) : Promise.resolve(null),
+    user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
   ]);
   const gameweeksError = gameweekResults.find((result) => result.error)?.error;
 
