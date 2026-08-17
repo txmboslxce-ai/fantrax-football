@@ -16,6 +16,8 @@ import { computeRadarValue, rankRadarValues, type RadarBandShape, type RadarDire
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 import { resolvePortalSeason } from "@/lib/season/portal-season";
+import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
+import RosterPill from "@/app/components/ui/RosterPill";
 import { notFound } from "next/navigation";
 import PlayerGameweekTableClient from "./PlayerGameweekTableClient";
 
@@ -197,6 +199,13 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
+
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const leagueRoster = user
+    ? await getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null)
+    : null;
 
   const playerRow = player as PlayerDetailRow;
 
@@ -450,7 +459,10 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
         <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-6 text-brand-cream sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-black sm:text-5xl">{playerRow.name}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-3xl font-black sm:text-5xl">{playerRow.name}</h1>
+                <RosterPill playerId={playerRow.id} leagueRoster={leagueRoster} />
+              </div>
               <p className="mt-2 text-sm text-brand-creamDark">{teamNames.get(playerRow.team) ?? playerRow.team}</p>
             </div>
             <span className="inline-flex rounded-full bg-brand-green px-4 py-1 text-sm font-bold text-brand-cream">

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import RosterPill from "@/app/components/ui/RosterPill";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 
 type SquadRow = {
   id: string;
@@ -35,7 +37,7 @@ type SortKey =
 
 const positionFilters: Array<"All" | "GK" | "DEF" | "MID" | "FWD"> = ["All", "GK", "DEF", "MID", "FWD"];
 
-export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
+export default function TeamSquadClient({ players, leagueRoster }: { players: SquadRow[]; leagueRoster: LeagueRosterData | null }) {
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
   const [sortKey, setSortKey] = useState<SortKey>("seasonPts");
@@ -190,9 +192,12 @@ export default function TeamSquadClient({ players }: { players: SquadRow[] }) {
                   className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}
                 >
                   <td className="w-48 min-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark">
-                    <Link href={rowHref} prefetch={false} className="block hover:text-brand-green hover:underline">
-                      {player.name}
-                    </Link>
+                    <div className="flex items-center gap-1">
+                      <Link href={rowHref} prefetch={false} className="hover:text-brand-green hover:underline">
+                        {player.name}
+                      </Link>
+                      <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+                    </div>
                   </td>
                   <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">
                     <Link href={rowHref} prefetch={false} className="block hover:text-brand-green hover:underline">

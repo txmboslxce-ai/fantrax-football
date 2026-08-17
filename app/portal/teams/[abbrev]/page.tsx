@@ -11,6 +11,7 @@ import {
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
+import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -183,6 +184,15 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   const requestedTab = toTabKey(resolvedSearchParams?.tab);
 
   const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const leagueRoster = user
+    ? await getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null)
+    : null;
   const SEASON = await getCurrentSeason(supabase);
   const FIXTURES_SEASON = "2026-27";
   const { data: teams, error: teamsError } = await supabase
@@ -368,7 +378,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
 
     const playedGameweeks = Array.from(new Set(fixturesForTeamPlayed.map((fixture) => fixture.gameweek)));
 
-    let fdrRankByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = { GK: 10, DEF: 10, MID: 10, FWD: 10 };
+    const fdrRankByPosition: Record<"GK" | "DEF" | "MID" | "FWD", number> = { GK: 10, DEF: 10, MID: 10, FWD: 10 };
 
     if (playedGameweeks.length > 0) {
       const { data: opponentGameweeks, error: opponentGameweeksError } = await supabase
@@ -864,7 +874,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           ) : activeTab === "squad" ? (
             <div className="space-y-3">
               <h2 className="text-2xl font-black">Squad Stats</h2>
-              <TeamSquadClient players={squadRows ?? []} />
+              <TeamSquadClient players={squadRows ?? []} leagueRoster={leagueRoster} />
             </div>
           ) : activeTab === "fixtures" ? (
             <div className="space-y-3">

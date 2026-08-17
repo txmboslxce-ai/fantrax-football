@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
+import RosterPill from "@/app/components/ui/RosterPill";
 import { computeRadarValue } from "@/lib/portal/radarScaling";
+import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 
 type ComparePlayerSnapshot = {
@@ -36,6 +38,7 @@ type ComparePlayerSnapshot = {
 
 type CompareClientProps = {
   players: ComparePlayerSnapshot[];
+  leagueRoster: LeagueRosterData | null;
 };
 
 type CompareSlot = {
@@ -76,12 +79,14 @@ function SearchablePlayerPicker({
   value,
   onChange,
   players,
+  leagueRoster,
   onRemove,
 }: {
   label: string;
   value: string;
   onChange: (id: string, query: string) => void;
   players: ComparePlayerSnapshot[];
+  leagueRoster: LeagueRosterData | null;
   onRemove?: () => void;
 }) {
   const [query, setQuery] = useState(value);
@@ -129,7 +134,10 @@ function SearchablePlayerPicker({
               }}
               className="block w-full px-3 py-2 text-left text-sm text-brand-dark hover:bg-brand-green/10"
             >
-              {playerLabel(player)}
+              <span className="flex items-center gap-1">
+                <span>{playerLabel(player)}</span>
+                <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
+              </span>
             </button>
           ))}
         </div>
@@ -138,7 +146,7 @@ function SearchablePlayerPicker({
   );
 }
 
-export default function CompareClient({ players }: CompareClientProps) {
+export default function CompareClient({ players, leagueRoster }: CompareClientProps) {
   const initialSelections: CompareSlot[] = [
     { id: "", label: "" },
     { id: "", label: "" },
@@ -236,6 +244,7 @@ export default function CompareClient({ players }: CompareClientProps) {
               value={slot.label}
               onChange={(id, query) => updateSlot(index, { id, label: query })}
               players={players}
+              leagueRoster={leagueRoster}
               onRemove={index >= 2 ? () => removeSlot(index) : undefined}
             />
           ))}
@@ -263,6 +272,7 @@ export default function CompareClient({ players }: CompareClientProps) {
                     status={player.availabilityStatus}
                     news={player.availabilityNews}
                   />
+                  <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {player.teamName} • {player.position}

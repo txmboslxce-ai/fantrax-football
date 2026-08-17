@@ -12,6 +12,7 @@ import {
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
+import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 
 type ComparePlayerSnapshot = {
   id: string;
@@ -44,6 +45,12 @@ type ComparePlayerSnapshot = {
 
 export default async function ComparePage() {
   const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
+    : { data: null };
   const SEASON = await getCurrentSeason(supabase);
 
   const { data: poolRows, error: poolError } = await supabase
@@ -167,13 +174,17 @@ export default async function ComparePage() {
       },
     };
   });
+  const leagueRoster = user
+    ? await getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null)
+    : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Compare Players</h1>
         <p className="mt-2 text-sm text-brand-dark/70">Side-by-side comparison for season {SEASON}.</p>
       </div>
-      <CompareClient players={snapshots} />
+      <CompareClient players={snapshots} leagueRoster={leagueRoster} />
     </div>
   );
 }
