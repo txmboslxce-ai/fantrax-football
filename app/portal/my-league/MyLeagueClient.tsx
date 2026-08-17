@@ -33,6 +33,7 @@ type MyLeagueClientProps = {
   players: LeaguePlayerData[];
   savedTeamId: string | null;
   savedTeamName: string | null;
+  isConnected: boolean;
 };
 
 type Tab = "roster" | "standings" | "analytics" | "trade-values";
@@ -78,12 +79,13 @@ function safeFixed(value: number | null | undefined, decimals: number): string {
   return (typeof n === "number" && isFinite(n) ? n : 0).toFixed(decimals);
 }
 
-export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, savedTeamName }: MyLeagueClientProps) {
+export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, savedTeamName, isConnected }: MyLeagueClientProps) {
   const router = useRouter();
-  const [inputLeagueId, setInputLeagueId] = useState("");
+  const [secretId, setSecretId] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ teams: number; playersRostered: number; unmatchedPlayers: string[] } | null>(null);
+  const [connectResult, setConnectResult] = useState<{ leagues: number; playersRostered: number; unmatched: number } | null>(null);
   const [isUnsyncDialogOpen, setIsUnsyncDialogOpen] = useState(false);
   const [isUnsyncing, setIsUnsyncing] = useState(false);
   const [unsyncError, setUnsyncError] = useState<string | null>(null);
@@ -191,15 +193,52 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
     }
   }
 
+  async function handleConnect() {
+    if (!secretId.trim()) return;
+    setSyncing(true);
+    setSyncError(null);
+    setConnectResult(null);
+
+    try {
+      const response = await fetch("/api/fantrax/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secretId: secretId.trim() }),
+      });
+      const data = (await response.json()) as {
+        message?: string;
+        leagues?: unknown[];
+        syncResults?: Array<{ playersRostered?: number; unmatchedFantraxIds?: string[] }>;
+      };
+
+      if (!response.ok) {
+        setSyncError(data.message ?? "Unable to connect your Fantrax account.");
+        return;
+      }
+
+      const syncResults = data.syncResults ?? [];
+      setConnectResult({
+        leagues: data.leagues?.length ?? 0,
+        playersRostered: syncResults.reduce((total, result) => total + (result.playersRostered ?? 0), 0),
+        unmatched: syncResults.reduce((total, result) => total + (result.unmatchedFantraxIds?.length ?? 0), 0),
+      });
+      window.setTimeout(() => router.refresh(), 1200);
+    } catch {
+      setSyncError("Network error. Please try again.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   async function handleUnsync() {
     setIsUnsyncing(true);
     setUnsyncError(null);
 
     try {
-      const response = await fetch("/api/my-league/unsync", { method: "POST" });
+      const response = await fetch("/api/fantrax/disconnect", { method: "POST" });
       const data = (await response.json()) as { message?: string };
       if (!response.ok) {
-        setUnsyncError(data.message ?? "Unable to disconnect this league.");
+        setUnsyncError(data.message ?? "Unable to disconnect your Fantrax account.");
         return;
       }
 
@@ -218,47 +257,37 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">My League</h1>
-          <p className="mt-2 text-sm text-brand-dark/70">Connect your Fantrax league to track roster availability.</p>
+          <p className="mt-2 text-sm text-brand-dark/70">Connect your Fantrax account to track roster availability across every league.</p>
         </div>
 
         <div className="mx-auto max-w-lg rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
-          <h2 className="text-lg font-bold text-brand-dark">Connect Your League</h2>
-
-          <ol className="mt-4 space-y-3 text-sm text-slate-600">
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-bold text-brand-green">1</span>
-              <span>Go to your Fantrax league and click <span className="font-semibold text-brand-dark">League</span> in the left sidebar.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-bold text-brand-green">2</span>
-              <span>Find the league ID in your browser&apos;s URL bar:</span>
-            </li>
-          </ol>
-
-          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs text-slate-600">
-            fantrax.com/fantasy/league/<span className="rounded bg-brand-green/10 px-1 py-0.5 font-bold text-brand-green">abc123def456</span>/home
-          </div>
-
-          <ol className="mt-3 space-y-3 text-sm text-slate-600" start={3}>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-bold text-brand-green">3</span>
-              <span>Paste it in the field below and click <span className="font-semibold text-brand-dark">Sync League</span>.</span>
-            </li>
-          </ol>
+          <h2 className="text-lg font-bold text-brand-dark">Connect Your Fantrax Account</h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            Find your Secret ID in your{" "}
+            <a href="https://www.fantrax.com/user/profile" target="_blank" rel="noreferrer" className="font-semibold text-brand-green underline hover:text-brand-greenDark">
+              Fantrax profile
+            </a>
+            {" "}and paste it below. Connect once and every league you&apos;re in is pulled in automatically — no more per-league IDs.
+          </p>
+          {isConnected ? (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Your Fantrax account is already connected, but no active league is currently available. Reconnect to refresh your league list.
+            </p>
+          ) : null}
 
           <div className="mt-5 space-y-3">
             <label className="space-y-1.5">
               <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Fantrax League ID
+                Fantrax Secret ID
               </span>
               <input
-                type="text"
-                value={inputLeagueId}
-                onChange={(e) => setInputLeagueId(e.target.value)}
+                type="password"
+                value={secretId}
+                onChange={(e) => setSecretId(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void handleSync(inputLeagueId);
+                  if (e.key === "Enter") void handleConnect();
                 }}
-                placeholder="e.g. abc123def456"
+                placeholder="Paste your Secret ID"
                 disabled={syncing}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none disabled:opacity-50"
               />
@@ -266,14 +295,20 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
 
             <button
               type="button"
-              onClick={() => void handleSync(inputLeagueId)}
-              disabled={syncing || !inputLeagueId.trim()}
+              onClick={() => void handleConnect()}
+              disabled={syncing || !secretId.trim()}
               className="w-full rounded-lg border border-brand-green bg-brand-green px-4 py-2.5 text-sm font-semibold text-brand-cream transition-colors hover:bg-brand-greenDark disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {syncing ? "Syncing…" : "Sync League"}
+              {syncing ? "Connecting and syncing your leagues…" : "Connect"}
             </button>
 
             {syncError ? <p className="text-sm text-red-700">{syncError}</p> : null}
+            {connectResult ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                Connected {connectResult.leagues} {connectResult.leagues === 1 ? "league" : "leagues"} and synced {connectResult.playersRostered} players.
+                {connectResult.unmatched > 0 ? ` ${connectResult.unmatched} players could not be matched.` : ""}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -341,7 +376,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             disabled={syncing || isUnsyncing}
             className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Un-sync League
+            Disconnect Fantrax
           </button>
           {syncError ? <p className="text-xs text-red-700">{syncError}</p> : null}
           {syncResult ? (
@@ -638,9 +673,9 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             aria-describedby="unsync-league-description"
             className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
           >
-            <h2 id="unsync-league-title" className="text-lg font-black text-brand-dark">Un-sync this league?</h2>
+            <h2 id="unsync-league-title" className="text-lg font-black text-brand-dark">Disconnect Fantrax?</h2>
             <p id="unsync-league-description" className="mt-2 text-sm leading-relaxed text-slate-600">
-              This permanently disconnects the league and clears all roster and saved team data. This cannot be undone.
+              This permanently disconnects your Fantrax account, clearing all synced leagues and roster data. This cannot be undone.
             </p>
             {unsyncError ? <p className="mt-3 text-sm text-red-700">{unsyncError}</p> : null}
             <div className="mt-5 flex justify-end gap-2">
@@ -658,7 +693,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 disabled={isUnsyncing}
                 className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isUnsyncing ? "Disconnecting…" : "Yes, un-sync my league"}
+                {isUnsyncing ? "Disconnecting…" : "Yes, disconnect Fantrax"}
               </button>
             </div>
           </div>

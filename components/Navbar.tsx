@@ -36,6 +36,12 @@ type SearchResult =
       href: string;
     };
 
+type FantraxLeague = {
+  league_id: string;
+  league_name: string;
+  team_name: string | null;
+};
+
 const links = [
   { href: "/", label: "Home" },
   { href: "/episodes", label: "Episodes" },
@@ -192,6 +198,88 @@ function PortalSearch({ onNavigate, compact = false }: { onNavigate?: () => void
   );
 }
 
+function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
+  const router = useRouter();
+  const [leagues, setLeagues] = useState<FantraxLeague[]>([]);
+  const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLeagues() {
+      try {
+        const response = await fetch("/api/fantrax/leagues");
+        if (!response.ok) return;
+        const data = (await response.json()) as { leagues?: FantraxLeague[]; activeLeagueId?: string | null };
+        if (!cancelled) {
+          setLeagues(data.leagues ?? []);
+          setActiveLeagueId(data.activeLeagueId ?? null);
+        }
+      } catch {
+        // The switcher is optional navigation UI, so leave it hidden on fetch failure.
+      }
+    }
+
+    void loadLeagues();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function switchLeague(leagueId: string) {
+    if (!leagueId || leagueId === activeLeagueId) return;
+
+    setIsSwitching(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/fantrax/switch-league", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leagueId }),
+      });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setError(data.message ?? "Unable to switch leagues.");
+        return;
+      }
+
+      setActiveLeagueId(leagueId);
+      onSwitched?.();
+      router.refresh();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setIsSwitching(false);
+    }
+  }
+
+  if (leagues.length === 0) return null;
+
+  return (
+    <div className="w-52">
+      <select
+        value={activeLeagueId ?? ""}
+        onChange={(event) => void switchLeague(event.target.value)}
+        disabled={isSwitching}
+        aria-label="Switch Fantrax league"
+        className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none disabled:cursor-wait disabled:opacity-60"
+      >
+        <option value="" disabled>
+          {isSwitching ? "Switching league…" : "Select league"}
+        </option>
+        {leagues.map((league) => (
+          <option key={league.league_id} value={league.league_id}>
+            {league.team_name ? `${league.league_name} — ${league.team_name}` : league.league_name}
+          </option>
+        ))}
+      </select>
+      {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
+    </div>
+  );
+}
+
 export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -219,6 +307,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
           {isLoggedIn ? (
             <>
               <PortalSearch />
+              <LeagueSwitcher />
               <Link
                 href="/portal"
                 className="rounded-md bg-brand-green px-4 py-2 font-heading font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight"
@@ -273,6 +362,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
                 <div className="mt-2">
                   <PortalSearch compact onNavigate={() => setIsOpen(false)} />
                 </div>
+                <LeagueSwitcher onSwitched={() => setIsOpen(false)} />
                 <Link
                   href="/portal"
                   className="mt-2 w-fit rounded-md bg-brand-green px-4 py-2 font-heading font-semibold text-brand-cream"

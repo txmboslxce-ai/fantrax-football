@@ -9,6 +9,7 @@ type ProfileRow = {
   fantrax_league_last_synced_at: string | null;
   fantrax_team_id: string | null;
   fantrax_team_name: string | null;
+  fantrax_secret_id_encrypted: string | null;
 };
 
 type RosterRow = {
@@ -60,7 +61,7 @@ export default async function MyLeaguePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("fantrax_league_id, fantrax_league_last_synced_at, fantrax_team_id, fantrax_team_name")
+    .select("fantrax_league_id, fantrax_league_last_synced_at, fantrax_team_id, fantrax_team_name, fantrax_secret_id_encrypted")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -69,9 +70,10 @@ export default async function MyLeaguePage() {
   const lastSyncedAt = profileRow?.fantrax_league_last_synced_at ?? null;
   const savedTeamId = profileRow?.fantrax_team_id ?? null;
   const savedTeamName = profileRow?.fantrax_team_name ?? null;
+  const isConnected = Boolean(profileRow?.fantrax_secret_id_encrypted);
 
   if (!leagueId) {
-    return <MyLeagueClient leagueId={null} lastSyncedAt={null} teams={[]} players={[]} savedTeamId={null} savedTeamName={null} />;
+    return <MyLeagueClient leagueId={null} lastSyncedAt={null} teams={[]} players={[]} savedTeamId={null} savedTeamName={null} isConnected={isConnected} />;
   }
 
   // Load full roster data for the league view
@@ -84,7 +86,7 @@ export default async function MyLeaguePage() {
   const playerIds = roster.map((r) => r.player_id);
 
   if (playerIds.length === 0) {
-    return <MyLeagueClient leagueId={leagueId} lastSyncedAt={lastSyncedAt} teams={[]} players={[]} savedTeamId={savedTeamId} savedTeamName={savedTeamName} />;
+    return <MyLeagueClient leagueId={leagueId} lastSyncedAt={lastSyncedAt} teams={[]} players={[]} savedTeamId={savedTeamId} savedTeamName={savedTeamName} isConnected={isConnected} />;
   }
 
   const SEASON = await getCurrentSeason(supabase);
@@ -160,6 +162,7 @@ export default async function MyLeaguePage() {
       players={players}
       savedTeamId={savedTeamId}
       savedTeamName={savedTeamName}
+      isConnected={isConnected}
     />
   );
 }
