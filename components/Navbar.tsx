@@ -326,7 +326,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-brand-green/40 bg-brand-dark text-brand-cream">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <div className="flex w-full items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3" aria-label="Draft Academical home">
             <Image
