@@ -4,22 +4,40 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
+
+type ResetToken = {
+  code: string | null;
+  tokenHash: string | null;
+  tokenType: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+};
 
 export default function ResetPasswordClient() {
   const searchParams = useSearchParams();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetToken] = useState(() => ({
-    code: searchParams.get("code"),
-    tokenHash: searchParams.get("token_hash"),
-    tokenType: searchParams.get("type"),
-  }));
+  const [resetToken] = useState<ResetToken>(() => {
+    const fragment = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.hash.slice(1));
+
+    return {
+      code: searchParams.get("code"),
+      tokenHash: searchParams.get("token_hash"),
+      tokenType: searchParams.get("type"),
+      accessToken: fragment.get("access_token"),
+      refreshToken: fragment.get("refresh_token"),
+    };
+  });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasResetToken = Boolean(resetToken.code || (resetToken.tokenHash && resetToken.tokenType === "recovery"));
+  const hasResetToken = Boolean(
+    resetToken.code ||
+      (resetToken.tokenHash && resetToken.tokenType === "recovery") ||
+      (resetToken.accessToken && resetToken.refreshToken)
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,11 +62,10 @@ export default function ResetPasswordClient() {
       return;
     }
 
-    const supabase = createBrowserClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        isSingleton: false,
         auth: {
           detectSessionInUrl: false,
           flowType: "implicit",
@@ -58,7 +75,12 @@ export default function ResetPasswordClient() {
     );
     const { error: exchangeError } = resetToken.code
       ? await supabase.auth.exchangeCodeForSession(resetToken.code)
-      : await supabase.auth.verifyOtp({ type: "recovery", token_hash: resetToken.tokenHash! });
+      : resetToken.tokenHash
+        ? await supabase.auth.verifyOtp({ type: "recovery", token_hash: resetToken.tokenHash })
+        : await supabase.auth.setSession({
+            access_token: resetToken.accessToken!,
+            refresh_token: resetToken.refreshToken!,
+          });
 
     if (exchangeError) {
       setIsSubmitting(false);

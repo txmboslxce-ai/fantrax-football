@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { createClient } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 export default function ForgotPasswordClient() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,20 @@ export default function ForgotPasswordClient() {
     setSuccess(null);
     setIsSubmitting(true);
 
-    const supabase = createClient();
+    // Recovery links must be self-contained: a PKCE recovery code requires the
+    // browser-local verifier that requested it, which is unavailable when the
+    // link is opened from another device or a new browser session.
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          detectSessionInUrl: false,
+          flowType: "implicit",
+          storageKey: "sb-reset-password-request",
+        },
+      }
+    );
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
