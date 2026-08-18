@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createClient } from "@/lib/supabase";
 import type { AnalyticsPayload } from "@/app/api/league-analytics/types";
 
 export type LeagueTeam = {
@@ -84,7 +83,7 @@ function safeFixed(value: number | null | undefined, decimals: number): string {
   return (typeof n === "number" && isFinite(n) ? n : 0).toFixed(decimals);
 }
 
-export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, savedTeamName, isConnected }: MyLeagueClientProps) {
+export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, isConnected }: MyLeagueClientProps) {
   const router = useRouter();
   const [secretId, setSecretId] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -101,24 +100,19 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   const analyticsFetchedRef = useRef(false);
 
   // Roster tab: which team is being viewed (independent of profile)
-  const [selectedTeamId, setSelectedTeamId] = useState<string>(teams[0]?.id ?? "");
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(savedTeamId ?? teams[0]?.id ?? "");
 
-  // My Team: the profile-saved team used for Standings highlights
-  const [myTeamId, setMyTeamId] = useState<string>(savedTeamId ?? "");
-  const [myTeamDraft, setMyTeamDraft] = useState<string>(savedTeamId ?? "");
-  const [myTeamSaving, setMyTeamSaving] = useState(false);
-  const [myTeamSaved, setMyTeamSaved] = useState(false);
-  const savedToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [leagues, setLeagues] = useState<CachedLeague[]>([]);
   const [isLeagueSwitching, setIsLeagueSwitching] = useState(false);
   const [leagueSwitchError, setLeagueSwitchError] = useState<string | null>(null);
 
-  // Keep selectedTeamId valid when teams change (e.g. after re-sync)
+  // Reset the roster viewer to the authoritative Fantrax team on league changes.
   useEffect(() => {
-    if (teams.length > 0 && !teams.some((t) => t.id === selectedTeamId)) {
-      setSelectedTeamId(teams[0].id);
-    }
-  }, [teams, selectedTeamId]);
+    const defaultTeamId = savedTeamId && teams.some((team) => team.id === savedTeamId)
+      ? savedTeamId
+      : teams[0]?.id ?? "";
+    setSelectedTeamId(defaultTeamId);
+  }, [leagueId, savedTeamId, teams]);
 
   useEffect(() => {
     if (!["standings", "analytics", "trade-values"].includes(activeTab) || !leagueId || analyticsFetchedRef.current) return;
@@ -181,26 +175,6 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       setLeagueSwitchError("Network error. Please try again.");
     } finally {
       setIsLeagueSwitching(false);
-    }
-  }
-
-  async function saveMyTeam() {
-    const team = teams.find((t) => t.id === myTeamDraft);
-    if (!team) return;
-    setMyTeamSaving(true);
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase
-        .from("profiles")
-        .update({ fantrax_team_id: team.id, fantrax_team_name: team.name })
-        .eq("id", user?.id ?? "");
-      setMyTeamId(team.id);
-      setMyTeamSaved(true);
-      if (savedToastRef.current) clearTimeout(savedToastRef.current);
-      savedToastRef.current = setTimeout(() => setMyTeamSaved(false), 2000);
-    } finally {
-      setMyTeamSaving(false);
     }
   }
 
@@ -405,8 +379,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                 <label className="flex items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Team</span>
                   <select
-                    value={myTeamDraft}
-                    onChange={(e) => setMyTeamDraft(e.target.value)}
+                    value={selectedTeamId}
+                    onChange={(e) => handleTeamChange(e.target.value)}
                     className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
                   >
                     {teams.map((team) => (
@@ -415,17 +389,9 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   </select>
                 </label>
               )}
-              {teams.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => void saveMyTeam()}
-                  disabled={myTeamSaving}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {myTeamSaving ? "Saving…" : "Save"}
-                </button>
+              {activeTab === "roster" && teams.length > 0 && (
+                <span className="text-xs text-slate-500">{selectedTeamPlayers.length} players</span>
               )}
-              {myTeamSaved && <span className="text-xs text-green-700">Saved</span>}
               {leagueSwitchError && <span className="text-xs text-red-700">{leagueSwitchError}</span>}
             </div>
           )}
@@ -486,24 +452,6 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       {/* Tab content */}
       {activeTab === "roster" && (
         <>
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="space-y-1">
-              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Team</span>
-              <select
-                value={selectedTeamId}
-                onChange={(e) => handleTeamChange(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
-              >
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="pb-2 text-xs text-slate-500">{selectedTeamPlayers.length} players</p>
-          </div>
-
           <div className="max-w-full overflow-x-auto">
             <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
             <table className="w-[720px] min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-xs">
@@ -649,7 +597,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         leaguePosMap.get(r.teamId) ?? "—",
                       ],
                     }))}
-                    myTeamId={myTeamId}
+                    myTeamId={savedTeamId}
                   />
                 );
               })()}
@@ -669,7 +617,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     <LuckBadge key="luck" value={r.luckScore ?? 0} />,
                   ],
                 }))}
-                myTeamId={myTeamId}
+                myTeamId={savedTeamId}
               />
 
             </div>
@@ -706,7 +654,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     <ConsistencyProfileBadge key="profile" stdDev={r.stdDev ?? 0} />,
                   ],
                 }))}
-                myTeamId={myTeamId}
+                myTeamId={savedTeamId}
               />
 
               {/* Trajectory */}
@@ -724,7 +672,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                     <DeltaBadge key="delta" value={r.trajectoryDelta ?? 0} />,
                   ],
                 }))}
-                myTeamId={myTeamId}
+                myTeamId={savedTeamId}
               />
             </div>
           )}
