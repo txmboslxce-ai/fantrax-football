@@ -1,7 +1,6 @@
 "use client";
 
 import { createClient } from "@/lib/supabase";
-import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -302,10 +301,20 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
           ) : (
             <span className="min-w-0 flex-1 truncate text-[11px] text-brand-cream">Select league</span>
           )}
-          <ChevronDown
+          <svg
             aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             className={`h-4 w-4 shrink-0 text-brand-creamDark transition-transform ${showDropdown ? "rotate-180" : ""}`}
-          />
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </span>
       </button>
       {showDropdown ? (
