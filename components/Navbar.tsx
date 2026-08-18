@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase";
+import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -288,18 +289,24 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
         aria-expanded={showDropdown}
         className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-2 py-1 text-left font-heading focus:border-brand-green focus:outline-none disabled:cursor-wait disabled:opacity-60"
       >
-        {isSwitching ? (
-          <span className="block truncate text-[11px] text-brand-cream">Switching league…</span>
-        ) : activeLeague ? (
-          <span className="block min-w-0">
-            <span className="block truncate text-[11px] text-brand-cream">{activeLeague.league_name}</span>
-            {activeLeague.team_name ? (
-              <span className="block truncate text-[10px] text-brand-creamDark">{activeLeague.team_name}</span>
-            ) : null}
-          </span>
-        ) : (
-          <span className="block truncate text-[11px] text-brand-cream">Select league</span>
-        )}
+        <span className="flex min-w-0 items-center gap-1">
+          {isSwitching ? (
+            <span className="min-w-0 flex-1 truncate text-[11px] text-brand-cream">Switching league…</span>
+          ) : activeLeague ? (
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[11px] text-brand-cream">{activeLeague.league_name}</span>
+              {activeLeague.team_name ? (
+                <span className="block truncate text-[10px] text-brand-creamDark">{activeLeague.team_name}</span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-[11px] text-brand-cream">Select league</span>
+          )}
+          <ChevronDown
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-brand-creamDark transition-transform ${showDropdown ? "rotate-180" : ""}`}
+          />
+        </span>
       </button>
       {showDropdown ? (
         <div className="absolute left-0 right-0 z-50 mt-2 max-h-64 overflow-y-auto rounded-md border border-brand-cream/20 bg-brand-dark shadow-lg">
