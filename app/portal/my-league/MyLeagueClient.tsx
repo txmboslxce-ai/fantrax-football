@@ -46,7 +46,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "roster", label: "Roster" },
   { id: "standings", label: "Standings" },
   { id: "analytics", label: "Analytics" },
-  { id: "trade-values", label: "Trade Values" },
+  { id: "trade-values", label: "Compare Rosters" },
 ];
 
 const POSITION_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
@@ -83,6 +83,12 @@ function safeFixed(value: number | null | undefined, decimals: number): string {
   return (typeof n === "number" && isFinite(n) ? n : 0).toFixed(decimals);
 }
 
+function teamPlayers(players: LeaguePlayerData[], teamId: string): LeaguePlayerData[] {
+  return players
+    .filter((player) => player.teamId === teamId)
+    .sort((a, b) => (POSITION_ORDER[a.position] ?? 4) - (POSITION_ORDER[b.position] ?? 4) || a.playerName.localeCompare(b.playerName));
+}
+
 export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, isConnected }: MyLeagueClientProps) {
   const router = useRouter();
   const [secretId, setSecretId] = useState("");
@@ -101,6 +107,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
 
   // Roster tab: which team is being viewed (independent of profile)
   const [selectedTeamId, setSelectedTeamId] = useState<string>(savedTeamId ?? teams[0]?.id ?? "");
+  const [comparisonTeamAId, setComparisonTeamAId] = useState<string>(savedTeamId ?? teams[0]?.id ?? "");
+  const [comparisonTeamBId, setComparisonTeamBId] = useState("");
 
   const [leagues, setLeagues] = useState<CachedLeague[]>([]);
   const [isLeagueSwitching, setIsLeagueSwitching] = useState(false);
@@ -112,6 +120,8 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       ? savedTeamId
       : teams[0]?.id ?? "";
     setSelectedTeamId(defaultTeamId);
+    setComparisonTeamAId(defaultTeamId);
+    setComparisonTeamBId("");
   }, [leagueId, savedTeamId, teams]);
 
   useEffect(() => {
@@ -121,7 +131,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   }, [leagueId]);
 
   useEffect(() => {
-    if (!["standings", "analytics", "trade-values"].includes(activeTab) || !leagueId || analyticsFetchedRef.current) return;
+    if (!["standings", "analytics"].includes(activeTab) || !leagueId || analyticsFetchedRef.current) return;
     analyticsFetchedRef.current = true;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
@@ -350,9 +360,11 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   }
 
   // League view
-  const selectedTeamPlayers = players
-    .filter((p) => p.teamId === selectedTeamId)
-    .sort((a, b) => (POSITION_ORDER[a.position] ?? 4) - (POSITION_ORDER[b.position] ?? 4) || a.playerName.localeCompare(b.playerName));
+  const selectedTeamPlayers = teamPlayers(players, selectedTeamId);
+  const comparisonTeamA = teams.find((team) => team.id === comparisonTeamAId) ?? null;
+  const comparisonTeamB = teams.find((team) => team.id === comparisonTeamBId) ?? null;
+  const comparisonTeamAPlayers = teamPlayers(players, comparisonTeamAId);
+  const comparisonTeamBPlayers = teamPlayers(players, comparisonTeamBId);
 
   return (
     <div className="space-y-6">
@@ -686,8 +698,45 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       )}
 
       {activeTab === "trade-values" && (
-        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
-          <p className="text-sm text-slate-500">Coming soon</p>
+        <div className="w-full space-y-5">
+          <div className="flex flex-wrap gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <label className="space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Team A</span>
+              <select
+                value={comparisonTeamAId}
+                onChange={(event) => setComparisonTeamAId(event.target.value)}
+                className="min-w-52 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
+              >
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Team B</span>
+              <select
+                value={comparisonTeamBId}
+                onChange={(event) => setComparisonTeamBId(event.target.value)}
+                className="min-w-52 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
+              >
+                <option value="">Select a team</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
+            <ComparisonRosterTable team={comparisonTeamA} players={comparisonTeamAPlayers} />
+            {comparisonTeamB ? (
+              <ComparisonRosterTable team={comparisonTeamB} players={comparisonTeamBPlayers} />
+            ) : (
+              <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm text-slate-500">
+                Select a team to compare.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -728,6 +777,89 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         document.body
       ) : null}
 
+    </div>
+  );
+}
+
+function ComparisonRosterTable({ team, players }: { team: LeagueTeam | null; players: LeaguePlayerData[] }) {
+  return (
+    <div className="min-w-0 space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="truncate text-lg font-bold text-brand-dark">{team?.name ?? "Team A"}</h2>
+        <span className="shrink-0 text-xs text-slate-500">{players.length} players</span>
+      </div>
+      <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <table className="w-full min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-xs">
+          <thead>
+            <tr>
+              <th className="w-[200px] min-w-[200px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Player
+              </th>
+              <th className="w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Team
+              </th>
+              <th className="w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Pos
+              </th>
+              <th className="w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Season Pts
+              </th>
+              <th className="w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Avg Pts/GW
+              </th>
+              <th className="w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Ghost Pts/GW
+              </th>
+              <th className="w-[98px] min-w-[98px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Ownership %
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((player, index) => {
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
+              return (
+                <tr key={player.playerId} className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5">
+                    <Link
+                      href={`/portal/players/${player.playerId}`}
+                      prefetch={false}
+                      className="font-semibold text-brand-dark hover:text-brand-green hover:underline"
+                    >
+                      {player.playerName}
+                    </Link>
+                  </td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
+                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
+                      {positionLetter(player.position)}
+                    </span>
+                  </td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {safeFixed(player.seasonPts, 2)}
+                  </td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {safeFixed(player.avgPtsPerGw, 2)}
+                  </td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {safeFixed(player.ghostPtsPerGw, 2)}
+                  </td>
+                  <td className="border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {safeFixed(player.ownershipPct, 1)}%
+                  </td>
+                </tr>
+              );
+            })}
+            {players.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="bg-slate-50 px-4 py-6 text-center text-slate-500">
+                  No players found for this team.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
