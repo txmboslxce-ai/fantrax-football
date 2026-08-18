@@ -49,11 +49,17 @@ export default function ResetPasswordClient() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { isSingleton: false, auth: { detectSessionInUrl: false } }
     );
+    console.log("[reset-password] attempting exchange with:", {
+      hasCode: Boolean(resetToken.code),
+      hasTokenHash: Boolean(resetToken.tokenHash),
+      tokenType: resetToken.tokenType,
+    });
     const { error: exchangeError } = resetToken.code
       ? await supabase.auth.exchangeCodeForSession(resetToken.code)
       : await supabase.auth.verifyOtp({ type: "recovery", token_hash: resetToken.tokenHash! });
 
     if (exchangeError) {
+      console.error("[reset-password] exchange failed:", JSON.stringify(exchangeError, null, 2));
       setIsSubmitting(false);
       setError("This reset link is invalid or has expired. Request a new reset link and try again.");
       return;
