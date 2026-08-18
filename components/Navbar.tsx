@@ -200,9 +200,11 @@ function PortalSearch({ onNavigate, compact = false }: { onNavigate?: () => void
 
 function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [leagues, setLeagues] = useState<FantraxLeague[]>([]);
   const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -231,6 +233,19 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
     };
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   async function switchLeague(leagueId: string) {
     if (!leagueId || leagueId === activeLeagueId) return;
 
@@ -249,6 +264,7 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
       }
 
       setActiveLeagueId(leagueId);
+      setShowDropdown(false);
       onSwitched?.();
       router.refresh();
     } catch {
@@ -260,24 +276,46 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
 
   if (leagues.length === 0) return null;
 
+  const activeLeague = leagues.find((league) => league.league_id === activeLeagueId);
+
   return (
-    <div className="w-52">
-      <select
-        value={activeLeagueId ?? ""}
-        onChange={(event) => void switchLeague(event.target.value)}
+    <div ref={containerRef} className="relative w-48 max-w-[12rem]">
+      <button
+        type="button"
+        onClick={() => setShowDropdown((current) => !current)}
         disabled={isSwitching}
         aria-label="Switch Fantrax league"
-        className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-sm text-brand-cream focus:border-brand-green focus:outline-none disabled:cursor-wait disabled:opacity-60"
+        aria-expanded={showDropdown}
+        className="w-full rounded-md border border-brand-cream/30 bg-brand-dark px-2 py-1 text-left font-heading focus:border-brand-green focus:outline-none disabled:cursor-wait disabled:opacity-60"
       >
-        <option value="" disabled>
-          {isSwitching ? "Switching league…" : "Select league"}
-        </option>
-        {leagues.map((league) => (
-          <option key={league.league_id} value={league.league_id}>
-            {league.team_name ? `${league.league_name} — ${league.team_name}` : league.league_name}
-          </option>
-        ))}
-      </select>
+        {isSwitching ? (
+          <span className="block truncate text-[11px] text-brand-cream">Switching league…</span>
+        ) : activeLeague ? (
+          <span className="block min-w-0">
+            <span className="block truncate text-[11px] text-brand-cream">{activeLeague.league_name}</span>
+            {activeLeague.team_name ? (
+              <span className="block truncate text-[10px] text-brand-creamDark">{activeLeague.team_name}</span>
+            ) : null}
+          </span>
+        ) : (
+          <span className="block truncate text-[11px] text-brand-cream">Select league</span>
+        )}
+      </button>
+      {showDropdown ? (
+        <div className="absolute left-0 right-0 z-50 mt-2 max-h-64 overflow-y-auto rounded-md border border-brand-cream/20 bg-brand-dark shadow-lg">
+          {leagues.map((league) => (
+            <button
+              key={league.league_id}
+              type="button"
+              onClick={() => void switchLeague(league.league_id)}
+              disabled={isSwitching || league.league_id === activeLeagueId}
+              className="w-full px-3 py-2 text-left font-heading text-xs text-brand-cream transition-colors hover:bg-brand-green/20 disabled:cursor-default disabled:bg-brand-green/10 disabled:text-brand-creamDark"
+            >
+              {league.team_name ? `${league.league_name} — ${league.team_name}` : league.league_name}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
     </div>
   );
@@ -289,24 +327,29 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-brand-green/40 bg-brand-dark text-brand-cream">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3" aria-label="Draft Academical home">
-          <Image
-            src="/logo-mark.png"
-            alt="Draft Academical logo"
-            width={44}
-            height={44}
-            className="h-11 w-11 rounded-lg border border-brand-cream/30 object-cover"
-            priority
-          />
-          <span className="text-sm font-semibold tracking-wide sm:text-base">Draft Academical</span>
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-3" aria-label="Draft Academical home">
+            <Image
+              src="/logo-mark.png"
+              alt="Draft Academical logo"
+              width={44}
+              height={44}
+              className="h-11 w-11 rounded-lg border border-brand-cream/30 object-cover"
+              priority
+            />
+            <span className="text-sm font-semibold tracking-wide sm:text-base">Draft Academical</span>
+          </Link>
+          <nav className="hidden items-center gap-6 text-sm md:flex">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} className="font-heading transition-colors hover:text-brand-greenLight">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
 
-        <nav className="hidden items-center gap-7 text-sm md:flex">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className="font-heading transition-colors hover:text-brand-greenLight">
-              {link.label}
-            </Link>
-          ))}
+        <div className="flex items-center gap-3">
+          <nav className="hidden items-center gap-3 text-sm md:flex">
           {isLoggedIn ? (
             <>
               <PortalSearch />
@@ -334,17 +377,18 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
               Login
             </Link>
           )}
-        </nav>
+          </nav>
 
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-brand-cream/30 md:hidden"
-          aria-expanded={isOpen}
-          aria-label="Toggle navigation menu"
-        >
-          <span className="text-2xl leading-none">{isOpen ? "\u00d7" : "\u2261"}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-brand-cream/30 md:hidden"
+            aria-expanded={isOpen}
+            aria-label="Toggle navigation menu"
+          >
+            <span className="text-2xl leading-none">{isOpen ? "\u00d7" : "\u2261"}</span>
+          </button>
+        </div>
       </div>
 
       {isOpen && (
