@@ -115,6 +115,12 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
   }, [leagueId, savedTeamId, teams]);
 
   useEffect(() => {
+    analyticsFetchedRef.current = false;
+    setAnalyticsData(null);
+    setAnalyticsError(null);
+  }, [leagueId]);
+
+  useEffect(() => {
     if (!["standings", "analytics", "trade-values"].includes(activeTab) || !leagueId || analyticsFetchedRef.current) return;
     analyticsFetchedRef.current = true;
     setAnalyticsLoading(true);
