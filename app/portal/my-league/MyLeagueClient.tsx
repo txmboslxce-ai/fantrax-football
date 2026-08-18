@@ -19,10 +19,12 @@ export type LeaguePlayerData = {
   team: string;
   teamId: string;
   teamName: string;
-  ownershipPct: number;
   seasonPts: number;
-  avgPtsPerGw: number;
-  ghostPtsPerGw: number;
+  ptsPerStart: number;
+  ghostPtsPerStart: number;
+  starts: number;
+  corners: number;
+  freeKicks: number;
 };
 
 type MyLeagueClientProps = {
@@ -472,7 +474,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
         <>
           <div className="max-w-full overflow-x-auto">
             <div className="relative w-max max-h-[75vh] overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-            <table className="w-[720px] min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-xs">
+            <table className="w-[784px] min-w-[784px] table-fixed border-separate border-spacing-0 text-left text-xs">
               <thead>
                 <tr>
                   <th className="sticky left-0 top-0 z-30 w-[200px] min-w-[200px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -484,17 +486,23 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                   <th className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Pos
                   </th>
-                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                  <th className="sticky top-0 z-20 w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                     Season Pts
                   </th>
-                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                    Avg Pts/GW
+                  <th className="sticky top-0 z-20 w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Pts/Start
                   </th>
-                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                    Ghost Pts/GW
+                  <th className="sticky top-0 z-20 w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Ghost Pts/Start
                   </th>
-                  <th className="sticky top-0 z-20 w-[98px] min-w-[98px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                    Ownership %
+                  <th className="sticky top-0 z-20 w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Starts
+                  </th>
+                  <th className="sticky top-0 z-20 w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Corners
+                  </th>
+                  <th className="sticky top-0 z-20 w-[76px] min-w-[76px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                    Free Kicks
                   </th>
                 </tr>
               </thead>
@@ -525,20 +533,26 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         {safeFixed(player.seasonPts, 2)}
                       </td>
                       <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
-                        {safeFixed(player.avgPtsPerGw, 2)}
+                        {safeFixed(player.ptsPerStart, 2)}
                       </td>
                       <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
-                        {safeFixed(player.ghostPtsPerGw, 2)}
+                        {safeFixed(player.ghostPtsPerStart, 2)}
                       </td>
                       <td className="border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
-                        {safeFixed(player.ownershipPct, 1)}%
+                        {safeFixed(player.starts, 0)}
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                        {safeFixed(player.corners, 0)}
+                      </td>
+                      <td className="border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                        {safeFixed(player.freeKicks, 0)}
                       </td>
                     </tr>
                   );
                 })}
                 {selectedTeamPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
+                    <td colSpan={9} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
                       No players found for this team.
                     </td>
                   </tr>
@@ -547,9 +561,11 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
               {selectedTeamPlayers.length > 0 ? (() => {
                 const n = selectedTeamPlayers.length;
                 const totalSeasonPts = selectedTeamPlayers.reduce((sum, p) => sum + p.seasonPts, 0);
-                const avgPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.avgPtsPerGw, 0) / n;
-                const avgGhostPtsPerGw = selectedTeamPlayers.reduce((sum, p) => sum + p.ghostPtsPerGw, 0) / n;
-                const avgOwnership = selectedTeamPlayers.reduce((sum, p) => sum + p.ownershipPct, 0) / n;
+                const avgPtsPerStart = selectedTeamPlayers.reduce((sum, p) => sum + p.ptsPerStart, 0) / n;
+                const avgGhostPtsPerStart = selectedTeamPlayers.reduce((sum, p) => sum + p.ghostPtsPerStart, 0) / n;
+                const totalStarts = selectedTeamPlayers.reduce((sum, p) => sum + p.starts, 0);
+                const totalCorners = selectedTeamPlayers.reduce((sum, p) => sum + p.corners, 0);
+                const totalFreeKicks = selectedTeamPlayers.reduce((sum, p) => sum + p.freeKicks, 0);
                 return (
                   <tfoot>
                     <tr className="bg-brand-green/10 text-brand-dark">
@@ -562,13 +578,19 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
                         {safeFixed(totalSeasonPts, 2)}
                       </td>
                       <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
-                        {safeFixed(avgPtsPerGw, 2)}
+                        {safeFixed(avgPtsPerStart, 2)}
                       </td>
                       <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
-                        {safeFixed(avgGhostPtsPerGw, 2)}
+                        {safeFixed(avgGhostPtsPerStart, 2)}
                       </td>
                       <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
-                        {safeFixed(avgOwnership, 1)}%
+                        {safeFixed(totalStarts, 0)}
+                      </td>
+                      <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
+                        {safeFixed(totalCorners, 0)}
+                      </td>
+                      <td className="border-t border-slate-200 px-2 py-1.5 text-right text-xs font-bold tabular-nums text-brand-dark">
+                        {safeFixed(totalFreeKicks, 0)}
                       </td>
                     </tr>
                   </tfoot>
@@ -789,7 +811,7 @@ function ComparisonRosterTable({ team, players }: { team: LeagueTeam | null; pla
         <span className="shrink-0 text-xs text-slate-500">{players.length} players</span>
       </div>
       <div className="max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="w-full min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-xs">
+        <table className="w-full min-w-[784px] table-fixed border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
               <th className="w-[200px] min-w-[200px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -801,17 +823,23 @@ function ComparisonRosterTable({ team, players }: { team: LeagueTeam | null; pla
               <th className="w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Season Pts
               </th>
-              <th className="w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                Avg Pts/GW
+              <th className="w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Pts/Start
               </th>
-              <th className="w-[98px] min-w-[98px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                Ghost Pts/GW
+              <th className="w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Ghost Pts/Start
               </th>
-              <th className="w-[98px] min-w-[98px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                Ownership %
+              <th className="w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Starts
+              </th>
+              <th className="w-[76px] min-w-[76px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Corners
+              </th>
+              <th className="w-[76px] min-w-[76px] border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Free Kicks
               </th>
             </tr>
           </thead>
@@ -839,20 +867,26 @@ function ComparisonRosterTable({ team, players }: { team: LeagueTeam | null; pla
                     {safeFixed(player.seasonPts, 2)}
                   </td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
-                    {safeFixed(player.avgPtsPerGw, 2)}
+                    {safeFixed(player.ptsPerStart, 2)}
                   </td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
-                    {safeFixed(player.ghostPtsPerGw, 2)}
+                    {safeFixed(player.ghostPtsPerStart, 2)}
                   </td>
                   <td className="border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
-                    {safeFixed(player.ownershipPct, 1)}%
+                    {safeFixed(player.starts, 0)}
+                  </td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {safeFixed(player.corners, 0)}
+                  </td>
+                  <td className="border-b border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                    {safeFixed(player.freeKicks, 0)}
                   </td>
                 </tr>
               );
             })}
             {players.length === 0 ? (
               <tr>
-                <td colSpan={7} className="bg-slate-50 px-4 py-6 text-center text-slate-500">
+                <td colSpan={9} className="bg-slate-50 px-4 py-6 text-center text-slate-500">
                   No players found for this team.
                 </td>
               </tr>

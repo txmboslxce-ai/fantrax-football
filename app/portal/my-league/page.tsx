@@ -23,14 +23,16 @@ type PlayerRow = {
   name: string;
   team: string;
   position: string;
-  ownership_pct: string | null;
 };
 
 type GwRow = {
   player_id: string;
   games_played: number | null;
+  games_started: number | null;
   raw_fantrax_pts: number | string | null;
   ghost_pts: number | string | null;
+  corner_kicks: number | null;
+  free_kick_shots: number | null;
 };
 
 function toNum(value: number | string | null | undefined): number {
@@ -40,12 +42,6 @@ function toNum(value: number | string | null | undefined): number {
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
-}
-
-function parseOwnership(value: string | null): number {
-  if (!value) return 0;
-  const n = Number.parseFloat(value.replace("%", "").trim());
-  return Number.isFinite(n) ? n : 0;
 }
 
 export default async function MyLeaguePage() {
@@ -93,10 +89,10 @@ export default async function MyLeaguePage() {
   const SEASON = await getCurrentSeason(supabase);
 
   const [{ data: playerRows }, { data: gwRows }] = await Promise.all([
-    supabase.from("players").select("id, name, team, position, ownership_pct").in("id", playerIds),
+    supabase.from("players").select("id, name, team, position").in("id", playerIds),
     supabase
       .from("player_gameweeks")
-      .select("player_id, games_played, raw_fantrax_pts, ghost_pts")
+      .select("player_id, games_played, games_started, raw_fantrax_pts, ghost_pts, corner_kicks, free_kick_shots")
       .eq("season", SEASON)
       .in("player_id", playerIds),
   ]);
@@ -107,18 +103,29 @@ export default async function MyLeaguePage() {
   }
 
   // Aggregate stats per player
-  const statsByPlayer = new Map<string, { seasonPts: number; gwCount: number; ghostPts: number }>();
+  const statsByPlayer = new Map<string, {
+    seasonPts: number;
+    ghostPts: number;
+    starts: number;
+    corners: number;
+    freeKicks: number;
+  }>();
   for (const row of (gwRows ?? []) as GwRow[]) {
     if (!Number(row.games_played ?? 0)) continue;
     const existing = statsByPlayer.get(row.player_id);
     const pts = toNum(row.raw_fantrax_pts);
     const ghost = toNum(row.ghost_pts);
+    const starts = toNum(row.games_started);
+    const corners = toNum(row.corner_kicks);
+    const freeKicks = toNum(row.free_kick_shots);
     if (existing) {
       existing.seasonPts += pts;
       existing.ghostPts += ghost;
-      existing.gwCount++;
+      existing.starts += starts;
+      existing.corners += corners;
+      existing.freeKicks += freeKicks;
     } else {
-      statsByPlayer.set(row.player_id, { seasonPts: pts, gwCount: 1, ghostPts: ghost });
+      statsByPlayer.set(row.player_id, { seasonPts: pts, ghostPts: ghost, starts, corners, freeKicks });
     }
   }
 
@@ -138,8 +145,10 @@ export default async function MyLeaguePage() {
     if (!p) continue;
     const stats = statsByPlayer.get(r.player_id);
     const seasonPts = stats?.seasonPts ?? 0;
-    const gwCount = stats?.gwCount ?? 0;
     const ghostPts = stats?.ghostPts ?? 0;
+    const starts = stats?.starts ?? 0;
+    const corners = stats?.corners ?? 0;
+    const freeKicks = stats?.freeKicks ?? 0;
 
     players.push({
       playerId: r.player_id,
@@ -148,10 +157,12 @@ export default async function MyLeaguePage() {
       team: p.team,
       teamId: r.team_id,
       teamName: r.team_name,
-      ownershipPct: parseOwnership(p.ownership_pct),
       seasonPts: Math.round(seasonPts * 100) / 100,
-      avgPtsPerGw: gwCount > 0 ? Math.round((seasonPts / gwCount) * 100) / 100 : 0,
-      ghostPtsPerGw: gwCount > 0 ? Math.round((ghostPts / gwCount) * 100) / 100 : 0,
+      ptsPerStart: starts > 0 ? Math.round((seasonPts / starts) * 100) / 100 : 0,
+      ghostPtsPerStart: starts > 0 ? Math.round((ghostPts / starts) * 100) / 100 : 0,
+      starts,
+      corners,
+      freeKicks,
     });
   }
 
