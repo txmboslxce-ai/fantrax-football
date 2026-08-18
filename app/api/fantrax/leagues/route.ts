@@ -24,5 +24,7 @@ export async function GET() {
     return NextResponse.json({ message: leaguesError?.message ?? profileError?.message ?? "Failed to load Fantrax leagues." }, { status: 500 });
   }
 
-  return NextResponse.json({ leagues: leagues ?? [], activeLeagueId: profile?.fantrax_league_id ?? null });
+  const leaguesWithTeams = (leagues ?? []).filter((league) => Boolean(league.team_id?.trim()));
+
+  return NextResponse.json({ leagues: leaguesWithTeams, activeLeagueId: profile?.fantrax_league_id ?? null });
 }
