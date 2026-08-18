@@ -47,7 +47,14 @@ export default function ResetPasswordClient() {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { isSingleton: false, auth: { detectSessionInUrl: false, flowType: "implicit" } }
+      {
+        isSingleton: false,
+        auth: {
+          detectSessionInUrl: false,
+          flowType: "implicit",
+          storageKey: "sb-reset-password-flow",
+        },
+      }
     );
     const { error: exchangeError } = resetToken.code
       ? await supabase.auth.exchangeCodeForSession(resetToken.code)
