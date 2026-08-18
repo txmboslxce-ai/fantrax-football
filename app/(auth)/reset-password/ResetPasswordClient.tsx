@@ -93,7 +93,7 @@ export default function ResetPasswordClient() {
     setIsSubmitting(false);
 
     if (updateError) {
-      setError("This reset link is invalid or has expired. Request a new reset link and try again.");
+      setError(updateError.message || "We couldn't update your password. Please choose a different password and try again.");
       return;
     }
 
