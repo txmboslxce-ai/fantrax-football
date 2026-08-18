@@ -141,7 +141,7 @@ function PortalSearch({ onNavigate, compact = false }: { onNavigate?: () => void
   );
 
   return (
-    <div ref={containerRef} className={compact ? "relative w-full" : "relative w-64"}>
+    <div ref={containerRef} className={compact ? "relative w-full" : "relative min-w-0 w-full max-w-64"}>
       <input
         type="search"
         value={query}
@@ -279,7 +279,7 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
   const activeLeague = leagues.find((league) => league.league_id === activeLeagueId);
 
   return (
-    <div ref={containerRef} className="relative w-48 max-w-[12rem]">
+    <div ref={containerRef} className="relative min-w-0 w-full max-w-[12rem]">
       <button
         type="button"
         onClick={() => setShowDropdown((current) => !current)}
@@ -339,7 +339,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
             />
             <span className="text-sm font-semibold tracking-wide sm:text-base">Draft Academical</span>
           </Link>
-          <nav className="hidden items-center gap-6 text-sm md:flex">
+          <nav className="hidden items-center gap-6 text-sm lg:flex">
             {links.map((link) => (
               <Link key={link.href} href={link.href} className="font-heading transition-colors hover:text-brand-greenLight">
                 {link.label}
@@ -348,8 +348,8 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          <nav className="hidden items-center gap-3 text-sm md:flex">
+        <div className="flex min-w-0 items-center gap-3">
+          <nav className="hidden min-w-0 items-center gap-3 text-sm lg:flex">
           {isLoggedIn ? (
             <>
               <PortalSearch />
@@ -382,7 +382,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-brand-cream/30 md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-brand-cream/30 lg:hidden"
             aria-expanded={isOpen}
             aria-label="Toggle navigation menu"
           >
@@ -392,7 +392,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
       </div>
 
       {isOpen && (
-        <nav className="border-t border-brand-green/40 bg-brand-dark px-4 py-4 md:hidden">
+        <nav className="border-t border-brand-green/40 bg-brand-dark px-4 py-4 lg:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-3">
             {links.map((link) => (
               <Link
