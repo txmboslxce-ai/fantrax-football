@@ -2,15 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { createClient } from "@/lib/supabase";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function ResetPasswordClient() {
+  const searchParams = useSearchParams();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetToken] = useState(() => ({
+    code: searchParams.get("code"),
+    tokenHash: searchParams.get("token_hash"),
+    tokenType: searchParams.get("type"),
+  }));
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const hasResetToken = Boolean(resetToken.code || (resetToken.tokenHash && resetToken.tokenType === "recovery"));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,7 +38,27 @@ export default function ResetPasswordClient() {
 
     setIsSubmitting(true);
 
-    const supabase = createClient();
+    if (!hasResetToken) {
+      setError("This reset link is invalid or has expired. Request a new reset link and try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { isSingleton: false, auth: { detectSessionInUrl: false } }
+    );
+    const { error: exchangeError } = resetToken.code
+      ? await supabase.auth.exchangeCodeForSession(resetToken.code)
+      : await supabase.auth.verifyOtp({ type: "recovery", token_hash: resetToken.tokenHash! });
+
+    if (exchangeError) {
+      setIsSubmitting(false);
+      setError("This reset link is invalid or has expired. Request a new reset link and try again.");
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
 
     setIsSubmitting(false);
@@ -58,7 +87,14 @@ export default function ResetPasswordClient() {
           <p className="mt-1 text-sm text-brand-greenDark">Choose a new password</p>
         </div>
 
-        {!success ? (
+        {!hasResetToken ? (
+          <div className="space-y-4 text-center">
+            <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-700">This reset link is invalid. Request a new one.</p>
+            <Link href="/forgot-password" className="font-semibold text-brand-green underline underline-offset-2">
+              Request a new reset link
+            </Link>
+          </div>
+        ) : !success ? (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="new-password" className="mb-2 block text-sm font-semibold text-brand-dark">
