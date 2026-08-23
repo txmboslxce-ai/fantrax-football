@@ -3,6 +3,7 @@
 import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
+import { positionBadgeClass } from "@/lib/portal/positionBadge";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -106,13 +107,6 @@ function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" 
   if (position === "DEF") return "D";
   if (position === "MID") return "M";
   return "F";
-}
-
-function positionBadgeClass(position: PlayerRow["position"]): string {
-  if (position === "GK") return "bg-amber-100 text-amber-900";
-  if (position === "DEF") return "bg-emerald-200 text-emerald-950";
-  if (position === "MID") return "bg-violet-200 text-violet-950";
-  return "bg-orange-200 text-orange-950";
 }
 
 export default function PlayersTableClient({ players, latestGameweek, leagueRoster, season, availableSeasons }: PlayersTableClientProps) {

@@ -5,6 +5,7 @@ import { useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
+import { positionBadgeClass } from "@/lib/portal/positionBadge";
 
 type FixtureDetailView = "fantasy" | "stats";
 
@@ -43,13 +44,6 @@ const viewLabels: Record<FixtureDetailView, string> = {
   stats: "Stats",
 };
 
-const positionBadgeClass: Record<FixturePlayerRow["position"], string> = {
-  GK: "bg-sky-100 text-sky-900",
-  DEF: "bg-emerald-200 text-emerald-950",
-  MID: "bg-amber-100 text-amber-900",
-  FWD: "bg-rose-100 text-rose-900",
-};
-
 function formatNumber(value: number): string {
   return value.toFixed(2);
 }
@@ -72,8 +66,8 @@ function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: Fixture
 
   return (
     <tr className={`group ${rowShade} text-brand-dark transition-colors hover:bg-brand-green/10`}>
-      <td className={`sticky left-0 z-20 w-40 min-w-40 border-b border-r border-slate-200 px-4 py-3 ${rowShade} group-hover:bg-brand-green/10`}>
-        <div className="flex flex-wrap items-center gap-1 font-semibold leading-tight">
+      <td className={`sticky left-0 z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold ${rowShade} group-hover:bg-brand-green/10`}>
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green hover:underline">
             {row.name}
           </Link>
@@ -82,30 +76,28 @@ function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: Fixture
             status={row.availabilityStatus}
             news={row.availabilityNews}
           />
-          <RosterPill playerId={row.id} leagueRoster={leagueRoster} />
-        </div>
-        <div className="mt-1">
-          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${positionBadgeClass[row.position]}`}>
-            {row.position}
-          </span>
-        </div>
+          <RosterPill playerId={row.id} leagueRoster={leagueRoster} variant="inline" />
+        </span>
       </td>
-      <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.minutesPlayed}</td>
+      <td className={`w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+        <span className={`inline-flex min-w-5 h-5 items-center justify-center rounded-full px-1 text-[10px] font-bold ${positionBadgeClass(row.position)}`}>{row.position}</span>
+      </td>
+      <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.minutesPlayed}</td>
       {activeView === "fantasy" ? (
         <>
-          <td className="w-20 min-w-20 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">
+          <td className="w-20 min-w-20 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">
             {formatNumber(row.rawFantraxPts)}
           </td>
-          <td className="w-20 min-w-20 border-b border-slate-200 px-3 py-3 text-center font-semibold">{formatNumber(row.ghostPts)}</td>
+          <td className="w-20 min-w-20 border-b border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{formatNumber(row.ghostPts)}</td>
         </>
       ) : (
         <>
-          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.goals}</td>
-          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.assists}</td>
-          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.keyPasses}</td>
-          <td className="w-24 min-w-24 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.accurateCrosses}</td>
-          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-3 py-3 text-center font-semibold">{row.cornerKicks}</td>
-          <td className="w-16 min-w-16 border-b border-slate-200 px-3 py-3 text-center font-semibold">{row.freeKickShots}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.goals}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.assists}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.keyPasses}</td>
+          <td className="w-24 min-w-24 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.accurateCrosses}</td>
+          <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.cornerKicks}</td>
+          <td className="w-16 min-w-16 border-b border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.freeKickShots}</td>
         </>
       )}
     </tr>
@@ -125,7 +117,7 @@ function TeamTable({
 }) {
   const starters = rows.filter((r) => r.gamesStarted === 1);
   const substitutes = rows.filter((r) => r.gamesStarted !== 1);
-  const colSpan = activeView === "fantasy" ? 4 : 8;
+  const colSpan = activeView === "fantasy" ? 5 : 9;
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -138,28 +130,29 @@ function TeamTable({
         <div className="px-4 py-8 text-center text-sm text-slate-500">No player gameweek data available for this side yet.</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-max border-separate border-spacing-0 text-left text-sm text-brand-dark">
+          <table className="w-max border-separate border-spacing-0 text-left text-xs text-brand-dark">
             <thead>
               <tr>
-                <th className="sticky left-0 top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-cream">Player</th>
-                <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">Min</th>
+                <th className="sticky left-0 top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-[10px] font-bold uppercase tracking-wide text-brand-cream">Player</th>
+                <th className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Pos</th>
+                <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Min</th>
                 {activeView === "fantasy" ? (
                   <>
-                    <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                    <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                       Score
                     </th>
-                    <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">
+                    <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                       Ghost
                     </th>
                   </>
                 ) : (
                   <>
-                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">G</th>
-                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">A</th>
-                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">KP</th>
-                    <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">Crosses</th>
-                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">CK</th>
-                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-brand-cream/25 bg-brand-green px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-brand-cream">FKS</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">G</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">A</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">KP</th>
+                    <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Crosses</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">CK</th>
+                    <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">FKS</th>
                   </>
                 )}
               </tr>

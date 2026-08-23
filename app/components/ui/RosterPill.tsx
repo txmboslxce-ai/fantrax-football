@@ -3,14 +3,23 @@ import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 type RosterPillProps = {
   playerId: string;
   leagueRoster: LeagueRosterData | null;
+  variant?: "pill" | "inline";
 };
 
-export default function RosterPill({ playerId, leagueRoster }: RosterPillProps) {
+export default function RosterPill({ playerId, leagueRoster, variant = "pill" }: RosterPillProps) {
   if (!leagueRoster) return null;
 
   const teamName = leagueRoster.teamByPlayerId[playerId];
 
   if (teamName) {
+    if (variant === "inline") {
+      return (
+        <span title={teamName} className="text-[10px] font-medium text-slate-500">
+          Taken
+        </span>
+      );
+    }
+
     return (
       <span
         title={teamName}
@@ -19,6 +28,10 @@ export default function RosterPill({ playerId, leagueRoster }: RosterPillProps) 
         Taken
       </span>
     );
+  }
+
+  if (variant === "inline") {
+    return <span className="text-[10px] font-medium text-brand-green">Available</span>;
   }
 
   return (
