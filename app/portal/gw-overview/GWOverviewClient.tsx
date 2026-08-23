@@ -230,7 +230,7 @@ const statSelectEntries: StatSelectEntry[] = statSections.flatMap((section) => [
 const goalkeeperOnlyStats = new Set<StatKey>(["saves", "goals_against", "penalty_saves", "high_claims", "smothers"]);
 const outfieldOnlyStats = new Set<StatKey>(["goals_against_outfield"]);
 const statAbbrev: Record<StatKey, string> = {
-  raw_fantrax_pts: "PTS",
+  raw_fantrax_pts: "Pts",
   ghost_pts: "GHOST",
   goals: "G",
   assists: "A",
@@ -1217,7 +1217,7 @@ export default function GWOverviewClient({
                 <th
                   key={`gw-header-${gw}`}
                   colSpan={2}
-                  className="relative sticky top-0 z-30 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream"
+                  className="relative sticky top-0 z-30 h-8 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream"
                 >
                   <div className="inline-flex items-center gap-1">
                     <span>{`GW${gw}`}</span>
@@ -1233,7 +1233,7 @@ export default function GWOverviewClient({
                     </button>
                   </div>
                   {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
-                    <div className="absolute left-0 top-full z-50 mt-2 translate-y-[30px] w-44 rounded-md border border-slate-200 bg-white p-2 text-left shadow-lg">
+                    <div className="absolute left-0 top-full z-50 mt-2 w-44 rounded-md border border-slate-200 bg-white p-2 text-left shadow-lg">
                       <div className="space-y-2">
                         {gpStatusFilters.map((status) => (
                           <label key={`${gw}-${status}`} className="flex items-center gap-2 text-xs text-brand-dark">
@@ -1262,13 +1262,13 @@ export default function GWOverviewClient({
             <tr>
               {displayedGws.map((gw) => (
                 <Fragment key={`gw-subheaders-${gw}`}>
-                  <th className="sticky top-[30px] z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[64px] md:min-w-[64px]">
+                  <th className="sticky top-8 z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[64px] md:min-w-[64px]">
                     <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
                       <span>{selectedStatAbbrev}</span>
                       <span aria-hidden="true">{sortArrowForHeader("gwStat", gw)}</span>
                     </button>
                   </th>
-                  <th className="sticky top-[30px] z-30 w-[52px] min-w-[52px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[56px] md:min-w-[56px]">
+                  <th className="sticky top-8 z-30 w-[52px] min-w-[52px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[56px] md:min-w-[56px]">
                     Min
                   </th>
                 </Fragment>
