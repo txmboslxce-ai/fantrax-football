@@ -95,7 +95,6 @@ function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: Fixture
           <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.goals}</td>
           <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.assists}</td>
           <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.keyPasses}</td>
-          <td className="w-24 min-w-24 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.accurateCrosses}</td>
           <td className="w-16 min-w-16 border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.cornerKicks}</td>
           <td className="w-16 min-w-16 border-b border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums">{row.freeKickShots}</td>
         </>
@@ -117,7 +116,7 @@ function TeamTable({
 }) {
   const starters = rows.filter((r) => r.gamesStarted === 1);
   const substitutes = rows.filter((r) => r.gamesStarted !== 1);
-  const colSpan = activeView === "fantasy" ? 5 : 9;
+  const colSpan = activeView === "fantasy" ? 5 : 8;
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -130,7 +129,7 @@ function TeamTable({
         <div className="px-4 py-8 text-center text-sm text-slate-500">No player gameweek data available for this side yet.</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-max border-separate border-spacing-0 text-left text-xs text-brand-dark">
+          <table className="w-full border-separate border-spacing-0 text-left text-xs text-brand-dark">
             <thead>
               <tr>
                 <th className="sticky left-0 top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-[10px] font-bold uppercase tracking-wide text-brand-cream">Player</th>
@@ -150,7 +149,6 @@ function TeamTable({
                     <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">G</th>
                     <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">A</th>
                     <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">KP</th>
-                    <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Crosses</th>
                     <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">CK</th>
                     <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">FKS</th>
                   </>
