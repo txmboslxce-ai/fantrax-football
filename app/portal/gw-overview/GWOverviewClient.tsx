@@ -1188,7 +1188,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="sticky top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream md:w-[78px] md:min-w-[78px]"
               >
                 <button
                   type="button"
@@ -1201,7 +1201,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream md:w-[106px] md:min-w-[106px]"
+                className="sticky top-0 z-30 w-[72px] min-w-[72px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream md:w-[78px] md:min-w-[78px]"
               >
                 <button
                   type="button"
@@ -1227,11 +1227,13 @@ export default function GWOverviewClient({
                       className={isColumnFilterActive(gw) ? "text-amber-200" : "text-brand-cream/90"}
                       aria-label={`Filter GW${gw} stat`}
                     >
-                      <span aria-hidden="true">▼</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden="true">
+                        <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+                      </svg>
                     </button>
                   </div>
                   {openColumnFilter?.gw === gw && openColumnFilter.kind === "stat" && (
-                    <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-slate-200 bg-white p-2 text-left shadow-lg">
+                    <div className="absolute left-0 top-full z-50 mt-2 translate-y-[30px] w-44 rounded-md border border-slate-200 bg-white p-2 text-left shadow-lg">
                       <div className="space-y-2">
                         {gpStatusFilters.map((status) => (
                           <label key={`${gw}-${status}`} className="flex items-center gap-2 text-xs text-brand-dark">
@@ -1260,13 +1262,13 @@ export default function GWOverviewClient({
             <tr>
               {displayedGws.map((gw) => (
                 <Fragment key={`gw-subheaders-${gw}`}>
-                  <th className="sticky top-0 z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[64px] md:min-w-[64px]">
+                  <th className="sticky top-[30px] z-30 w-[56px] min-w-[56px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[64px] md:min-w-[64px]">
                     <button type="button" onClick={() => toggleSort({ kind: "gwStat", gw })} className="inline-flex items-center gap-1">
                       <span>{selectedStatAbbrev}</span>
                       <span aria-hidden="true">{sortArrowForHeader("gwStat", gw)}</span>
                     </button>
                   </th>
-                  <th className="sticky top-0 z-30 w-[52px] min-w-[52px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[56px] md:min-w-[56px]">
+                  <th className="sticky top-[30px] z-30 w-[52px] min-w-[52px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-1.5 text-center text-[10px] font-bold text-brand-cream md:w-[56px] md:min-w-[56px]">
                     Min
                   </th>
                 </Fragment>
@@ -1327,12 +1329,12 @@ export default function GWOverviewClient({
                     {player.ownershipPct.toFixed(1)}%
                   </td>
                   <td
-                    className={`w-[72px] min-w-[72px] border-b border-r border-slate-200 px-2 py-1.5 text-center font-bold tabular-nums text-brand-dark md:w-[106px] md:min-w-[106px] ${selectedRowClass}`}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-slate-200 px-2 py-1.5 text-center font-bold tabular-nums text-brand-dark md:w-[78px] md:min-w-[78px] ${selectedRowClass}`}
                   >
                     {form.formPts.toFixed(2)}
                   </td>
                   <td
-                    className={`w-[72px] min-w-[72px] border-b border-r border-slate-200 px-2 py-1.5 text-center font-bold tabular-nums text-brand-dark md:w-[106px] md:min-w-[106px] ${selectedRowClass}`}
+                    className={`w-[72px] min-w-[72px] border-b border-r border-slate-200 px-2 py-1.5 text-center font-bold tabular-nums text-brand-dark md:w-[78px] md:min-w-[78px] ${selectedRowClass}`}
                   >
                     {form.formPPG.toFixed(2)}
                   </td>
