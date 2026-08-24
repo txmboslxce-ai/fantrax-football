@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { isAdminEmail } from "@/lib/admin";
 import { isWriter } from "@/lib/writer";
 import { slugify } from "@/lib/slug";
 import { ARTICLE_CATEGORIES } from "@/lib/articles";
@@ -144,6 +145,64 @@ export async function POST(request: Request) {
     return NextResponse.json({ slug: resultSlug, status });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to save article.";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isWriter(supabase, user.id))) {
+    return NextResponse.json({ message: "Writer access required" }, { status: 403 });
+  }
+
+  let id: string;
+  try {
+    const body = (await request.json()) as { id?: unknown };
+    if (typeof body.id !== "string" || !body.id) {
+      return NextResponse.json({ message: "Article id is required" }, { status: 400 });
+    }
+    id = body.id;
+  } catch {
+    return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
+  }
+
+  const admin = createAdminSupabaseClient();
+  if (!admin) {
+    return NextResponse.json({ message: "SUPABASE_SERVICE_ROLE_KEY is required." }, { status: 500 });
+  }
+
+  try {
+    const { data: row, error: rowError } = await admin
+      .from("articles")
+      .select("id, author_id, slug")
+      .eq("id", id)
+      .maybeSingle();
+    if (rowError) throw new Error(rowError.message);
+    if (!row) {
+      return NextResponse.json({ message: "Article not found" }, { status: 404 });
+    }
+
+    if (row.author_id !== user.id && !isAdminEmail(user.email)) {
+      return NextResponse.json({ message: "You can only delete your own articles" }, { status: 403 });
+    }
+
+    const { error } = await admin.from("articles").delete().eq("id", row.id);
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/articles");
+    revalidatePath(`/articles/${row.slug}`);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete article.";
     return NextResponse.json({ message }, { status: 500 });
   }
 }

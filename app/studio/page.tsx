@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { isAdminEmail } from "@/lib/admin";
 import { isWriter } from "@/lib/writer";
 import StudioEditor, { type ArticleSummary } from "./StudioEditor";
 
@@ -25,7 +26,7 @@ export default async function StudioPage() {
 
   const { data: articles } = await supabase
     .from("articles")
-    .select("id, slug, title, category, status, published_at, updated_at")
+    .select("id, slug, title, category, status, published_at, updated_at, view_count")
     .eq("author_id", user.id)
     .order("updated_at", { ascending: false });
 
@@ -35,7 +36,7 @@ export default async function StudioPage() {
         <h1 className="text-4xl font-black text-brand-dark">Studio</h1>
         <p className="mt-2 text-brand-dark/70">Write and manage your articles.</p>
 
-        <StudioEditor initialArticles={(articles ?? []) as ArticleSummary[]} />
+        <StudioEditor initialArticles={(articles ?? []) as ArticleSummary[]} isAdmin={isAdminEmail(user.email)} />
       </div>
     </div>
   );

@@ -16,10 +16,12 @@ export type ArticleSummary = {
   status: string;
   published_at: string | null;
   updated_at: string;
+  view_count: number;
 };
 
 type StudioEditorProps = {
   initialArticles: ArticleSummary[];
+  isAdmin: boolean;
 };
 
 type ArticleResponse = {
@@ -38,7 +40,7 @@ function getFileExtension(file: File): string {
   return file.type.split("/")[1]?.toLowerCase() || "png";
 }
 
-export default function StudioEditor({ initialArticles }: StudioEditorProps) {
+export default function StudioEditor({ initialArticles, isAdmin }: StudioEditorProps) {
   const supabase = useMemo(() => createClient(), []);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [articleId, setArticleId] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export default function StudioEditor({ initialArticles }: StudioEditorProps) {
   const [isLoadingArticle, setIsLoadingArticle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ slug: string; status: string } | null>(null);
+  const [articles, setArticles] = useState(initialArticles);
 
   function resetForm() {
     setArticleId(null);
@@ -185,6 +188,31 @@ export default function StudioEditor({ initialArticles }: StudioEditorProps) {
     }
   }
 
+  async function deleteArticle(id: string) {
+    if (!window.confirm("Delete this article? This cannot be undone.")) return;
+
+    setError(null);
+    try {
+      const response = await fetch("/api/studio/articles", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string };
+      if (!response.ok || !data.ok) {
+        setError(data.message ?? "Unable to delete article.");
+        return;
+      }
+
+      setArticles((current) => current.filter((article) => article.id !== id));
+      if (articleId === id) {
+        resetForm();
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    }
+  }
+
   const slug = slugify(title);
 
   return (
@@ -311,21 +339,23 @@ export default function StudioEditor({ initialArticles }: StudioEditorProps) {
       <section>
         <h2 className="text-2xl font-bold text-brand-dark">Your articles</h2>
         <div className="mt-4 overflow-hidden rounded-xl border border-brand-green/20 bg-white">
-          {initialArticles.length === 0 ? (
+          {articles.length === 0 ? (
             <p className="p-6 text-sm text-brand-dark/60">No articles yet.</p>
           ) : (
             <ul className="divide-y divide-brand-green/10">
-              {initialArticles.map((article) => (
-                <li key={article.id}>
+              {articles.map((article) => (
+                <li key={article.id} className="flex items-center justify-between gap-4 p-4">
                   <button
                     type="button"
                     onClick={() => void loadArticle(article.id)}
-                    className="flex w-full items-center justify-between gap-4 p-4 text-left transition-colors hover:bg-brand-cream/60"
+                    className="min-w-0 flex-1 text-left transition-colors hover:text-brand-greenDark"
                   >
                     <div>
                       <span className="font-semibold text-brand-dark">{article.title}</span>
                       <span className="ml-2 text-xs uppercase tracking-wide text-brand-green">{article.category}</span>
                     </div>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-3">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${
                         article.status === "published"
@@ -335,7 +365,15 @@ export default function StudioEditor({ initialArticles }: StudioEditorProps) {
                     >
                       {isLoadingArticle && articleId === article.id ? "Loading…" : article.status}
                     </span>
-                  </button>
+                    {isAdmin ? <span className="text-xs text-brand-dark/50">{article.view_count} views</span> : null}
+                    <button
+                      type="button"
+                      onClick={() => void deleteArticle(article.id)}
+                      className="text-xs font-semibold text-red-700/75 transition-colors hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { formatArticleDate } from "@/lib/articles";
 import { getArticleBySlug } from "@/lib/articles-server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,14 @@ export default async function ArticlePage({
 
   if (!article) {
     notFound();
+  }
+
+  // Fire-and-forget view increment. Never block or fail the render on this.
+  try {
+    const supabase = await createServerSupabaseClient();
+    await supabase.rpc("increment_article_view", { article_slug: slug });
+  } catch {
+    // Ignore counting errors.
   }
 
   return (
