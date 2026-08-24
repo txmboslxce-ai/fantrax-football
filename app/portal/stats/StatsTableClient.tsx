@@ -431,13 +431,19 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
           </div>
         ) : null}
 
-      <div className="flex items-center gap-2">
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search player…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none" />
-      </div>
-
       <div ref={columnPickerRef} className="rounded-xl border border-slate-200 bg-white p-3">
         <div className="flex flex-wrap items-end gap-2 text-xs">
-          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <label className="space-y-1">
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Search</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search player…"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none md:w-48"
+            />
+          </label>
+
+          <div className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-slate-500">Position</span>
             <div className="flex flex-nowrap gap-1">
               {positions.map((filter) => {
@@ -461,7 +467,7 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
           </div>
 
           {leagueRoster ? (
-            <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+            <div className="space-y-1">
               <span className="block font-semibold uppercase tracking-wide text-slate-500">Availability</span>
               <div className="flex flex-nowrap gap-1">
                 {(["All", "Available", "Taken"] as const).map((option) => {
@@ -510,7 +516,7 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
             Watchlist Only
           </button>
 
-          <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <div className="flex flex-wrap items-end gap-2">
           <label className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-slate-500">Team</span>
             <select
@@ -565,7 +571,7 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
           </div>
           </div>
 
-          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <div className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-slate-500">Window</span>
             <div className="flex flex-nowrap gap-1">
               {WINDOW_OPTIONS.map((option) => {
@@ -590,14 +596,14 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
             {windowLoadError ? <p className="text-[11px] font-medium text-red-700">{windowLoadError}</p> : null}
           </div>
 
-          <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <label className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-slate-500">Season</span>
             <select value={season} onChange={(event) => selectSeason(event.target.value)} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none">
               {availableSeasons.map((availableSeason) => <option key={availableSeason} value={availableSeason}>{availableSeason}</option>)}
             </select>
           </label>
 
-          <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+          <div className="space-y-1">
             <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
             <button
               type="button"

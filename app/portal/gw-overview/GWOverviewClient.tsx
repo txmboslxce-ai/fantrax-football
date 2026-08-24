@@ -920,12 +920,6 @@ export default function GWOverviewClient({
     <div className="space-y-3">
       {/* Search + Filters inline row — always visible */}
       <div className="flex items-center gap-2">
-        <input
-          value={searchPlayer}
-          onChange={(event) => setSearchPlayer(event.target.value)}
-          placeholder="Search player…"
-          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
-        />
         <button
           type="button"
           onClick={() => setMobileFiltersOpen(true)}
@@ -1030,6 +1024,16 @@ export default function GWOverviewClient({
 
           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
             <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-nowrap md:items-end md:gap-2">
+              <label className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
+                <span className="block font-semibold uppercase tracking-wide text-slate-600">Search</span>
+                <input
+                  value={searchPlayer}
+                  onChange={(event) => setSearchPlayer(event.target.value)}
+                  placeholder="Search player…"
+                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none md:w-48"
+                />
+              </label>
+
               <div className="col-span-2 space-y-1 md:col-span-1 md:shrink-0">
                 <span className="block font-semibold uppercase tracking-wide text-slate-600">H/A</span>
                 <div className="flex flex-nowrap gap-1">

@@ -393,14 +393,8 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
 
   return (
     <div className="space-y-3">
-      {/* Search + Filters inline row */}
+      {/* Mobile filter trigger */}
       <div className="flex items-center gap-2">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search player…"
-          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none"
-        />
         <button
           type="button"
           onClick={() => setMobileFiltersOpen(true)}
@@ -432,7 +426,17 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="flex flex-wrap items-end gap-2 text-xs">
-              <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <label className="space-y-1">
+                <span className="block font-semibold uppercase tracking-wide text-slate-500">Search</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search player…"
+                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark placeholder:text-slate-400 focus:border-brand-green focus:outline-none md:w-48"
+                />
+              </label>
+
+              <div className="space-y-1">
                 <span className="block font-semibold uppercase tracking-wide text-slate-500">Position</span>
                 <div className="flex flex-nowrap gap-1">
                   {positionFilters.map((filter) => {
@@ -456,7 +460,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
               </div>
 
               {leagueRoster ? (
-                <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+                <div className="space-y-1">
                   <span className="block font-semibold uppercase tracking-wide text-slate-500">Availability</span>
                   <div className="flex flex-nowrap gap-1">
                     {(["All", "Available", "Taken"] as const).map((option) => {
@@ -505,7 +509,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                 Watchlist Only
               </button>
 
-              <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <div className="flex flex-wrap items-end gap-2">
               <label className="space-y-1">
                 <span className="block font-semibold uppercase tracking-wide text-slate-500">Team</span>
                 <select
@@ -560,7 +564,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
               </div>
             </div>
 
-              <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <div className="space-y-1">
                 <span className="block font-semibold uppercase tracking-wide text-slate-500">Window</span>
                 <div className="flex flex-nowrap gap-1">
                   {WINDOW_OPTIONS.map((option) => {
@@ -585,7 +589,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                 {windowLoadError ? <p className="text-[11px] font-medium text-red-700">{windowLoadError}</p> : null}
               </div>
 
-              <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <label className="space-y-1">
                 <span className="block font-semibold uppercase tracking-wide text-slate-500">Season</span>
                 <select
                   value={season}
@@ -598,7 +602,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                 </select>
               </label>
 
-              <div ref={columnPickerRef} className="relative space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+              <div ref={columnPickerRef} className="relative space-y-1">
                 <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
                 <button
                   type="button"
