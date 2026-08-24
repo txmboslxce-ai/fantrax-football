@@ -18,8 +18,22 @@ const leagueSpartan = League_Spartan({
 });
 
 export const metadata: Metadata = {
-  title: "Draft Academical",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.draftacademical.com"
+  ),
+  title: {
+    default: "Draft Academical",
+    template: "%s | Draft Academical",
+  },
   description: "The Fantrax Premier League fantasy podcast",
+  openGraph: {
+    type: "website",
+    siteName: "Draft Academical",
+    images: ["/logo-lockup.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default async function RootLayout({

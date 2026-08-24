@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -7,6 +8,44 @@ import { getArticleBySlug } from "@/lib/articles-server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await getArticleBySlug(slug);
+
+  if (!article) {
+    return { title: "Article not found" };
+  }
+
+  const description = article.excerpt ?? undefined;
+  const canonical = `/articles/${article.slug}`;
+
+  return {
+    title: article.title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "article",
+      title: article.title,
+      description,
+      url: canonical,
+      publishedTime: article.published_at ?? undefined,
+      authors: article.author_name ? [article.author_name] : undefined,
+      section: article.category,
+      ...(article.cover_image_url ? { images: [article.cover_image_url] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description,
+      ...(article.cover_image_url ? { images: [article.cover_image_url] } : {}),
+    },
+  };
+}
 
 export default async function ArticlePage({
   params,
@@ -30,6 +69,23 @@ export default async function ArticlePage({
 
   return (
     <div className="bg-brand-cream px-4 py-16 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: article.title,
+            description: article.excerpt ?? undefined,
+            datePublished: article.published_at ?? undefined,
+            author: article.author_name
+              ? { "@type": "Person", name: article.author_name }
+              : undefined,
+            image: article.cover_image_url ?? undefined,
+            articleSection: article.category,
+          }),
+        }}
+      />
       <article className="mx-auto max-w-3xl">
         <Link href="/articles" className="text-sm font-semibold text-brand-green hover:text-brand-greenDark">
           ← All articles
