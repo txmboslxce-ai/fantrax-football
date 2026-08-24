@@ -1,6 +1,7 @@
 import StatsTableClient from "@/app/portal/stats/StatsTableClient";
 import { mapPosition, type PlayerTableWindowKey } from "@/lib/portal/playerMetrics";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
+import { getWatchlistData } from "@/lib/portal/watchlist";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { resolvePortalSeason } from "@/lib/season/portal-season";
 
@@ -212,7 +213,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
     { length: Math.ceil(playerIds.length / PLAYER_ID_BATCH_SIZE) },
     (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
   );
-  const [gameweekResults, leagueRoster] = await Promise.all([
+  const [gameweekResults, leagueRoster, watchlistData] = await Promise.all([
     Promise.all(
       playerIdBatches.map((playerIdBatch) =>
         supabase
@@ -224,6 +225,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
       )
     ),
     user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
+    user ? getWatchlistData(user.id) : Promise.resolve({ watchlistedIds: [], orderById: {} }),
   ]);
   const gameweeksError = gameweekResults.find((result) => result.error)?.error;
 
@@ -293,7 +295,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Player Stats</h1>
         <p className="mt-2 text-sm text-brand-dark/70">Filterable and sortable season {SEASON} player output.</p>
       </div>
-      <StatsTableClient key={SEASON} rows={statsRows} latestGameweek={latestGameweek} leagueRoster={leagueRoster} season={SEASON} availableSeasons={availableSeasons} />
+      <StatsTableClient key={SEASON} rows={statsRows} latestGameweek={latestGameweek} leagueRoster={leagueRoster} season={SEASON} availableSeasons={availableSeasons} watchlistedPlayerIds={watchlistData.watchlistedIds} watchlistOrderById={watchlistData.orderById} />
     </div>
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { positionBadgeClass } from "@/lib/portal/positionBadge";
+import { useWatchlist } from "@/lib/portal/useWatchlist";
 
 export type GWOverviewTeam = string;
 
@@ -125,7 +129,14 @@ type GWOverviewClientProps = {
   season: string;
   fixtures: GWOverviewFixture[];
   leagueRoster: LeagueRosterData | null;
+  watchlistedPlayerIds: string[];
+  watchlistOrderById: Record<string, number>;
 };
+
+function SortableRow({ id, disabled, children }: { id: string; disabled: boolean; children: (sortable: ReturnType<typeof useSortable>) => ReactNode }) {
+  const sortable = useSortable({ id, disabled });
+  return <>{children(sortable)}</>;
+}
 
 type StatKey =
   | "raw_fantrax_pts"
@@ -432,6 +443,8 @@ export default function GWOverviewClient({
   season,
   fixtures,
   leagueRoster,
+  watchlistedPlayerIds,
+  watchlistOrderById,
 }: GWOverviewClientProps) {
   const [selectedStat, setSelectedStat] = useState<StatKey>("raw_fantrax_pts");
   const selectedStatAbbrev = statAbbrev[selectedStat];
@@ -440,6 +453,7 @@ export default function GWOverviewClient({
   const [teamFilter, setTeamFilter] = useState<string>("All");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [ownershipMin, setOwnershipMin] = useState<string>("0");
   const [ownershipMax, setOwnershipMax] = useState<string>("100");
   const [selectedGameweeks, setSelectedGameweeks] = useState<number[]>(() => [...selectedGws].sort((a, b) => a - b));
@@ -460,6 +474,9 @@ export default function GWOverviewClient({
   const loadedGwsRef = useRef<Set<number>>(new Set());
   const loadingGwsRef = useRef<Set<number>>(new Set());
   const failedGwsRef = useRef<Set<number>>(new Set());
+  const { watchlistedIds, isWatchlisted, toggleWatchlist, reorderWatchlist, watchlistOrder, watchlistError } = useWatchlist(watchlistedPlayerIds, watchlistOrderById);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const watchlistDragEnabled = watchlistOnly;
 
   const playerTeamById = useMemo(() => {
     const map = new Map<string, string>();
@@ -468,6 +485,17 @@ export default function GWOverviewClient({
     }
     return map;
   }, [players]);
+
+  const globalWatchlistedPlayerIds = useMemo(() => players
+    .filter((player) => watchlistedIds.has(player.id))
+    .sort((a, b) => {
+      const aValue = watchlistOrder.get(a.id);
+      const bValue = watchlistOrder.get(b.id);
+      if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+      if (bValue == null) return -1;
+      return aValue - bValue || a.name.localeCompare(b.name);
+    })
+    .map((player) => player.id), [players, watchlistOrder, watchlistedIds]);
 
   const fixturesByGameweek = useMemo(() => {
     const map = new Map<number, GWOverviewFixture[]>();
@@ -747,6 +775,10 @@ export default function GWOverviewClient({
         if (availabilityFilter === "My Team" && !leagueRoster.myTeamPlayerIds.includes(player.id)) return false;
       }
 
+      if (watchlistOnly && !watchlistedIds.has(player.id)) {
+        return false;
+      }
+
       for (const gw of displayedGws) {
         const allowedStatuses = gwStatusFilters[gw] ?? gpStatusFilters;
         if (allowedStatuses.length === gpStatusFilters.length) {
@@ -764,6 +796,14 @@ export default function GWOverviewClient({
     });
 
     return filtered.sort((a, b) => {
+      if (watchlistOnly) {
+        const aValue = watchlistOrder.get(a.id);
+        const bValue = watchlistOrder.get(b.id);
+        if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+        if (bValue == null) return -1;
+        return aValue - bValue || a.name.localeCompare(b.name);
+      }
+
       let comparison = 0;
 
       if (sortState.kind === "formPts") {
@@ -810,6 +850,9 @@ export default function GWOverviewClient({
     sortState,
     teamFilter,
     visibleRowsByPlayerByGw,
+    watchlistOnly,
+    watchlistOrder,
+    watchlistedIds,
   ]);
 
   const rankedPlayers = useMemo(() => {
@@ -840,6 +883,7 @@ export default function GWOverviewClient({
       teamFilter !== "All" ||
       ownershipMin !== "0" ||
       ownershipMax !== "100" ||
+      watchlistOnly ||
       Object.values(gwStatusFilters).some((statuses) => statuses.length !== gpStatusFilters.length) ||
       hasCustomGameweeks
     );
@@ -856,7 +900,21 @@ export default function GWOverviewClient({
     selectedStat,
     teamFilter,
     venueFilter,
+    watchlistOnly,
   ]);
+
+  function handleWatchlistDragEnd(event: DragEndEvent) {
+    if (!watchlistDragEnabled) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    reorderWatchlist({
+      visiblePlayerIds: rankedPlayers.map(({ player }) => player.id),
+      globalWatchlistedPlayerIds,
+      activePlayerId: String(active.id),
+      overPlayerId: String(over.id),
+    });
+  }
 
   return (
     <div className="space-y-3">
@@ -1032,6 +1090,18 @@ export default function GWOverviewClient({
                 </div>
               ) : null}
 
+              <button
+                type="button"
+                onClick={() => setWatchlistOnly((current) => !current)}
+                className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                  watchlistOnly
+                    ? "border-brand-green bg-brand-green text-brand-cream"
+                    : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+                }`}
+              >
+                Watchlist Only
+              </button>
+
               <label className="space-y-1 md:shrink-0">
                 <span className="block font-semibold uppercase tracking-wide text-slate-600">Stat</span>
                 <select
@@ -1136,11 +1206,13 @@ export default function GWOverviewClient({
       </div>
 
       {/* Table */}
+      {watchlistError ? <p className="text-[11px] font-medium text-red-700">{watchlistError}</p> : null}
       <div className="max-h-[75vh] overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <table
           className="border-separate border-spacing-0 text-left text-xs"
           style={{
             minWidth:
+              40 +
               CELL_WIDTHS.rankMobile +
               CELL_WIDTHS.positionMobile +
               CELL_WIDTHS.playerMobile +
@@ -1155,19 +1227,25 @@ export default function GWOverviewClient({
             <tr>
               <th
                 rowSpan={2}
-                className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky left-0 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+              >
+                <span aria-hidden="true">★</span>
+              </th>
+              <th
+                rowSpan={2}
+                className="sticky left-10 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream"
               >
                 #
               </th>
               <th
                 rowSpan={2}
-                className="sticky left-9 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky left-[76px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream"
               >
                 Pos
               </th>
               <th
                 rowSpan={2}
-                className="sticky left-[76px] top-0 z-30 w-40 min-w-40 max-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky left-[116px] top-0 z-30 w-40 min-w-40 max-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -1276,8 +1354,10 @@ export default function GWOverviewClient({
             </tr>
           </thead>
 
-          <tbody>
-            {rankedPlayers.map(({ player, overallRank, positionKey }, index) => {
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleWatchlistDragEnd}>
+            <SortableContext items={rankedPlayers.map(({ player }) => player.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
+                {rankedPlayers.map(({ player, overallRank, positionKey }, index) => {
               const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const playerRowsByGw = visibleRowsByPlayerByGw.get(player.id);
               const form = formByPlayer.get(player.id) ?? { formPts: 0, formPPG: 0, gamesPlayed: 0 };
@@ -1287,26 +1367,44 @@ export default function GWOverviewClient({
                 : "";
               const selectedRankCellClass = isSelectedRow ? "border-l-2 border-l-brand-green" : "";
 
-              return (
+                  return (
+                <SortableRow key={player.id} id={player.id} disabled={!watchlistDragEnabled}>
+                  {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr
                   key={player.id}
-                  className={`group ${rowShade} cursor-pointer text-brand-dark transition-colors hover:bg-brand-green/10`}
+                  ref={setNodeRef}
+                  style={{ transform: CSS.Transform.toString(transform), transition }}
+                  className={`group ${rowShade} cursor-pointer text-brand-dark ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}
                   onClick={() => setSelectedPlayerId((prev) => (prev === player.id ? null : player.id))}
                 >
                   <td
-                    className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} ${selectedRowClass} ${selectedRankCellClass} group-hover:bg-brand-green/10`}
+                    className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
+                  >
+                    <div className="flex items-center justify-center gap-0.5">
+                      <button type="button" onClick={(event) => { event.stopPropagation(); toggleWatchlist(player.id); }} aria-label={isWatchlisted(player.id) ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted(player.id)} className={`text-base leading-none ${isWatchlisted(player.id) ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
+                        <span aria-hidden="true">{isWatchlisted(player.id) ? "★" : "☆"}</span>
+                      </button>
+                      {watchlistOnly ? (
+                        <button ref={setActivatorNodeRef} type="button" {...attributes} {...listeners} aria-label={`Drag ${player.name} to reorder`} title="Drag to reorder" className="touch-none text-sm leading-none cursor-grab text-slate-500 active:cursor-grabbing">
+                          <span aria-hidden="true">⠿</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td
+                    className={`sticky left-10 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} ${selectedRowClass} ${selectedRankCellClass} group-hover:bg-brand-green/10`}
                   >
                     {overallRank}
                   </td>
                   <td
-                    className={`sticky left-9 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
+                    className={`sticky left-[76px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
                   >
                     <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
                       {positionKey}
                     </span>
                   </td>
                   <td
-                    className={`sticky left-[76px] z-20 w-40 min-w-40 max-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
+                    className={`sticky left-[116px] z-20 w-40 min-w-40 max-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}
@@ -1372,9 +1470,13 @@ export default function GWOverviewClient({
                     );
                   })}
                 </tr>
-              );
-            })}
-          </tbody>
+                  )}
+                </SortableRow>
+                  );
+                })}
+              </tbody>
+            </SortableContext>
+          </DndContext>
         </table>
       </div>
 

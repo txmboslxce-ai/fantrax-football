@@ -272,6 +272,8 @@ export default async function PlayersPage({ searchParams }: PageProps) {
           season={formData.season}
           fixtures={formData.fixtures}
           leagueRoster={leagueRoster}
+          watchlistedPlayerIds={watchlistData.watchlistedIds}
+          watchlistOrderById={watchlistData.orderById}
         />
       ) : null}
 
