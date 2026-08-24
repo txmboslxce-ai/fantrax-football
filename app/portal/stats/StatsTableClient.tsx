@@ -718,7 +718,7 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
               <th className="sticky left-[76px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="sticky left-[116px] top-0 z-30 w-40 min-w-40 max-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-[116px] top-0 z-30 w-48 min-w-48 max-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => onSort("player")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("player")}</span>
@@ -792,7 +792,7 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
                     <td className={`sticky left-[76px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                       <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(row.position)}`}>{posKey}</span>
                     </td>
-                    <td className={`sticky left-[116px] z-20 w-40 min-w-40 max-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <td className={`sticky left-[116px] z-20 w-48 min-w-48 max-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
                         <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 whitespace-nowrap">
                           <span className="min-w-0 truncate">{row.player}</span>
                           {leagueRoster ? (
