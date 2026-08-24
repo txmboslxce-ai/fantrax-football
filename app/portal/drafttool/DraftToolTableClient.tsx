@@ -2,6 +2,7 @@
 
 import type { PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
+import { computeWatchlistReorder } from "@/lib/portal/watchlistReorder";
 import { createClient } from "@/lib/supabase";
 import HeaderTooltip from "@/components/portal/HeaderTooltip";
 import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
@@ -811,46 +812,17 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
     const { active, over } = event;
     if (!watchlistDragEnabled || !over || active.id === over.id) return;
 
-    const visibleOrder = filteredAndSortedPlayers;
-    const oldIndex = visibleOrder.findIndex((player) => player.id === active.id);
-    const newIndex = visibleOrder.findIndex((player) => player.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    const reordered = arrayMove(visibleOrder, oldIndex, newIndex);
     const previousOrders = new Map(watchlistOrderRef.current);
-    const needsMaterialization = globalWatchlistedPlayers.some((player) => !previousOrders.has(player.id));
-    const materializedOrders = needsMaterialization
-      ? new Map(globalWatchlistedPlayers.map((player, index) => [player.id, (index + 1) * 10]))
-      : new Map(previousOrders);
-    const movedPlayer = reordered[newIndex];
-    const globalOrderWithoutMoved = globalWatchlistedPlayers.filter((player) => player.id !== movedPlayer.id);
-    const nextVisiblePlayer = reordered[newIndex + 1];
-    const previousVisiblePlayer = reordered[newIndex - 1];
-    const nextVisibleGlobalIndex = nextVisiblePlayer
-      ? globalOrderWithoutMoved.findIndex((player) => player.id === nextVisiblePlayer.id)
-      : -1;
-    const previousVisibleGlobalIndex = previousVisiblePlayer
-      ? globalOrderWithoutMoved.findIndex((player) => player.id === previousVisiblePlayer.id)
-      : -1;
-    const globalAbovePlayer = nextVisibleGlobalIndex >= 0
-      ? globalOrderWithoutMoved[nextVisibleGlobalIndex - 1]
-      : previousVisibleGlobalIndex >= 0
-        ? globalOrderWithoutMoved[previousVisibleGlobalIndex]
-        : undefined;
-    const globalBelowPlayer = nextVisibleGlobalIndex >= 0
-      ? globalOrderWithoutMoved[nextVisibleGlobalIndex]
-      : previousVisibleGlobalIndex >= 0
-        ? globalOrderWithoutMoved[previousVisibleGlobalIndex + 1]
-        : undefined;
-    const aboveOrder = globalAbovePlayer ? materializedOrders.get(globalAbovePlayer.id) : undefined;
-    const belowOrder = globalBelowPlayer ? materializedOrders.get(globalBelowPlayer.id) : undefined;
-    const nextWatchlistOrder = aboveOrder == null
-      ? (belowOrder == null ? 10 : belowOrder - 10)
-      : (belowOrder == null ? aboveOrder + 10 : (aboveOrder + belowOrder) / 2);
-    const nextOrders = new Map(materializedOrders);
-    nextOrders.set(movedPlayer.id, nextWatchlistOrder);
+    const reorderResult = computeWatchlistReorder({
+      visiblePlayerIds: filteredAndSortedPlayers.map((player) => player.id),
+      globalWatchlistedPlayerIds: globalWatchlistedPlayers.map((player) => player.id),
+      currentWatchlistOrders: watchlistOrderRef.current,
+      activePlayerId: active.id as string,
+      overPlayerId: over.id as string,
+    });
+    if (!reorderResult) return;
 
-    applyWatchlistOrder(nextOrders);
+    applyWatchlistOrder(reorderResult.nextOrders);
     setIsSavingCustomRank(true);
     setSaveError(null);
 
@@ -862,12 +834,12 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       } = await supabase.auth.getUser();
       if (userError || !user) throw new Error("Your session has expired. Please sign in again.");
 
-      if (needsMaterialization) {
+      if (reorderResult.needsMaterialization) {
         const { error: materializationError } = await supabase.from("draft_picks").upsert(
           globalWatchlistedPlayers.map((player) => ({
             user_id: user.id,
             player_id: player.id,
-            watchlist_order: materializedOrders.get(player.id),
+            watchlist_order: reorderResult.materializedOrders.get(player.id),
             updated_at: new Date().toISOString(),
           })),
           { onConflict: "user_id,player_id" }
@@ -878,8 +850,8 @@ export default function DraftToolTableClient({ players }: { players: DraftToolPl
       const { error: watchlistOrderError } = await supabase.from("draft_picks").upsert(
         {
           user_id: user.id,
-          player_id: movedPlayer.id,
-          watchlist_order: nextWatchlistOrder,
+          player_id: reorderResult.movedPlayerId,
+          watchlist_order: reorderResult.nextWatchlistOrder,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,player_id" }

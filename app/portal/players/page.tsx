@@ -14,6 +14,7 @@ import {
 } from "@/lib/portal/playerMetrics";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
+import { getWatchlistData } from "@/lib/portal/watchlist";
 import { resolvePortalSeason } from "@/lib/season/portal-season";
 import Link from "next/link";
 
@@ -228,10 +229,11 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
   const { availableSeasons, season } = await resolvePortalSeason(supabase, requestedSeason);
 
-  const [playersTableData, formData, leagueRoster] = await Promise.all([
+  const [playersTableData, formData, leagueRoster, watchlistData] = await Promise.all([
     activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),
     activeTab === "form" ? getGWOverviewData() : Promise.resolve(null),
     user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
+    user ? getWatchlistData(user.id) : Promise.resolve({ watchlistedIds: [], orderById: {} }),
   ]);
 
   return (
@@ -258,7 +260,7 @@ export default async function PlayersPage({ searchParams }: PageProps) {
       </nav>
 
       {activeTab === "players" && playersTableData ? (
-        <PlayersTableClient key={season} players={playersTableData.players} latestGameweek={playersTableData.latestGameweek} leagueRoster={leagueRoster} season={season} availableSeasons={availableSeasons} />
+        <PlayersTableClient key={season} players={playersTableData.players} latestGameweek={playersTableData.latestGameweek} leagueRoster={leagueRoster} season={season} availableSeasons={availableSeasons} watchlistedPlayerIds={watchlistData.watchlistedIds} watchlistOrderById={watchlistData.orderById} />
       ) : null}
 
       {activeTab === "form" && formData ? (

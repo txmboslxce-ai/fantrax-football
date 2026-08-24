@@ -4,6 +4,7 @@ import type { PlayerTableWindowKey, PlayerWindowStats } from "@/lib/portal/playe
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
 import { positionBadgeClass } from "@/lib/portal/positionBadge";
+import { useWatchlist } from "@/lib/portal/useWatchlist";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +29,8 @@ type PlayersTableClientProps = {
   leagueRoster: LeagueRosterData | null;
   season: string;
   availableSeasons: string[];
+  watchlistedPlayerIds: string[];
+  watchlistOrderById: Record<string, number>;
 };
 
 type ColumnDefinition = {
@@ -109,12 +112,13 @@ function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" 
   return "F";
 }
 
-export default function PlayersTableClient({ players, latestGameweek, leagueRoster, season, availableSeasons }: PlayersTableClientProps) {
+export default function PlayersTableClient({ players, latestGameweek, leagueRoster, season, availableSeasons, watchlistedPlayerIds, watchlistOrderById }: PlayersTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [positionFilter, setPositionFilter] = useState<(typeof positionFilters)[number]>("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<"All" | "Available" | "Taken" | "My Team">("All");
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [teamFilter, setTeamFilter] = useState("All");
   const [minGames, setMinGames] = useState("0");
   const [ownershipMin, setOwnershipMin] = useState("0");
@@ -129,6 +133,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
+  const { isWatchlisted, toggleWatchlist, watchlistOrder, watchlistError } = useWatchlist(watchlistedPlayerIds, watchlistOrderById);
 
   const playersWithWindows = useMemo(() => {
     return players.map((player) => ({
@@ -213,10 +218,19 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
         (availabilityFilter === "Available" && !isTaken) ||
         (availabilityFilter === "Taken" && isTaken) ||
         (availabilityFilter === "My Team" && isMyTeam);
-      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesGames && matchesAvailability;
+      const matchesWatchlist = !watchlistOnly || isWatchlisted(player.id);
+      return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesGames && matchesAvailability && matchesWatchlist;
     });
 
     return [...filtered].sort((a, b) => {
+      if (watchlistOnly) {
+        const aValue = watchlistOrder.get(a.id);
+        const bValue = watchlistOrder.get(b.id);
+        if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+        if (bValue == null) return -1;
+        return aValue - bValue || a.name.localeCompare(b.name);
+      }
+
       if (sortKey === "name") {
         const comparison = a.name.localeCompare(b.name);
         return sortDir === "asc" ? comparison : -comparison;
@@ -239,6 +253,9 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
     sortDir,
     sortKey,
     teamFilter,
+    watchlistOnly,
+    isWatchlisted,
+    watchlistOrder,
   ]);
 
   const columnsByCategory = useMemo(() => {
@@ -433,6 +450,18 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                   </div>
                 </div>
               ) : null}
+
+              <button
+                type="button"
+                onClick={() => setWatchlistOnly((current) => !current)}
+                className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                  watchlistOnly
+                    ? "border-brand-green bg-brand-green text-brand-cream"
+                    : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+                }`}
+              >
+                Watchlist Only
+              </button>
 
               <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
               <label className="space-y-1">
@@ -645,18 +674,22 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
       </div>
 
       {/* Table — single overflow-auto container for both axes so sticky works */}
+      {watchlistError ? <p className="text-[11px] font-medium text-red-700">{watchlistError}</p> : null}
       <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
         {isWindowLoading ? <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/70 text-sm font-semibold text-brand-dark backdrop-blur-[1px]">Loading window data…</div> : null}
         <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-0 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <span aria-hidden="true">★</span>
+              </th>
+              <th className="sticky left-10 top-0 z-30 w-9 min-w-9 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 #
               </th>
-              <th className="sticky left-9 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-[76px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="sticky left-[76px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-[116px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
@@ -712,15 +745,20 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                   role="link"
                   tabIndex={0}
                 >
-                  <td className={`sticky left-0 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); toggleWatchlist(player.id); }} aria-label={isWatchlisted(player.id) ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted(player.id)} className={`text-base leading-none ${isWatchlisted(player.id) ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
+                      <span aria-hidden="true">{isWatchlisted(player.id) ? "★" : "☆"}</span>
+                    </button>
+                  </td>
+                  <td className={`sticky left-10 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
                     {overallRank}
                   </td>
-                  <td className={`sticky left-9 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-[76px] z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
                       {posKey}
                     </span>
                   </td>
-                  <td className={`sticky left-[76px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-[116px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                       <span>{player.name}</span>
                       {leagueRoster ? (
@@ -757,7 +795,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
             {filteredAndSorted.length === 0 ? (
               <tr>
                 <td
-                  colSpan={displayColumns.length + 5}
+                  colSpan={displayColumns.length + 6}
                   className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500"
                 >
                   No players match the current filters.
