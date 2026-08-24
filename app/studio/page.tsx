@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { isWriter } from "@/lib/writer";
+import StudioEditor, { type ArticleSummary } from "./StudioEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -34,36 +35,7 @@ export default async function StudioPage() {
         <h1 className="text-4xl font-black text-brand-dark">Studio</h1>
         <p className="mt-2 text-brand-dark/70">Write and manage your articles.</p>
 
-        <div className="mt-8 rounded-2xl border border-dashed border-brand-green/40 bg-white p-10 text-center text-brand-dark/60">
-          Editor coming in the next step.
-        </div>
-
-        <h2 className="mt-12 text-2xl font-bold text-brand-dark">Your articles</h2>
-        <div className="mt-4 overflow-hidden rounded-xl border border-brand-green/20 bg-white">
-          {(articles ?? []).length === 0 ? (
-            <p className="p-6 text-sm text-brand-dark/60">No articles yet.</p>
-          ) : (
-            <ul className="divide-y divide-brand-green/10">
-              {(articles ?? []).map((a) => (
-                <li key={a.id} className="flex items-center justify-between p-4">
-                  <div>
-                    <span className="font-semibold text-brand-dark">{a.title}</span>
-                    <span className="ml-2 text-xs uppercase tracking-wide text-brand-green">{a.category}</span>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      a.status === "published"
-                        ? "bg-brand-green/15 text-brand-greenDark"
-                        : "bg-amber-500/15 text-amber-700"
-                    }`}
-                  >
-                    {a.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <StudioEditor initialArticles={(articles ?? []) as ArticleSummary[]} />
       </div>
     </div>
   );
