@@ -1167,7 +1167,7 @@ export default function GWOverviewClient({
               </th>
               <th
                 rowSpan={2}
-                className="sticky left-[76px] top-0 z-30 w-48 min-w-48 max-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                className="sticky left-[76px] top-0 z-30 w-40 min-w-40 max-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream"
               >
                 <button type="button" onClick={() => toggleSort({ kind: "player" })} className="inline-flex items-center gap-1">
                   <span>Name</span>
@@ -1306,7 +1306,7 @@ export default function GWOverviewClient({
                     </span>
                   </td>
                   <td
-                    className={`sticky left-[76px] z-20 w-48 min-w-48 max-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
+                    className={`sticky left-[76px] z-20 w-40 min-w-40 max-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} ${selectedRowClass} group-hover:bg-brand-green/10`}
                   >
                     <Link
                       href={`/portal/players/${player.id}`}

@@ -5,7 +5,10 @@ import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { injuryStatusIndicator } from "@/lib/portal/injuryStatus";
 import { positionBadgeClass } from "@/lib/portal/positionBadge";
 import { useWatchlist } from "@/lib/portal/useWatchlist";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type PlayerRow = {
@@ -112,6 +115,19 @@ function positionLetter(position: PlayerRow["position"]): "G" | "D" | "M" | "F" 
   return "F";
 }
 
+function SortableRow({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled: boolean;
+  children: (sortable: ReturnType<typeof useSortable>) => ReactNode;
+}) {
+  const sortable = useSortable({ id, disabled });
+  return <>{children(sortable)}</>;
+}
+
 export default function PlayersTableClient({ players, latestGameweek, leagueRoster, season, availableSeasons, watchlistedPlayerIds, watchlistOrderById }: PlayersTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -133,7 +149,9 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
-  const { isWatchlisted, toggleWatchlist, watchlistOrder, watchlistError } = useWatchlist(watchlistedPlayerIds, watchlistOrderById);
+  const { watchlistedIds, isWatchlisted, toggleWatchlist, reorderWatchlist, watchlistOrder, watchlistError } = useWatchlist(watchlistedPlayerIds, watchlistOrderById);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const watchlistDragEnabled = watchlistOnly;
 
   const playersWithWindows = useMemo(() => {
     return players.map((player) => ({
@@ -145,6 +163,17 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
       },
     }));
   }, [onDemandWindows, players]);
+
+  const globalWatchlistedPlayerIds = useMemo(() => players
+    .filter((player) => watchlistedIds.has(player.id))
+    .sort((a, b) => {
+      const aValue = watchlistOrder.get(a.id);
+      const bValue = watchlistOrder.get(b.id);
+      if (aValue == null) return bValue == null ? a.name.localeCompare(b.name) : 1;
+      if (bValue == null) return -1;
+      return aValue - bValue || a.name.localeCompare(b.name);
+    })
+    .map((player) => player.id), [players, watchlistOrder, watchlistedIds]);
 
   const teams = useMemo(() => {
     return [...new Set(playersWithWindows.map((player) => player.team))].sort((a, b) => a.localeCompare(b));
@@ -218,7 +247,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
         (availabilityFilter === "Available" && !isTaken) ||
         (availabilityFilter === "Taken" && isTaken) ||
         (availabilityFilter === "My Team" && isMyTeam);
-      const matchesWatchlist = !watchlistOnly || isWatchlisted(player.id);
+      const matchesWatchlist = !watchlistOnly || watchlistedIds.has(player.id);
       return matchesPosition && matchesTeam && matchesSearch && matchesOwnership && matchesGames && matchesAvailability && matchesWatchlist;
     });
 
@@ -254,8 +283,8 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
     sortKey,
     teamFilter,
     watchlistOnly,
-    isWatchlisted,
     watchlistOrder,
+    watchlistedIds,
   ]);
 
   const columnsByCategory = useMemo(() => {
@@ -294,6 +323,19 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
 
     setSortKey(nextKey);
     setSortDir(nextKey === "name" ? "asc" : "desc");
+  }
+
+  function handleWatchlistDragEnd(event: DragEndEvent) {
+    if (!watchlistDragEnabled) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    reorderWatchlist({
+      visiblePlayerIds: filteredAndSorted.map((player) => player.id),
+      globalWatchlistedPlayerIds,
+      activePlayerId: String(active.id),
+      overPlayerId: String(over.id),
+    });
   }
 
   function toggleColumn(columnKey: NumericColumnKey) {
@@ -689,7 +731,7 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
               <th className="sticky left-[76px] top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="sticky left-[116px] top-0 z-30 w-40 min-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-[116px] top-0 z-30 w-40 min-w-40 max-w-40 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
@@ -719,8 +761,10 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
               ))}
             </tr>
           </thead>
-          <tbody>
-            {filteredAndSorted.map((player, index) => {
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleWatchlistDragEnd}>
+            <SortableContext items={filteredAndSorted.map((player) => player.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
+                {filteredAndSorted.map((player, index) => {
               const rowHref = `/portal/players/${player.id}`;
               const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
               const overallRank = index + 1;
@@ -731,10 +775,14 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
               const injuryTitle = player.availabilityNews?.trim() || injuryIndicator?.label;
               const windowStats = player.windows[selectedWindow] ?? player.windows.season!;
 
-              return (
+                  return (
+                <SortableRow key={player.id} id={player.id} disabled={!watchlistDragEnabled}>
+                  {({ attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging }) => (
                 <tr
                   key={player.id}
-                  className={`group ${rowShade} cursor-pointer text-brand-dark transition-colors hover:bg-brand-green/10`}
+                  ref={setNodeRef}
+                  style={{ transform: CSS.Transform.toString(transform), transition }}
+                  className={`group ${rowShade} cursor-pointer text-brand-dark ${isDragging ? "relative z-30 opacity-80 shadow-lg" : ""} transition-colors hover:bg-brand-green/10`}
                   onClick={() => router.push(rowHref)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -746,9 +794,24 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                   tabIndex={0}
                 >
                   <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); toggleWatchlist(player.id); }} aria-label={isWatchlisted(player.id) ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted(player.id)} className={`text-base leading-none ${isWatchlisted(player.id) ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
-                      <span aria-hidden="true">{isWatchlisted(player.id) ? "★" : "☆"}</span>
-                    </button>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <button type="button" onClick={(event) => { event.stopPropagation(); toggleWatchlist(player.id); }} aria-label={isWatchlisted(player.id) ? `Remove ${player.name} from watchlist` : `Add ${player.name} to watchlist`} aria-pressed={isWatchlisted(player.id)} className={`text-base leading-none ${isWatchlisted(player.id) ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
+                        <span aria-hidden="true">{isWatchlisted(player.id) ? "★" : "☆"}</span>
+                      </button>
+                      {watchlistOnly ? (
+                        <button
+                          ref={setActivatorNodeRef}
+                          type="button"
+                          {...attributes}
+                          {...listeners}
+                          aria-label={`Drag ${player.name} to reorder`}
+                          title="Drag to reorder"
+                          className="touch-none text-sm leading-none cursor-grab text-slate-500 active:cursor-grabbing"
+                        >
+                          <span aria-hidden="true">⠿</span>
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                   <td className={`sticky left-10 z-20 w-9 min-w-9 border-b border-r border-slate-200 px-1 py-1.5 text-center font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
                     {overallRank}
@@ -758,9 +821,9 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                       {posKey}
                     </span>
                   </td>
-                  <td className={`sticky left-[116px] z-20 w-40 min-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
-                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                      <span>{player.name}</span>
+                  <td className={`sticky left-[116px] z-20 w-40 min-w-40 max-w-40 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 whitespace-nowrap">
+                      <span className="min-w-0 truncate">{player.name}</span>
                       {leagueRoster ? (
                         <span className={rosterTeam ? "text-[10px] font-medium text-slate-500" : "text-[10px] font-medium text-brand-green"}>
                           {availabilityLabel}
@@ -790,9 +853,11 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                     );
                   })}
                 </tr>
-              );
-            })}
-            {filteredAndSorted.length === 0 ? (
+                  )}
+                </SortableRow>
+                  );
+                })}
+                {filteredAndSorted.length === 0 ? (
               <tr>
                 <td
                   colSpan={displayColumns.length + 6}
@@ -801,8 +866,10 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                   No players match the current filters.
                 </td>
               </tr>
-            ) : null}
-          </tbody>
+                ) : null}
+              </tbody>
+            </SortableContext>
+          </DndContext>
         </table>
       </div>
 
