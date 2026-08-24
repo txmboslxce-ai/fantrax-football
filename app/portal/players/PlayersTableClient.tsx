@@ -602,9 +602,10 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                 </select>
               </label>
 
-              <div ref={columnPickerRef} className="relative space-y-1">
-                <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
-                <button
+              <div ref={columnPickerRef} className="relative flex flex-wrap items-end gap-2 basis-full border-t border-slate-200 pt-3">
+                <div className="space-y-1">
+                  <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
+                  <button
                   type="button"
                   onClick={() => setIsColumnPanelOpen((current) => !current)}
                   aria-expanded={isColumnPanelOpen}
@@ -616,8 +617,8 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                   }`}
                 >
                   {isColumnPanelOpen ? "Hide columns" : "+/- Data"}
-                </button>
-                {isColumnPanelOpen ? (
+                  </button>
+                  {isColumnPanelOpen ? (
                   <div id="players-column-picker" className="absolute right-0 top-full z-40 mt-2 w-[30rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-cream/20 bg-[#102116] p-4 shadow-xl sm:p-5">
                     <div className="mb-3">
                       <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-brand-cream">Columns</h2>
@@ -669,40 +670,38 @@ export default function PlayersTableClient({ players, latestGameweek, leagueRost
                       })}
                     </div>
                   </div>
-                ) : null}
+                  ) : null}
+                </div>
+                <div className="space-y-1">
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Active Columns</span>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedColumnDefinitions.length > 0 ? (
+                      selectedColumnDefinitions.map((column) => (
+                        <span
+                          key={column.key}
+                          className="inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
+                        >
+                          <span>{column.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleColumn(column.key)}
+                            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-dark/60 hover:bg-brand-green/20 hover:text-brand-dark"
+                            aria-label={`Remove ${column.label}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-500">No optional columns selected.</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
             </div>
           </div>
 
-          {/* Active columns */}
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <div className="mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Columns</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {selectedColumnDefinitions.length > 0 ? (
-                selectedColumnDefinitions.map((column) => (
-                  <span
-                    key={column.key}
-                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
-                  >
-                    <span>{column.label}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleColumn(column.key)}
-                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-dark/60 hover:bg-brand-green/20 hover:text-brand-dark"
-                      aria-label={`Remove ${column.label}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-slate-500">No optional columns selected.</span>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Sticky Done button — mobile drawer footer only */}

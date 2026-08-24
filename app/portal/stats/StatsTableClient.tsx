@@ -603,9 +603,10 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
             </select>
           </label>
 
-          <div className="space-y-1">
-            <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
-            <button
+          <div className="flex flex-wrap items-end gap-2 basis-full border-t border-slate-200 pt-3">
+            <div className="space-y-1">
+              <span className="block font-semibold uppercase tracking-wide text-slate-500">Columns</span>
+              <button
               type="button"
               onClick={() => setIsColumnPanelOpen((current) => !current)}
               className={`rounded border px-2 py-1 text-[11px] font-semibold ${
@@ -615,7 +616,33 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
               }`}
             >
               {isColumnPanelOpen ? "Hide columns" : "+/- Data"}
-            </button>
+              </button>
+            </div>
+            <div className="space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Active Columns</span>
+              <div className="flex flex-wrap gap-2">
+                {visibleColumns.length > 0 ? (
+                  visibleColumns.map((column) => (
+                    <span
+                      key={column.key}
+                      className="inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
+                    >
+                      <span>{column.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleColumn(column.key)}
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-dark/60 hover:bg-brand-green/20 hover:text-brand-dark"
+                        aria-label={`Remove ${column.label}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-500">No optional columns selected.</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -659,34 +686,6 @@ export default function StatsTableClient({ rows, latestGameweek, leagueRoster, s
         </div>
       ) : null}
 
-        {/* Active columns — visible inside drawer and on desktop */}
-        <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
-          <div className="mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Columns</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {visibleColumns.length > 0 ? (
-              visibleColumns.map((column) => (
-                <span
-                  key={column.key}
-                    className="inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
-                >
-                  <span>{column.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => toggleColumn(column.key)}
-                      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-brand-dark/60 hover:bg-brand-green/20 hover:text-brand-dark"
-                    aria-label={`Remove ${column.label}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))
-            ) : (
-              <span className="text-xs text-slate-500">No optional columns selected.</span>
-            )}
-          </div>
-        </div>
       </div>{/* end filter wrapper */}
 
       {/* Floating Filters button — mobile only */}
