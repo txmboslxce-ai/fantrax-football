@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type NavbarProps = {
   isLoggedIn: boolean;
   isAdmin?: boolean;
+  isWriter?: boolean;
 };
 
 type PlayerSearchRow = {
@@ -337,7 +338,7 @@ function LeagueSwitcher({ onSwitched }: { onSwitched?: () => void }) {
   );
 }
 
-export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
+export default function Navbar({ isLoggedIn, isAdmin = false, isWriter = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -382,6 +383,14 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
                   className="rounded-md border border-amber-400/50 bg-amber-500/10 px-4 py-2 font-heading font-semibold text-amber-200 transition-colors hover:bg-amber-500/20"
                 >
                   Admin
+                </Link>
+              )}
+              {isWriter && (
+                <Link
+                  href="/studio"
+                  className="rounded-md border border-brand-green/50 bg-brand-green/10 px-4 py-2 font-heading font-semibold text-brand-greenDark transition-colors hover:bg-brand-green/20"
+                >
+                  Studio
                 </Link>
               )}
             </>
@@ -440,6 +449,15 @@ export default function Navbar({ isLoggedIn, isAdmin = false }: NavbarProps) {
                     onClick={() => setIsOpen(false)}
                   >
                     Admin
+                  </Link>
+                )}
+                {isWriter && (
+                  <Link
+                    href="/studio"
+                    className="w-fit rounded-md border border-brand-green/50 bg-brand-green/10 px-4 py-2 font-heading font-semibold text-brand-greenDark"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Studio
                   </Link>
                 )}
               </>

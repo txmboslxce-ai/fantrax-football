@@ -22,7 +22,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const requiresAuth = pathname.startsWith("/portal") || pathname.startsWith("/admin");
+  const requiresAuth =
+    pathname.startsWith("/portal") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/studio");
 
   if (!requiresAuth) {
     return NextResponse.next();

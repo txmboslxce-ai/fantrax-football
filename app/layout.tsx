@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { isWriter } from "@/lib/writer";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,12 +31,13 @@ export default async function RootLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const writer = user ? await isWriter(supabase, user.id) : false;
 
   return (
     <html lang="en">
       <body className={`${inter.variable} ${leagueSpartan.variable} bg-brand-cream font-sans text-brand-dark antialiased`}>
         <div className="flex min-h-screen flex-col">
-          <Navbar isLoggedIn={Boolean(user)} isAdmin={isAdminEmail(user?.email)} />
+          <Navbar isLoggedIn={Boolean(user)} isAdmin={isAdminEmail(user?.email)} isWriter={writer} />
           <main className="flex-1">{children}</main>
           <Footer />
         </div>
