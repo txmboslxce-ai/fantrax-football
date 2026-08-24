@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { formatArticleDate, getArticleBySlug } from "@/lib/articles";
+import { formatArticleDate } from "@/lib/articles";
+import { getArticleBySlug } from "@/lib/articles-server";
 
 export const dynamic = "force-dynamic";
 

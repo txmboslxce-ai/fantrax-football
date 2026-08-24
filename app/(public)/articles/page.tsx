@@ -3,9 +3,9 @@ import ArticleCategoryChips from "@/components/ArticleCategoryChips";
 import {
   ARTICLE_CATEGORIES,
   formatArticleDate,
-  getPublishedArticles,
   type ArticleCategory,
 } from "@/lib/articles";
+import { getPublishedArticles } from "@/lib/articles-server";
 
 export const dynamic = "force-dynamic";
 
