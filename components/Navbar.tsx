@@ -388,7 +388,7 @@ export default function Navbar({ isLoggedIn, isAdmin = false, isWriter = false }
               {isWriter && (
                 <Link
                   href="/studio"
-                  className="rounded-md border border-brand-green/50 bg-brand-green/10 px-4 py-2 font-heading font-semibold text-brand-greenDark transition-colors hover:bg-brand-green/20"
+                  className="rounded-md border border-brand-greenLight/60 bg-brand-greenLight/20 px-4 py-2 font-heading font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight/30"
                 >
                   Studio
                 </Link>
