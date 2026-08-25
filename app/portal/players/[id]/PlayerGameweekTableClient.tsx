@@ -580,7 +580,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                         key={col.key}
                         className={`border-b border-r border-slate-200 py-1.5 text-right tabular-nums ${
                           col.highlight
-                            ? "w-16 min-w-16 px-1.5 text-sm font-extrabold text-brand-green"
+                            ? "w-16 min-w-16 px-1.5 font-extrabold text-brand-green"
                             : "w-12 min-w-12 px-1 font-semibold text-brand-dark"
                         }`}
                       >
@@ -615,7 +615,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                   <td
                     key={col.key}
                     className={`py-2 text-right tabular-nums ${
-                      col.highlight ? "px-1.5 text-sm font-extrabold text-brand-green" : "px-1"
+                      col.highlight ? "px-1.5 font-extrabold text-brand-green" : "px-1"
                     }`}
                   >
                     {tally.avgs[col.key].toFixed(col.digits ?? 2)}
