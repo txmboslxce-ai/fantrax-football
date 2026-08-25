@@ -330,12 +330,12 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
     <div className="space-y-3">
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-        <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
-          <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Season</span>
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Season</span>
           <select
             value={season}
             onChange={(event) => selectSeason(event.target.value)}
-            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
+            className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
           >
             {availableSeasons.map((availableSeason) => (
               <option key={availableSeason} value={availableSeason}>
@@ -343,7 +343,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               </option>
             ))}
           </select>
-        </label>
+        </div>
 
         {/* H/A filter */}
         <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5">
@@ -490,30 +490,6 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
             </div>
           ) : null}
         </div>
-
-        {/* Active columns pills */}
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          {visibleColumns.length > 0 ? (
-            visibleColumns.map((col) => (
-              <span
-                key={col.key}
-                className="inline-flex items-center gap-2 rounded-full border border-brand-green/40 bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-dark"
-              >
-                <span>{col.label}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleColumn(col.key)}
-                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] text-slate-600 hover:bg-brand-green/20 hover:text-brand-dark"
-                  aria-label={`Remove ${col.label}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))
-          ) : (
-            <span className="text-xs text-slate-500">No optional columns selected.</span>
-          )}
-        </div>
       </div>
 
       {/* Table */}
@@ -544,7 +520,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               {visibleColumns.map((col) => (
                 <th
                   key={col.key}
-                  className="sticky top-0 z-20 w-28 min-w-28 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-1.5 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
                 >
                   <button
                     type="button"
@@ -585,7 +561,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                     const raw = (row as Record<string, unknown>)[col.key];
                     const value = typeof raw === "number" ? raw : Number(raw ?? 0);
                     return (
-                      <td key={col.key} className="w-28 min-w-28 border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                      <td key={col.key} className="w-16 min-w-16 border-b border-r border-slate-200 px-1.5 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {formatCellValue(value, col.digits ?? 2)}
                       </td>
                     );
