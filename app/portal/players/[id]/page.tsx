@@ -409,7 +409,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
     goalkeeper: playerPosition === "GK" ? buildRadarDataset(goalkeeperRadarPool, playerRow.id, goalkeeperMetrics, 35, "even") : null,
   };
   const radarCharts = (
-    <div className={playerPosition === "GK" ? "grid gap-4 lg:grid-cols-2" : "grid gap-4 xl:grid-cols-3"}>
+    <div className={playerPosition === "GK" ? "grid h-full gap-4 lg:grid-cols-2" : "grid h-full gap-4 xl:grid-cols-3"}>
       <PlayerRadarChart
         title="Fantasy Profile"
         data={radarDatasets.fantasy}
@@ -504,20 +504,14 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
               <p className="mt-0.5 text-base font-bold">{formatFixed(summary.avg_pts_per_start)}</p>
             </div>
             <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Ghost Pts/GW</p>
-              <p className="mt-0.5 text-base font-bold">{formatFixed(summary.avg_ghost_per_gameweek)}</p>
-            </div>
-            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
               <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Ghost Pts/Start</p>
               <p className="mt-0.5 text-base font-bold">{formatFixed(summary.avg_ghost_per_start)}</p>
             </div>
             <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Games Played</p>
-              <p className="mt-0.5 text-base font-bold">{summary.total_games_played}</p>
-            </div>
-            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Starts</p>
-              <p className="mt-0.5 text-base font-bold">{summary.total_games_started}</p>
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Games Played / Starts</p>
+              <p className="mt-0.5 text-base font-bold">
+                {summary.total_games_played} / {summary.total_games_started}
+              </p>
             </div>
             {playerRow.ownership_pct != null ? (
               <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">

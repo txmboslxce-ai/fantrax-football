@@ -16,10 +16,10 @@ type PlayerRadarChartProps = {
 
 export default function PlayerRadarChart({ title, data, color, caption }: PlayerRadarChartProps) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-3">
+    <section className="flex h-full min-h-[15rem] flex-col rounded-xl border border-slate-200 bg-white p-3">
       <h3 className="text-sm font-bold text-brand-dark">{title}</h3>
       <p className="mt-0.5 text-xs text-slate-500">{caption}</p>
-      <div className="mt-2 h-52">
+      <div className="mt-2 min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={data} outerRadius="66%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
             <PolarGrid stroke="#CBD5E1" />
