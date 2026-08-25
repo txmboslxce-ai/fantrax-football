@@ -43,11 +43,6 @@ function parseScore(content: string | undefined): number {
 export async function fetchSchedule(leagueId: string): Promise<MatchData[]> {
   const body = JSON.stringify({
     msgs: [{ method: "getStandings", data: { leagueId, view: "SCHEDULE" } }],
-    at: 0,
-    av: "0.0",
-    dt: 1,
-    uiv: 3,
-    v: "179.0.1",
   });
 
   const res = await fetch(
@@ -55,17 +50,29 @@ export async function fetchSchedule(leagueId: string): Promise<MatchData[]> {
     {
       method: "POST",
       headers: {
-        "Content-Type": "text/plain",
-        "User-Agent": "Mozilla/5.0",
+        "Content-Type": "application/json",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+        Referer: `https://www.fantrax.com/fantasy/league/${leagueId}/schedule`,
+        Origin: "https://www.fantrax.com",
       },
       body,
+      cache: "no-store",
     }
   );
 
   if (!res.ok) throw new Error(`Fantrax schedule API returned ${res.status}`);
 
   const json = (await res.json()) as ScheduleResponse;
-  const tableList = json?.responses?.[0]?.data?.tableList ?? [];
+  const tableList = json?.responses?.[0]?.data?.tableList;
+
+  if (!Array.isArray(tableList)) {
+    console.error(
+      `[league-analytics/schedule] Unexpected Fantrax response shape for league ${leagueId}:`,
+      JSON.stringify(json).slice(0, 500)
+    );
+    throw new Error("Fantrax schedule API returned an unexpected response shape.");
+  }
 
   const matches: MatchData[] = [];
 

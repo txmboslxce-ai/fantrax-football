@@ -257,7 +257,8 @@ export async function GET(request: Request) {
   const { data: rosters } = await supabase
     .from("league_rosters")
     .select("player_id, team_name")
-    .eq("league_id", leagueId);
+    .eq("league_id", leagueId)
+    .eq("profile_id", user.id);
 
   let tradeValues: TradeValueEntry[] = [];
 
