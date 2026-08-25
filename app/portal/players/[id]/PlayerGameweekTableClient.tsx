@@ -512,7 +512,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                   GW <span aria-hidden="true">{sortArrow("gameweek")}</span>
                 </button>
               </th>
-              <th className="sticky left-12 top-0 z-30 w-56 min-w-56 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-12 top-0 z-30 w-[134px] min-w-[134px] border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("opponent")} className="inline-flex items-center gap-1">
                   Opponent <span aria-hidden="true">{sortArrow("opponent")}</span>
                 </button>
@@ -554,7 +554,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                   <td className={`sticky left-0 z-20 w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5 font-semibold tabular-nums text-slate-500 ${rowShade} group-hover:bg-brand-green/10`}>
                     {row.gameweek}
                   </td>
-                  <td className={`sticky left-12 z-20 w-56 min-w-56 border-b border-r border-slate-200 px-2 py-1.5 font-medium text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-12 z-20 w-[134px] min-w-[134px] border-b border-r border-slate-200 px-2 py-1.5 font-medium text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
                     {renderOpponent(row)}
                   </td>
                   <td className="w-12 min-w-12 border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{renderHomeAway(row)}</td>
