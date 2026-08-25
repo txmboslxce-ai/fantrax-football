@@ -409,7 +409,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
     goalkeeper: playerPosition === "GK" ? buildRadarDataset(goalkeeperRadarPool, playerRow.id, goalkeeperMetrics, 35, "even") : null,
   };
   const radarCharts = (
-    <div className={playerPosition === "GK" ? "grid gap-6 lg:grid-cols-2" : "grid gap-6 xl:grid-cols-3"}>
+    <div className={playerPosition === "GK" ? "grid gap-4 lg:grid-cols-2" : "grid gap-4 xl:grid-cols-3"}>
       <PlayerRadarChart
         title="Fantasy Profile"
         data={radarDatasets.fantasy}
@@ -455,12 +455,12 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const teamNamesRecord = Object.fromEntries(teamNames.entries());
 
   return (
-      <div className="space-y-8">
-        <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-6 text-brand-cream sm:p-8">
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl font-black sm:text-5xl">{playerRow.name}</h1>
+                <h1 className="text-2xl font-black sm:text-4xl">{playerRow.name}</h1>
                 <RosterPill playerId={playerRow.id} leagueRoster={leagueRoster} />
               </div>
               <p className="mt-2 text-sm text-brand-creamDark">{teamNames.get(playerRow.team) ?? playerRow.team}</p>
@@ -490,47 +490,60 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             </article>
           ) : null}
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
-              <p className="text-xs uppercase tracking-wide text-brand-creamDark">Season Points</p>
-              <p className="mt-2 text-4xl font-black">{formatFixed(summary.season_total_pts, 2)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <article className="rounded-lg border border-brand-cream/20 bg-brand-green/20 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Season Points</p>
+              <p className="mt-0.5 text-xl font-black">{formatFixed(summary.season_total_pts, 2)}</p>
             </article>
-            <article className="rounded-xl border border-brand-cream/20 bg-brand-green/20 p-5">
-              <p className="text-xs uppercase tracking-wide text-brand-creamDark">Avg Pts/GW</p>
-              <p className="mt-2 text-4xl font-black">{formatFixed(summary.avg_pts_per_gameweek)}</p>
+            <article className="rounded-lg border border-brand-cream/20 bg-brand-green/20 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Avg Pts/GW</p>
+              <p className="mt-0.5 text-xl font-black">{formatFixed(summary.avg_pts_per_gameweek)}</p>
             </article>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Avg Pts/Start: <strong>{formatFixed(summary.avg_pts_per_start)}</strong>
+            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Avg Pts/Start</p>
+              <p className="mt-0.5 text-base font-bold">{formatFixed(summary.avg_pts_per_start)}</p>
             </div>
-            <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Ghost Pts/GW: <strong>{formatFixed(summary.avg_ghost_per_gameweek)}</strong>
+            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Ghost Pts/GW</p>
+              <p className="mt-0.5 text-base font-bold">{formatFixed(summary.avg_ghost_per_gameweek)}</p>
             </div>
-            <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Ghost Pts/Start: <strong>{formatFixed(summary.avg_ghost_per_start)}</strong>
+            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Ghost Pts/Start</p>
+              <p className="mt-0.5 text-base font-bold">{formatFixed(summary.avg_ghost_per_start)}</p>
             </div>
-            <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Games Played: <strong>{summary.total_games_played}</strong>
+            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Games Played</p>
+              <p className="mt-0.5 text-base font-bold">{summary.total_games_played}</p>
             </div>
-            <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-              Starts: <strong>{summary.total_games_started}</strong>
+            <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Starts</p>
+              <p className="mt-0.5 text-base font-bold">{summary.total_games_started}</p>
             </div>
             {playerRow.ownership_pct != null ? (
-              <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-                Ownership: <strong>{playerRow.ownership_pct}</strong>
+              <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Ownership</p>
+                <p className="mt-0.5 text-base font-bold">{playerRow.ownership_pct}</p>
               </div>
             ) : null}
             {hasXgXa ? (
               <>
-                <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-                  <span title="Expected goals and assists per 90 minutes, sourced from FPL data">xG/90 (?)</span>:{" "}
-                  <strong>{xgPer90.toFixed(2)}</strong>
+                <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+                  <p
+                    className="text-[10px] uppercase tracking-wide text-brand-creamDark"
+                    title="Expected goals per 90 minutes, sourced from FPL data"
+                  >
+                    xG/90
+                  </p>
+                  <p className="mt-0.5 text-base font-bold">{xgPer90.toFixed(2)}</p>
                 </div>
-                <div className="rounded-full border border-brand-cream/20 bg-brand-dark/60 px-4 py-2 text-sm">
-                  <span title="Expected goals and assists per 90 minutes, sourced from FPL data">xA/90 (?)</span>:{" "}
-                  <strong>{xaPer90.toFixed(2)}</strong>
+                <div className="rounded-lg border border-brand-cream/20 bg-brand-dark/60 px-3 py-2">
+                  <p
+                    className="text-[10px] uppercase tracking-wide text-brand-creamDark"
+                    title="Expected assists per 90 minutes, sourced from FPL data"
+                  >
+                    xA/90
+                  </p>
+                  <p className="mt-0.5 text-base font-bold">{xaPer90.toFixed(2)}</p>
                 </div>
               </>
             ) : null}
@@ -574,14 +587,14 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
           ]}
         />
 
-        <section className="space-y-3">
-          <h2 className="text-2xl font-black text-brand-dark">Next Fixtures</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="space-y-2">
+          <h2 className="text-lg font-black text-brand-dark">Next Fixtures</h2>
+          <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {upcoming.map((fixture) => (
-              <article key={fixture.id} className="rounded-xl border border-slate-200 bg-white p-4 text-brand-dark">
-                <p className="text-xs uppercase tracking-wider text-slate-500">GW {fixture.gameweek}</p>
-                <p className="mt-2 font-bold">{fixture.opponentName}</p>
-                <p className="mt-1 text-sm text-slate-600">{fixture.isHome ? "H" : "A"}</p>
+              <article key={fixture.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-brand-dark">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">GW {fixture.gameweek}</p>
+                <p className="mt-1 text-sm font-bold leading-tight">{fixture.opponentName}</p>
+                <p className="mt-0.5 text-xs text-slate-600">{fixture.isHome ? "Home" : "Away"}</p>
               </article>
             ))}
           </div>
