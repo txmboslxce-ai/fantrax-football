@@ -47,6 +47,7 @@ type ColumnDefinition = {
   shortLabel?: string;
   category: ColumnCategory;
   digits?: number;
+  highlight?: boolean;
 };
 
 function headerLabel(col: ColumnDefinition): string {
@@ -55,8 +56,8 @@ function headerLabel(col: ColumnDefinition): string {
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   // Fantasy
-  { key: "raw_fantrax_pts", label: "Pts", category: "Fantasy", digits: 2 },
-  { key: "ghost_pts", label: "Ghost Pts", shortLabel: "GPts", category: "Fantasy", digits: 2 },
+  { key: "raw_fantrax_pts", label: "Pts", category: "Fantasy", digits: 2, highlight: true },
+  { key: "ghost_pts", label: "Ghost Pts", shortLabel: "GPts", category: "Fantasy", digits: 2, highlight: true },
   // Involvement
   { key: "games_started", label: "Games Started", shortLabel: "GS", category: "Involvement", digits: 0 },
   { key: "minutes_played", label: "Mins", category: "Involvement", digits: 0 },
@@ -503,7 +504,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
       </div>
 
       {/* Table */}
-      <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
+      <div className="relative inline-block max-h-[75vh] max-w-full overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white align-top [scrollbar-gutter:stable]">
         <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
@@ -530,7 +531,9 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               {visibleColumns.map((col) => (
                 <th
                   key={col.key}
-                  className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                  className={`sticky top-0 z-20 border-b border-r border-brand-cream/25 bg-brand-green py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream ${
+                    col.highlight ? "w-16 min-w-16 px-1.5" : "w-12 min-w-12 px-1"
+                  }`}
                 >
                   <HeaderTooltip description={col.shortLabel ? col.label : undefined}>
                     <button
@@ -573,7 +576,14 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                     const raw = (row as Record<string, unknown>)[col.key];
                     const value = typeof raw === "number" ? raw : Number(raw ?? 0);
                     return (
-                      <td key={col.key} className="w-12 min-w-12 border-b border-r border-slate-200 px-1 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                      <td
+                        key={col.key}
+                        className={`border-b border-r border-slate-200 py-1.5 text-right tabular-nums ${
+                          col.highlight
+                            ? "w-16 min-w-16 px-1.5 text-sm font-extrabold text-brand-green"
+                            : "w-12 min-w-12 px-1 font-semibold text-brand-dark"
+                        }`}
+                      >
                         {formatCellValue(value, col.digits ?? 2)}
                       </td>
                     );
@@ -602,7 +612,12 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                 <td className="px-2 py-2" />
                 <td className="px-2 py-2" />
                 {visibleColumns.map((col) => (
-                  <td key={col.key} className="px-1 py-2 text-right tabular-nums">
+                  <td
+                    key={col.key}
+                    className={`py-2 text-right tabular-nums ${
+                      col.highlight ? "px-1.5 text-sm font-extrabold text-brand-green" : "px-1"
+                    }`}
+                  >
                     {tally.avgs[col.key].toFixed(col.digits ?? 2)}
                   </td>
                 ))}
