@@ -33,18 +33,36 @@ function splitBarSegments(points: HomeAwayPoint[]) {
   return points.map((point) => ({ ...point, pct: (Math.max(0, point.value) / total) * 100 }));
 }
 
-function last5Tone(value: number, max: number): string {
-  if (max <= 0) return "bg-slate-100 text-slate-500";
-  const ratio = value / max;
-  if (ratio >= 0.75) return "bg-brand-green text-brand-cream";
-  if (ratio >= 0.4) return "bg-brand-green/25 text-brand-dark";
-  return "bg-slate-100 text-slate-500";
+// Fixed point-value scale (not relative to this player's own best game), so a 10-point
+// game always reads the same color everywhere: <=3 is "very poor", 20+ is "elite".
+const LAST5_COLOR_STOPS: Array<{ value: number; rgb: [number, number, number] }> = [
+  { value: 3, rgb: [220, 38, 38] }, // red-600 — very poor
+  { value: 6.5, rgb: [194, 65, 12] }, // orange-700 — below par
+  { value: 10, rgb: [0, 91, 58] }, // brand green — a solid, happy return
+  { value: 20, rgb: [0, 68, 44] }, // brand green (dark) — elite
+];
+
+function last5Color(points: number): string {
+  const stops = LAST5_COLOR_STOPS;
+  if (points <= stops[0].value) return `rgb(${stops[0].rgb.join(", ")})`;
+  const last = stops[stops.length - 1];
+  if (points >= last.value) return `rgb(${last.rgb.join(", ")})`;
+
+  for (let i = 0; i < stops.length - 1; i += 1) {
+    const start = stops[i];
+    const end = stops[i + 1];
+    if (points >= start.value && points <= end.value) {
+      const ratio = (points - start.value) / (end.value - start.value);
+      const rgb = start.rgb.map((channel, index) => Math.round(channel + (end.rgb[index] - channel) * ratio));
+      return `rgb(${rgb.join(", ")})`;
+    }
+  }
+  return `rgb(${last.rgb.join(", ")})`;
 }
 
 export default function PlayerFormPanel({ pointsByGw, last5, homeAway, breakdown }: PlayerFormPanelProps) {
   const homeAwaySegments = splitBarSegments(homeAway);
   const breakdownTotal = breakdown.reduce((sum, slice) => sum + Math.max(0, slice.value), 0);
-  const last5Max = Math.max(0, ...last5.map((point) => point.points));
 
   return (
     <section className="flex h-full flex-col gap-4 rounded-xl border border-slate-200 bg-white p-3">
@@ -71,11 +89,12 @@ export default function PlayerFormPanel({ pointsByGw, last5, homeAway, breakdown
             last5.map((point) => (
               <div
                 key={point.gameweek}
-                className={`flex h-9 w-9 flex-col items-center justify-center rounded-lg text-[11px] font-bold leading-none ${last5Tone(point.points, last5Max)}`}
+                className="flex h-9 w-9 flex-col items-center justify-center rounded-lg text-[11px] font-bold leading-none text-white"
+                style={{ backgroundColor: last5Color(point.points) }}
                 title={`GW${point.gameweek}: ${point.points.toFixed(2)} pts`}
               >
                 <span>{point.points.toFixed(0)}</span>
-                <span className="mt-0.5 text-[9px] font-medium opacity-70">GW{point.gameweek}</span>
+                <span className="mt-0.5 text-[9px] font-medium opacity-80">GW{point.gameweek}</span>
               </div>
             ))
           ) : (

@@ -409,7 +409,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
     goalkeeper: playerPosition === "GK" ? buildRadarDataset(goalkeeperRadarPool, playerRow.id, goalkeeperMetrics, 35, "even") : null,
   };
   const radarCharts = (
-    <div className={playerPosition === "GK" ? "grid h-full gap-4 lg:grid-cols-2" : "grid h-full gap-4 xl:grid-cols-3"}>
+    <div className={playerPosition === "GK" ? "grid h-full gap-4 sm:grid-cols-2" : "grid h-full gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
       <PlayerRadarChart
         title="Fantasy Profile"
         data={radarDatasets.fantasy}
