@@ -150,6 +150,23 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
       .finally(() => setAnalyticsLoading(false));
   }, [activeTab, leagueId]);
 
+  async function refreshAnalytics() {
+    if (!leagueId) return;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+
+    try {
+      const response = await fetch(`/api/league-analytics/summary?leagueId=${encodeURIComponent(leagueId)}&force=true`);
+      const data = (await response.json()) as AnalyticsPayload & { message?: string };
+      if (!response.ok) throw new Error(data.message ?? "Failed to refresh analytics");
+      setAnalyticsData(data);
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : "Failed to refresh analytics");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -604,6 +621,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
 
       {activeTab === "standings" && (
         <>
+          <AnalyticsRefreshBar computedAt={analyticsData?.computedAt ?? null} loading={analyticsLoading} onRefresh={() => void refreshAnalytics()} />
           {analyticsLoading && (
             <div className="flex min-h-[200px] items-center justify-center">
               <p className="text-sm text-slate-500">Loading analytics…</p>
@@ -667,6 +685,7 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
 
       {activeTab === "analytics" && (
         <>
+          <AnalyticsRefreshBar computedAt={analyticsData?.computedAt ?? null} loading={analyticsLoading} onRefresh={() => void refreshAnalytics()} />
           {analyticsLoading && (
             <div className="flex min-h-[200px] items-center justify-center">
               <p className="text-sm text-slate-500">Loading analytics…</p>
@@ -899,6 +918,32 @@ function ComparisonRosterTable({ team, players }: { team: LeagueTeam | null; pla
 }
 
 // ── Analytics sub-components ─────────────────────────────────────────────────
+
+function AnalyticsRefreshBar({
+  computedAt,
+  loading,
+  onRefresh,
+}: {
+  computedAt: string | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-xs text-slate-500">
+        {computedAt ? `Last computed: ${formatSyncDate(computedAt)}` : ""}
+      </p>
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={loading}
+        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading ? "Refreshing…" : "Refresh"}
+      </button>
+    </div>
+  );
+}
 
 type AnalyticsRow = {
   teamId: string;
