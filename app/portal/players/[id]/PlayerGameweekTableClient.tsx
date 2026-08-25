@@ -24,7 +24,6 @@ type GameweekColumnKey =
   | "blocked_shots"
   | "dribbles_succeeded"
   | "dispossessed"
-  | "goals_against"
   | "goals_against_outfield"
   | "yellow_cards"
   | "red_cards"
@@ -45,47 +44,51 @@ type ColumnCategory = "Fantasy" | "Involvement" | "Attacking" | "Defensive" | "G
 type ColumnDefinition = {
   key: GameweekColumnKey;
   label: string;
+  shortLabel?: string;
   category: ColumnCategory;
   digits?: number;
 };
 
+function headerLabel(col: ColumnDefinition): string {
+  return col.shortLabel ?? col.label;
+}
+
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   // Fantasy
   { key: "raw_fantrax_pts", label: "Pts", category: "Fantasy", digits: 2 },
-  { key: "ghost_pts", label: "Ghost Pts", category: "Fantasy", digits: 2 },
+  { key: "ghost_pts", label: "Ghost Pts", shortLabel: "GPts", category: "Fantasy", digits: 2 },
   // Involvement
-  { key: "games_started", label: "Started", category: "Involvement", digits: 0 },
+  { key: "games_started", label: "Games Started", shortLabel: "GS", category: "Involvement", digits: 0 },
   { key: "minutes_played", label: "Mins", category: "Involvement", digits: 0 },
   // Attacking
   { key: "goals", label: "Goals", category: "Attacking", digits: 0 },
   { key: "assists", label: "Assists", category: "Attacking", digits: 0 },
-  { key: "key_passes", label: "Key Passes", category: "Attacking", digits: 0 },
-  { key: "shots_on_target", label: "Shots on Target", category: "Attacking", digits: 0 },
-  { key: "corner_kicks", label: "CK", category: "Attacking", digits: 0 },
-  { key: "free_kick_shots", label: "FKS", category: "Attacking", digits: 0 },
-  { key: "dribbles_succeeded", label: "Dribbles", category: "Attacking", digits: 0 },
-  { key: "accurate_crosses", label: "Crosses", category: "Attacking", digits: 0 },
-  { key: "penalties_drawn", label: "Pens Drawn", category: "Attacking", digits: 0 },
+  { key: "key_passes", label: "Key Passes", shortLabel: "KP", category: "Attacking", digits: 0 },
+  { key: "shots_on_target", label: "Shots on Target", shortLabel: "SOT", category: "Attacking", digits: 0 },
+  { key: "corner_kicks", label: "Corner Kicks", shortLabel: "CK", category: "Attacking", digits: 0 },
+  { key: "free_kick_shots", label: "Free Kick Shots", shortLabel: "FKS", category: "Attacking", digits: 0 },
+  { key: "dribbles_succeeded", label: "Dribbles", shortLabel: "Drb", category: "Attacking", digits: 0 },
+  { key: "accurate_crosses", label: "Crosses", shortLabel: "Crs", category: "Attacking", digits: 0 },
+  { key: "penalties_drawn", label: "Pens Drawn", shortLabel: "PKD", category: "Attacking", digits: 0 },
   // Defensive
-  { key: "clean_sheet", label: "CS", category: "Defensive", digits: 0 },
-  { key: "tackles_won", label: "Tackles", category: "Defensive", digits: 0 },
-  { key: "interceptions", label: "Interceptions", category: "Defensive", digits: 0 },
-  { key: "clearances", label: "Clearances", category: "Defensive", digits: 0 },
-  { key: "aerials_won", label: "Aerials", category: "Defensive", digits: 0 },
-  { key: "blocked_shots", label: "Blocked Shots", category: "Defensive", digits: 0 },
-  { key: "dispossessed", label: "Dispossessed", category: "Defensive", digits: 0 },
-  { key: "goals_against", label: "GA", category: "Defensive", digits: 0 },
-  { key: "goals_against_outfield", label: "GA (Outfield)", category: "Defensive", digits: 0 },
-  { key: "yellow_cards", label: "Yellow Cards", category: "Defensive", digits: 0 },
-  { key: "red_cards", label: "Red Cards", category: "Defensive", digits: 0 },
-  { key: "own_goals", label: "Own Goals", category: "Defensive", digits: 0 },
-  { key: "subbed_on", label: "Subbed On", category: "Involvement", digits: 0 },
-  { key: "subbed_off", label: "Subbed Off", category: "Involvement", digits: 0 },
+  { key: "clean_sheet", label: "Clean Sheet", shortLabel: "CS", category: "Defensive", digits: 0 },
+  { key: "tackles_won", label: "Tackles", shortLabel: "TkW", category: "Defensive", digits: 0 },
+  { key: "interceptions", label: "Interceptions", shortLabel: "Int", category: "Defensive", digits: 0 },
+  { key: "clearances", label: "Clearances", shortLabel: "CLR", category: "Defensive", digits: 0 },
+  { key: "aerials_won", label: "Aerials", shortLabel: "AER", category: "Defensive", digits: 0 },
+  { key: "blocked_shots", label: "Blocked Shots", shortLabel: "BS", category: "Defensive", digits: 0 },
+  { key: "dispossessed", label: "Dispossessed", shortLabel: "DIS", category: "Defensive", digits: 0 },
+  { key: "goals_against_outfield", label: "Goals Against", shortLabel: "GA", category: "Defensive", digits: 0 },
+  { key: "yellow_cards", label: "Yellow Cards", shortLabel: "YC", category: "Defensive", digits: 0 },
+  { key: "red_cards", label: "Red Cards", shortLabel: "RC", category: "Defensive", digits: 0 },
+  { key: "own_goals", label: "Own Goals", shortLabel: "OG", category: "Defensive", digits: 0 },
+  { key: "subbed_on", label: "Subbed On", shortLabel: "SubOn", category: "Involvement", digits: 0 },
+  { key: "subbed_off", label: "Subbed Off", shortLabel: "SubOff", category: "Involvement", digits: 0 },
   // Goalkeeping
   { key: "saves", label: "Saves", category: "Goalkeeping", digits: 0 },
-  { key: "penalty_saves", label: "Pen Saves", category: "Goalkeeping", digits: 0 },
-  { key: "high_claims", label: "High Claims", category: "Goalkeeping", digits: 0 },
-  { key: "smothers", label: "Smothers", category: "Goalkeeping", digits: 0 },
+  { key: "penalty_saves", label: "Pen Saves", shortLabel: "PKS", category: "Goalkeeping", digits: 0 },
+  { key: "high_claims", label: "High Claims", shortLabel: "HCS", category: "Goalkeeping", digits: 0 },
+  { key: "smothers", label: "Smothers", shortLabel: "Sm", category: "Goalkeeping", digits: 0 },
 ];
 
 const COLUMN_CATEGORIES: ColumnCategory[] = ["Fantasy", "Involvement", "Attacking", "Defensive", "Goalkeeping"];
@@ -98,6 +101,9 @@ const ESSENTIALS_COLUMNS: GameweekColumnKey[] = [
   "goals",
   "assists",
 ];
+
+// Shown in the column picker as optional extras, but left off the table by default.
+const EXCLUDED_FROM_DEFAULT: GameweekColumnKey[] = ["subbed_on", "subbed_off"];
 
 function fdrColor(rank: number | undefined): string {
   if (rank == null) return "bg-slate-100 text-slate-500";
@@ -135,6 +141,10 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
     [isGoalkeeper]
   );
   const allColumnKeys = useMemo(() => availableColumnDefinitions.map((col) => col.key), [availableColumnDefinitions]);
+  const defaultColumnKeys = useMemo(
+    () => allColumnKeys.filter((key) => !EXCLUDED_FROM_DEFAULT.includes(key)),
+    [allColumnKeys]
+  );
   const columnPresets = useMemo(
     () => [
       { label: "Essentials", keys: ESSENTIALS_COLUMNS.filter((key) => allColumnKeys.includes(key)) },
@@ -143,7 +153,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
     [allColumnKeys]
   );
 
-  const [selectedColumns, setSelectedColumns] = useState<GameweekColumnKey[]>(allColumnKeys);
+  const [selectedColumns, setSelectedColumns] = useState<GameweekColumnKey[]>(defaultColumnKeys);
   const [homeAwayFilter, setHomeAwayFilter] = useState<"All" | "Home" | "Away">("All");
   const [appearanceFilter, setAppearanceFilter] = useState<Set<"Started" | "Sub" | "DNP">>(
     new Set(["Started", "Sub", "DNP"])
@@ -520,15 +530,17 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
               {visibleColumns.map((col) => (
                 <th
                   key={col.key}
-                  className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-1.5 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
+                  className="sticky top-0 z-20 w-12 min-w-12 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream"
                 >
-                  <button
-                    type="button"
-                    onClick={() => handleSort(col.key)}
-                    className="inline-flex w-full items-center justify-end gap-1"
-                  >
-                    {col.label} <span aria-hidden="true">{sortArrow(col.key)}</span>
-                  </button>
+                  <HeaderTooltip description={col.shortLabel ? col.label : undefined}>
+                    <button
+                      type="button"
+                      onClick={() => handleSort(col.key)}
+                      className="inline-flex w-full items-center justify-end gap-1"
+                    >
+                      {headerLabel(col)} <span aria-hidden="true">{sortArrow(col.key)}</span>
+                    </button>
+                  </HeaderTooltip>
                 </th>
               ))}
             </tr>
@@ -561,7 +573,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                     const raw = (row as Record<string, unknown>)[col.key];
                     const value = typeof raw === "number" ? raw : Number(raw ?? 0);
                     return (
-                      <td key={col.key} className="w-16 min-w-16 border-b border-r border-slate-200 px-1.5 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
+                      <td key={col.key} className="w-12 min-w-12 border-b border-r border-slate-200 px-1 py-1.5 text-right font-semibold tabular-nums text-brand-dark">
                         {formatCellValue(value, col.digits ?? 2)}
                       </td>
                     );
@@ -590,7 +602,7 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                 <td className="px-2 py-2" />
                 <td className="px-2 py-2" />
                 {visibleColumns.map((col) => (
-                  <td key={col.key} className="px-2 py-2 text-right tabular-nums">
+                  <td key={col.key} className="px-1 py-2 text-right tabular-nums">
                     {tally.avgs[col.key].toFixed(col.digits ?? 2)}
                   </td>
                 ))}
