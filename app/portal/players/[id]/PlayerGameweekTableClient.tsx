@@ -1,6 +1,7 @@
 "use client";
 
 import type { DecoratedGameweek } from "@/lib/portal/playerMetrics";
+import { scoreColor } from "@/lib/portal/scoreColor";
 import HeaderTooltip from "@/components/portal/HeaderTooltip";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -48,6 +49,7 @@ type ColumnDefinition = {
   category: ColumnCategory;
   digits?: number;
   highlight?: boolean;
+  gradedColor?: boolean;
 };
 
 function headerLabel(col: ColumnDefinition): string {
@@ -56,7 +58,7 @@ function headerLabel(col: ColumnDefinition): string {
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   // Fantasy
-  { key: "raw_fantrax_pts", label: "Pts", category: "Fantasy", digits: 2, highlight: true },
+  { key: "raw_fantrax_pts", label: "Pts", category: "Fantasy", digits: 2, highlight: true, gradedColor: true },
   { key: "ghost_pts", label: "Ghost Pts", shortLabel: "GPts", category: "Fantasy", digits: 2, highlight: true },
   // Involvement
   { key: "games_started", label: "Games Started", shortLabel: "GS", category: "Involvement", digits: 0 },
@@ -117,6 +119,16 @@ function fdrColor(rank: number | undefined): string {
 
 function formatCellValue(value: number, digits: number): string {
   return value.toFixed(digits);
+}
+
+function cellAppearance(col: ColumnDefinition, value: number): { className: string; style?: { color: string } } {
+  if (col.gradedColor) {
+    return { className: "w-16 min-w-16 px-1.5 font-extrabold", style: { color: scoreColor(value) } };
+  }
+  if (col.highlight) {
+    return { className: "w-16 min-w-16 px-1.5 font-extrabold text-brand-dark" };
+  }
+  return { className: "w-12 min-w-12 px-1 font-semibold text-brand-dark" };
 }
 
 type Props = {
@@ -575,14 +587,12 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                   {visibleColumns.map((col) => {
                     const raw = (row as Record<string, unknown>)[col.key];
                     const value = typeof raw === "number" ? raw : Number(raw ?? 0);
+                    const appearance = cellAppearance(col, value);
                     return (
                       <td
                         key={col.key}
-                        className={`border-b border-r border-slate-200 py-1.5 text-right tabular-nums ${
-                          col.highlight
-                            ? "w-16 min-w-16 px-1.5 font-extrabold text-brand-green"
-                            : "w-12 min-w-12 px-1 font-semibold text-brand-dark"
-                        }`}
+                        className={`border-b border-r border-slate-200 py-1.5 text-right tabular-nums ${appearance.className}`}
+                        style={appearance.style}
                       >
                         {formatCellValue(value, col.digits ?? 2)}
                       </td>
@@ -611,16 +621,21 @@ export default function PlayerGameweekTableClient({ rows, teamNames, fdrRankByTe
                 <td className="px-2 py-2" />
                 <td className="px-2 py-2" />
                 <td className="px-2 py-2" />
-                {visibleColumns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`py-2 text-right tabular-nums ${
-                      col.highlight ? "px-1.5 font-extrabold text-brand-green" : "px-1"
-                    }`}
-                  >
-                    {tally.avgs[col.key].toFixed(col.digits ?? 2)}
-                  </td>
-                ))}
+                {visibleColumns.map((col) => {
+                  const avgValue = tally.avgs[col.key];
+                  const appearance = cellAppearance(col, avgValue);
+                  return (
+                    <td
+                      key={col.key}
+                      className={`py-2 text-right tabular-nums ${col.highlight ? "px-1.5 font-extrabold" : "px-1"} ${
+                        col.gradedColor ? "" : "text-brand-dark"
+                      }`}
+                      style={appearance.style}
+                    >
+                      {avgValue.toFixed(col.digits ?? 2)}
+                    </td>
+                  );
+                })}
               </tr>
             </tfoot>
           ) : null}
