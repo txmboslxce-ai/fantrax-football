@@ -595,6 +595,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             fdrRankByTeam={fdrRankByTeam}
             season={tableSeason}
             availableSeasons={availableSeasons}
+            position={playerPosition}
           />
         </section>
       </div>
