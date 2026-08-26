@@ -251,7 +251,13 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
 
       {selectedPlayers.length >= 2 && (
         <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {/* Columns per row is driven by actual available width (auto-fit),
+              not a viewport breakpoint - the fixed sidebar eats real estate
+              that a breakpoint can't see, which was letting 3 columns claim
+              space they didn't have and forcing each stat table into its own
+              horizontal scrollbar. minmax's floor is the stat table's own
+              min-width, so a column never gets narrower than a table needs. */}
+          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(29rem,1fr))]">
             <div className="flex flex-col gap-2">
               <PercentileRadarChart
                 title="Fantasy Profile"
