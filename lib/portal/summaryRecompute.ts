@@ -23,7 +23,13 @@ import {
   type PlayerSeasonSummary,
   type PlayerWindowStats,
 } from "@/lib/portal/playerMetrics";
-import { computeRadarValue, rankRadarValues, type RadarBandShape, type RadarDirection } from "@/lib/portal/radarScaling";
+import {
+  computeRadarValue,
+  percentileFromRank,
+  rankRadarValues,
+  type RadarBandShape,
+  type RadarDirection,
+} from "@/lib/portal/radarScaling";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 
 const PLAYER_ID_BATCH_SIZE = 50;
@@ -58,8 +64,10 @@ type RadarPoolPlayer = {
 
 type RadarDatum = {
   stat: string;
+  shortLabel?: string;
   rawValue: number;
   rank: number;
+  percentile: number;
   value: number;
 };
 
@@ -74,20 +82,6 @@ const fantasyMetrics: RadarMetric[] = [
   { label: "Avg Pts/Start", value: (s) => s.avg_pts_per_start },
   { label: "Ghost Pts/Start", value: (s) => s.avg_ghost_per_start },
   { label: "Games Started", value: (s) => s.total_games_started },
-];
-const attackingMetrics: RadarMetric[] = [
-  { label: "Goals", value: (s) => s.goals },
-  { label: "Assists", value: (s) => s.assists },
-  { label: "Key Passes", value: (s) => s.key_passes },
-  { label: "Shots on Target", value: (s) => s.shots_on_target },
-  { label: "Dribbles Succeeded", value: (s) => s.dribbles_succeeded },
-];
-const defensiveMetrics: RadarMetric[] = [
-  { label: "Tackles Won", value: (s) => s.tackles },
-  { label: "Interceptions", value: (s) => s.interceptions },
-  { label: "Clearances", value: (s) => s.clearances },
-  { label: "Aerials Won", value: (s) => s.aerials },
-  { label: "Clean Sheets", value: (s) => s.clean_sheets },
 ];
 const goalkeeperMetrics: RadarMetric[] = [
   { label: "Saves", value: (s) => s.saves },
@@ -112,7 +106,94 @@ function buildRadarDataset(
     const rank = ranks.get(playerId) ?? pool.length + 1;
     const rawValue = target ? value(target.summary) : 0;
 
-    return { stat: label, rawValue, rank, value: computeRadarValue(rank, pool.length, floorRank, direction, bandShape) };
+    return {
+      stat: label,
+      rawValue,
+      rank,
+      percentile: percentileFromRank(rank, pool.length),
+      value: computeRadarValue(rank, pool.length, floorRank, direction, bandShape),
+    };
+  });
+}
+
+// The merged "Stats" profile: one radar covering both attacking and
+// defensive output (replacing the old separate Attacking/Defensive radars),
+// stored once as season totals and once as per-90 rates. Every outfield
+// position gets the same universal stats; Clean Sheets and Goals Against
+// are added only where they actually affect that position's fantasy score
+// (see lib/csv/transform.ts's calcOutfielderPts: Clean Sheet scores 0 for
+// forwards, and the Goals Against penalty only applies to defenders).
+type OutfieldPosition = "DEF" | "MID" | "FWD";
+
+type StatsBase = {
+  goals: number;
+  assists: number;
+  keyPasses: number;
+  shotsOnTarget: number;
+  dribblesSucceeded: number;
+  accurateCrosses: number;
+  aerialsWon: number;
+  defCon: number;
+  cleanSheets: number;
+  goalsAgainstOutfield: number;
+  minutes: number;
+};
+
+type StatsPoolPlayer = {
+  id: string;
+  stats: StatsBase;
+};
+
+type StatsMetric = {
+  label: string;
+  shortLabel?: string;
+  value: (stats: StatsBase) => number;
+  direction?: RadarDirection;
+  positions?: OutfieldPosition[];
+};
+
+const STATS_METRICS: StatsMetric[] = [
+  { label: "Goals", value: (s) => s.goals },
+  { label: "Assists", value: (s) => s.assists },
+  { label: "Key Passes", shortLabel: "KP", value: (s) => s.keyPasses },
+  { label: "Shots on Target", shortLabel: "SOT", value: (s) => s.shotsOnTarget },
+  { label: "Dribbles Succeeded", shortLabel: "Drb", value: (s) => s.dribblesSucceeded },
+  { label: "Accurate Crosses", shortLabel: "Crs", value: (s) => s.accurateCrosses },
+  { label: "Aerials Won", shortLabel: "AER", value: (s) => s.aerialsWon },
+  { label: "DefCon", value: (s) => s.defCon },
+  // Clean Sheet scores for DEF and MID (not FWD) — see calcCleanSheetPts.
+  { label: "Clean Sheets", shortLabel: "CS", value: (s) => s.cleanSheets, positions: ["DEF", "MID"] },
+  // Goals Against (outfield) only affects a defender's score — see calcOutfielderPts's gaoPts.
+  {
+    label: "Goals Against",
+    shortLabel: "GA",
+    value: (s) => s.goalsAgainstOutfield,
+    direction: "lower_is_better",
+    positions: ["DEF"],
+  },
+];
+
+function statsMetricsForPosition(position: OutfieldPosition): StatsMetric[] {
+  return STATS_METRICS.filter((metric) => !metric.positions || metric.positions.includes(position));
+}
+
+function buildStatsRadarDataset(pool: StatsPoolPlayer[], playerId: string, metrics: StatsMetric[], perNinety: boolean): RadarDatum[] {
+  const target = pool.find((player) => player.id === playerId);
+
+  const metricValue = (player: StatsPoolPlayer, metric: StatsMetric): number => {
+    const total = metric.value(player.stats);
+    if (!perNinety) return total;
+    return player.stats.minutes > 0 ? Math.round(((total / player.stats.minutes) * 90) * 100) / 100 : 0;
+  };
+
+  return metrics.map((metric) => {
+    const direction = metric.direction ?? "higher_is_better";
+    const ranks = rankRadarValues(pool.map((player) => ({ id: player.id, value: metricValue(player, metric) })), direction);
+    const rank = ranks.get(playerId) ?? pool.length + 1;
+    const rawValue = target ? metricValue(target, metric) : 0;
+    const percentile = percentileFromRank(rank, pool.length);
+
+    return { stat: metric.label, shortLabel: metric.shortLabel, rawValue, rank, percentile, value: percentile };
   });
 }
 
@@ -312,6 +393,15 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
   const windowStatsToUpsert: ReturnType<typeof buildWindowStatsRow>[] = [];
   const radarPool: RadarPoolPlayer[] = [];
   const decoratedByPlayer = new Map<string, DecoratedGameweek[]>();
+  // Every outfield player, regardless of position, for the Stats radar's
+  // ranking pool. Deliberately not split by position: a stat like Key
+  // Passes or DefCon scores the same number of points no matter who earns
+  // it, so a defender who racks up a rare number of key passes — or a
+  // midfielder who tackles like a defender — should show up as genuinely
+  // elite against the whole outfield pool, not just against their own
+  // position (which axes are shown per position is a separate decision,
+  // handled by statsMetricsForPosition below).
+  const statsPool: StatsPoolPlayer[] = [];
 
   for (const player of players) {
     const rows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
@@ -319,14 +409,48 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
     const position = mapPosition(player.position);
     decoratedByPlayer.set(player.id, decorated);
 
+    let seasonWindowRow: ReturnType<typeof buildWindowStatsRow> | null = null;
+    let seasonGamesPlayed = 0;
+
     for (const window of WINDOW_KEYS) {
       const windowRows = windowRowsFor(decorated, window, latestGameweek);
       const seasonSummary = summarizePlayerSeason(windowRows);
       const windowStats = summarizePlayerWindow(windowRows, position);
-      windowStatsToUpsert.push(buildWindowStatsRow(player.id, season, window, windowStats, seasonSummary, windowRows));
+      const row = buildWindowStatsRow(player.id, season, window, windowStats, seasonSummary, windowRows);
+      windowStatsToUpsert.push(row);
+      if (window === "season") {
+        seasonWindowRow = row;
+        seasonGamesPlayed = seasonSummary.total_games_played;
+      }
     }
 
     radarPool.push({ id: player.id, position, summary: summarizePlayerSeason(decorated) });
+
+    // Guard rail: a player who hasn't played at all yet shouldn't count
+    // toward the Stats radar's ranking pool — otherwise a squad full of
+    // unused bench players dilutes what "elite" looks like for everyone
+    // who has actually played (the same fix applied to the
+    // Fantasy/Goalkeeper pools below). Appearing at all is enough here —
+    // a substitute with real minutes and real stats (e.g. a sub who's
+    // racked up key passes) shouldn't be excluded just for not starting.
+    if (position !== "GK" && seasonWindowRow && seasonGamesPlayed >= 1) {
+      statsPool.push({
+        id: player.id,
+        stats: {
+          goals: seasonWindowRow.goals,
+          assists: seasonWindowRow.assists,
+          keyPasses: seasonWindowRow.key_passes,
+          shotsOnTarget: seasonWindowRow.shots_on_target,
+          dribblesSucceeded: seasonWindowRow.dribbles_succeeded,
+          accurateCrosses: seasonWindowRow.accurate_crosses,
+          aerialsWon: seasonWindowRow.aerials_won,
+          defCon: seasonWindowRow.tackles_won + seasonWindowRow.interceptions + seasonWindowRow.clearances + seasonWindowRow.blocked_shots,
+          cleanSheets: seasonWindowRow.clean_sheets,
+          goalsAgainstOutfield: seasonWindowRow.goals_against_outfield,
+          minutes: seasonWindowRow.total_minutes,
+        },
+      });
+    }
   }
 
   for (let i = 0; i < windowStatsToUpsert.length; i += 500) {
@@ -337,10 +461,16 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
     }
   }
 
-  // Radar profiles are always season-scoped (matches prior Player Detail behaviour).
-  const outfieldRadarPool = radarPool.filter((player) => player.position !== "GK");
+  // Radar profiles are always season-scoped (matches prior Player Detail
+  // behaviour). A player must have played at all (started or come off the
+  // bench) to count toward either ranking pool — otherwise players who've
+  // never featured dilute what "elite" looks like for everyone who has
+  // actually played.
+  const outfieldRadarPool = radarPool.filter(
+    (player) => player.position !== "GK" && player.summary.total_games_played >= 1
+  );
   const goalkeeperRadarPool = radarPool.filter(
-    (player) => player.position === "GK" && player.summary.total_games_started >= 1
+    (player) => player.position === "GK" && player.summary.total_games_played >= 1
   );
 
   const radarRowsToUpsert: Array<{ player_id: string; season: string; profile: string; data: RadarDatum[]; computed_at: string }> = [];
@@ -364,19 +494,20 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
       computed_at: computedAt,
     });
 
-    if (!isGk) {
+    if (position !== "GK") {
+      const metrics = statsMetricsForPosition(position);
       radarRowsToUpsert.push({
         player_id: player.id,
         season,
-        profile: "attacking",
-        data: buildRadarDataset(outfieldRadarPool, player.id, attackingMetrics, 300),
+        profile: "stats_total",
+        data: buildStatsRadarDataset(statsPool, player.id, metrics, false),
         computed_at: computedAt,
       });
       radarRowsToUpsert.push({
         player_id: player.id,
         season,
-        profile: "defensive",
-        data: buildRadarDataset(outfieldRadarPool, player.id, defensiveMetrics, 300),
+        profile: "stats_per90",
+        data: buildStatsRadarDataset(statsPool, player.id, metrics, true),
         computed_at: computedAt,
       });
     } else {
