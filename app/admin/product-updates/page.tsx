@@ -1,0 +1,32 @@
+import ProductUpdatesClient from "./ProductUpdatesClient";
+import { isAdminEmail } from "@/lib/admin";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+export default async function ProductUpdatesPage() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !isAdminEmail(user.email)) {
+    return (
+      <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl rounded-xl border border-red-400/40 bg-red-950/20 p-6">
+          <h1 className="text-2xl font-bold">Admin Access Required</h1>
+          <p className="mt-2 text-sm text-brand-creamDark">Your account is not in `ADMIN_EMAILS`.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { data: updates, error } = await supabase
+    .from("product_updates")
+    .select("id, title, body, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Unable to load product updates: ${error.message}`);
+  }
+
+  return <ProductUpdatesClient initialUpdates={updates ?? []} />;
+}
