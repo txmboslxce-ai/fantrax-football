@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
 import PercentileRadarChart, { type RadarPlayerSeries, type RadarStatPoint } from "@/components/portal/charts/PercentileRadarChart";
 import PercentileStatsTable, { type StatTableRow } from "@/components/portal/charts/PercentileStatsTable";
@@ -251,40 +250,8 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
       </div>
 
       {selectedPlayers.length >= 2 && (
-        <>
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-            {selectedPlayers.map((player) => (
-              <article key={player.id} className="rounded-xl border border-slate-200 bg-white p-5 text-brand-dark">
-                <h2 className="inline-flex items-center gap-1 text-xl font-black">
-                  <span
-                    className="mr-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: colorByPlayerId.get(player.id) }}
-                  />
-                  <span>{player.name}</span>
-                  <AvailabilityIcon
-                    chanceOfPlaying={player.chanceOfPlaying}
-                    status={player.availabilityStatus}
-                    news={player.availabilityNews}
-                  />
-                  <RosterPill playerId={player.id} leagueRoster={leagueRoster} />
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {player.teamName} • {player.position}
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <p>Avg Pts/G: {player.avgPtsPerGame.toFixed(2)}</p>
-                  <p>Avg Pts/Start: {player.avgPtsPerStart.toFixed(2)}</p>
-                  <p>Ghost/Start: {player.ghostPtsPerStart.toFixed(2)}</p>
-                  <p>Next: {player.nextOpponent}</p>
-                </div>
-                <p className="mt-3 text-sm text-slate-600">
-                  {player.homePct.toFixed(1)}% home / {player.awayPct.toFixed(1)}% away
-                </p>
-              </article>
-            ))}
-          </div>
-
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <div className="flex flex-col gap-2">
               <PercentileRadarChart
                 title="Fantasy Profile"
@@ -295,7 +262,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
             </div>
 
             {showStatsRadar ? (
-              <div className="grid gap-4 lg:grid-cols-2">
+              <>
                 <div className="flex flex-col gap-2">
                   <PercentileRadarChart
                     title="Stats Profile (Season Total)"
@@ -312,7 +279,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
                   />
                   <PercentileStatsTable players={tablePlayers(statsPer90Series)} rows={buildTableRows("stats_per90", statsPer90Series)} percentileNote={PERCENTILE_NOTES.stats_per90} />
                 </div>
-              </div>
+              </>
             ) : null}
 
             {showGoalkeeperRadar ? (
@@ -321,15 +288,15 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
                 <PercentileStatsTable players={tablePlayers(goalkeeperSeries)} rows={buildTableRows("goalkeeper", goalkeeperSeries)} percentileNote={PERCENTILE_NOTES.goalkeeper} />
               </div>
             ) : null}
-
-            {mixedGkAndOutfield ? (
-              <p className="text-sm text-slate-500">
-                Goalkeepers and outfield players don&apos;t share a stats profile, so only the Fantasy chart above compares this mix. Select
-                all goalkeepers or all outfield players to see a Stats or Goalkeeping profile too.
-              </p>
-            ) : null}
           </div>
-        </>
+
+          {mixedGkAndOutfield ? (
+            <p className="text-sm text-slate-500">
+              Goalkeepers and outfield players don&apos;t share a stats profile, so only the Fantasy chart above compares this mix. Select
+              all goalkeepers or all outfield players to see a Stats or Goalkeeping profile too.
+            </p>
+          ) : null}
+        </div>
       )}
     </div>
   );

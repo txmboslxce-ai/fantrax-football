@@ -70,14 +70,25 @@ export default function PercentileStatsTable({ players, rows, percentileNote }: 
         <tbody>
           {rows.map((row, index) => {
             const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
+            // Highlight whichever player is actually ahead on this stat. We
+            // compare percentiles (not raw values) to pick the winner since
+            // percentile already accounts for stats where lower is better
+            // (e.g. Goals Against) - only bother when there's more than one
+            // player to compare, since with one player everything would tie.
+            const bestPercentile = players.length > 1 ? Math.max(...row.values.map((value) => value.percentile)) : null;
             return (
               <tr key={row.stat} className={`${rowShade} text-brand-dark`}>
                 <td className="border-t border-slate-100 px-3 py-1.5 font-semibold">{row.stat}</td>
                 {players.map((player) => {
                   const entry = row.values.find((value) => value.playerId === player.id);
+                  const isBest = bestPercentile != null && entry?.percentile === bestPercentile;
                   return (
                     <Fragment key={player.id}>
-                      <td className="border-t border-l border-slate-100 px-3 py-1.5 text-right font-semibold tabular-nums">
+                      <td
+                        className={`border-t border-l border-slate-100 px-3 py-1.5 text-right tabular-nums ${
+                          isBest ? "font-extrabold text-brand-green" : "font-semibold"
+                        }`}
+                      >
                         {formatValue(entry?.rawValue ?? 0, row.digits ?? 1)}
                       </td>
                       <td className="border-t border-slate-100 px-3 py-1.5 text-right tabular-nums">
