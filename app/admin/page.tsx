@@ -28,6 +28,11 @@ const adminLinks = [
     title: "Player Mapping",
     description: "Manually match FPL players to Fantrax players when the automatic sync can't.",
   },
+  {
+    href: "/admin/product-updates",
+    title: "Product Updates",
+    description: "Post what's new on the portal — shows up on the subscriber Dashboard.",
+  },
 ];
 
 export default async function AdminPage() {

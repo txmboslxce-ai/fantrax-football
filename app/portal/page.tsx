@@ -1,4 +1,16 @@
 import Link from "next/link";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+type ProductUpdate = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+};
+
+function formatUpdateDate(value: string): string {
+  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 
 const portalCards = [
   { href: "/portal/players", title: "Players", description: "Search and filter all 900+ players by position and form. Click any player for an in-depth profile including full stat history and gameweek breakdown." },
@@ -11,7 +23,16 @@ const portalCards = [
   { href: "/portal/advice", title: "Advice", description: "See how players' recent form stacks up against what their next opponent has been conceding — a quick way to spot a favorable matchup before you set your lineup." },
 ];
 
-export default function PortalPage() {
+export default async function PortalPage() {
+  const supabase = await createServerSupabaseClient();
+  const { data: updates } = await supabase
+    .from("product_updates")
+    .select("id, title, body, created_at")
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  const recentUpdates = (updates ?? []) as ProductUpdate[];
+
   return (
     <div className="space-y-8">
       <div>
@@ -20,6 +41,27 @@ export default function PortalPage() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex max-h-80 flex-col rounded-xl border border-brand-cream/25 bg-brand-dark p-6">
+          <h2 className="text-2xl font-bold text-brand-cream">What&apos;s New</h2>
+          <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-1">
+            {recentUpdates.length === 0 ? (
+              <p className="text-sm text-brand-creamDark">Nothing posted yet — check back soon.</p>
+            ) : (
+              recentUpdates.map((update) => (
+                <div key={update.id} className="border-t border-brand-cream/10 pt-3 first:border-t-0 first:pt-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-sm font-bold text-brand-cream">{update.title}</p>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-brand-creamDark">
+                      {formatUpdateDate(update.created_at)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-brand-creamDark">{update.body}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {portalCards.map((card) => (
           <Link
             key={card.title}
