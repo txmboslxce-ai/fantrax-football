@@ -5,14 +5,17 @@ import {
   formatFixed,
   mapPosition,
   nextFixtures,
-  summarizePlayerSeason,
   teamNameMap,
   type FixtureRow,
   type PlayerGameweekRow,
-  type PlayerSeasonSummary,
   type TeamRow,
 } from "@/lib/portal/playerMetrics";
-import { computeRadarValue, rankRadarValues, type RadarBandShape, type RadarDirection } from "@/lib/portal/radarScaling";
+import {
+  PLAYER_WINDOW_STATS_COLUMNS,
+  emptyWindowStatsRow,
+  toPlayerSeasonSummary,
+  type PlayerWindowStatsRow,
+} from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 import { resolvePortalSeason } from "@/lib/season/portal-season";
@@ -57,18 +60,6 @@ type PlayerDetailRow = {
   fpl_player_data: FplPlayerData | FplPlayerData[] | null;
 };
 
-type RadarMetric = {
-  label: string;
-  value: (summary: PlayerSeasonSummary) => number;
-  direction?: RadarDirection;
-};
-
-type RadarPoolPlayer = {
-  id: string;
-  position: "GK" | "DEF" | "MID" | "FWD";
-  summary: PlayerSeasonSummary;
-};
-
 type RadarDatum = {
   stat: string;
   rawValue: number;
@@ -76,27 +67,10 @@ type RadarDatum = {
   value: number;
 };
 
-const RADAR_PLAYER_GAMEWEEK_COLUMNS =
-  "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, goals_against_outfield, saves, key_passes, shots_on_target, tackles_won, interceptions, clearances, aerials_won, accurate_crosses, blocked_shots, dribbles_succeeded, dispossessed, penalties_drawn, penalties_missed, yellow_cards, red_cards, own_goals, subbed_on, subbed_off, penalty_saves, high_claims, smothers, corner_kicks, free_kick_shots";
-const RADAR_PLAYER_ID_BATCH_SIZE = 100;
-
-function buildRadarDataset(
-  pool: RadarPoolPlayer[],
-  playerId: string,
-  metrics: RadarMetric[],
-  floorRank: number,
-  bandShape: RadarBandShape = "skewed"
-): RadarDatum[] {
-  const target = pool.find((player) => player.id === playerId);
-
-  return metrics.map(({ label, value, direction = "higher_is_better" }) => {
-    const ranks = rankRadarValues(pool.map((player) => ({ id: player.id, value: value(player.summary) })), direction);
-    const rank = ranks.get(playerId) ?? pool.length + 1;
-    const rawValue = target ? value(target.summary) : 0;
-
-    return { stat: label, rawValue, rank, value: computeRadarValue(rank, pool.length, floorRank, direction, bandShape) };
-  });
-}
+type RadarProfileRow = {
+  profile: "fantasy" | "attacking" | "defensive" | "goalkeeper";
+  data: RadarDatum[];
+};
 
 function toNumber(value: number | string | null | undefined): number | null {
   if (typeof value === "number") {
@@ -238,107 +212,36 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const tableGameweeks = tableGameweeksResult?.data ?? gameweeks ?? [];
   const tableFixtures = tableFixturesResult?.data ?? teamFixtures ?? [];
 
-  const { data: radarPoolRows, error: radarPoolError } = await supabase
-    .from("season_player_pool")
-    .select("fantrax_id")
-    .eq("season", season);
+  // Radar chart rankings and fixture-difficulty rankings are precomputed
+  // league-wide by lib/portal/summaryRecompute.ts whenever scores sync —
+  // these are lookups scoped to this one player/team, not a
+  // recalculation across the whole pool.
+  const [radarProfilesResult, fdrResult, windowStatsResult] = await Promise.all([
+    supabase.from("player_radar_profiles").select("profile, data").eq("season", season).eq("player_id", id),
+    supabase.from("team_fixture_difficulty").select("team, rank").eq("season", tableSeason).eq("position", playerRow.position),
+    supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", season).eq("window", "season").eq("player_id", id).maybeSingle(),
+  ]);
 
-  if (radarPoolError) {
-    throw new Error(`Unable to load the ${season} radar player pool: ${radarPoolError.message}`);
+  if (radarProfilesResult.error) {
+    throw new Error(`Unable to load ${season} radar profile: ${radarProfilesResult.error.message}`);
+  }
+  if (fdrResult.error) {
+    throw new Error(`Unable to load ${tableSeason} fixture difficulty: ${fdrResult.error.message}`);
+  }
+  if (windowStatsResult.error) {
+    throw new Error(`Unable to load ${season} player summary: ${windowStatsResult.error.message}`);
   }
 
-  const radarPoolFantraxIds = (radarPoolRows ?? []).map((row) => row.fantrax_id as string);
-  const { data: radarPlayers, error: radarPlayersError } = await supabase
-    .from("players")
-    .select("id, team, position")
-    .in("fantrax_id", radarPoolFantraxIds)
-    .range(0, 40000);
-
-  if (radarPlayersError) {
-    throw new Error(`Unable to load ${season} radar players: ${radarPlayersError.message}`);
-  }
-
-  const radarPlayerIds = (radarPlayers ?? []).map((radarPlayer) => radarPlayer.id as string);
-  const radarGameweekResults = await Promise.all(
-    Array.from(
-      { length: Math.ceil(radarPlayerIds.length / RADAR_PLAYER_ID_BATCH_SIZE) },
-      (_, index) => radarPlayerIds.slice(index * RADAR_PLAYER_ID_BATCH_SIZE, (index + 1) * RADAR_PLAYER_ID_BATCH_SIZE)
-    ).map((playerIds) =>
-      supabase
-        .from("player_gameweeks")
-        .select(RADAR_PLAYER_GAMEWEEK_COLUMNS)
-        .eq("season", season)
-        .in("player_id", playerIds)
-        .gt("games_played", 0)
-        .range(0, 40000)
-    )
+  const radarProfileByKey = new Map<string, RadarDatum[]>(
+    ((radarProfilesResult.data ?? []) as RadarProfileRow[]).map((row) => [row.profile, row.data])
   );
 
-  const radarGameweeksError = radarGameweekResults.find((result) => result.error)?.error;
-  if (radarGameweeksError) {
-    throw new Error(`Unable to load ${season} radar player statistics: ${radarGameweeksError.message}`);
-  }
-
-  const radarRowsByPlayer = new Map<string, PlayerGameweekRow[]>();
-  for (const row of radarGameweekResults.flatMap((result) => (result.data ?? []) as PlayerGameweekRow[])) {
-    const rows = radarRowsByPlayer.get(row.player_id);
-    if (rows) {
-      rows.push(row);
-    } else {
-      radarRowsByPlayer.set(row.player_id, [row]);
-    }
-  }
-
-  const radarPool: RadarPoolPlayer[] = (radarPlayers ?? []).map((radarPlayer) => {
-    const position = mapPosition(radarPlayer.position as string);
-    const rows = decorateGameweeks(radarRowsByPlayer.get(radarPlayer.id as string) ?? [], radarPlayer.team as string, []);
-    return { id: radarPlayer.id as string, position, summary: summarizePlayerSeason(rows) };
-  });
-
-  // FDR: fetch all started rows for the selected table season (position filtered in JS below)
-  type FdrGameweekRow = {
-    gameweek: number;
-    raw_fantrax_pts: number | string | null;
-    players: { team: string; position: string } | Array<{ team: string; position: string }> | null;
-  };
-  const { data: fdrGameweeks } = await supabase
-    .from("player_gameweeks")
-    .select("gameweek, raw_fantrax_pts, players!inner(team, position)")
-    .eq("season", tableSeason)
-    .gte("games_started", 1)
-    .gt("games_played", 0);
-
-  // Build gameweek:team → opponents[] map from all season fixtures
-  const opponentsByGwAndTeam = new Map<string, string[]>();
-  for (const fixture of tableFixtures as FixtureRow[]) {
-    const homeKey = `${fixture.gameweek}:${fixture.home_team}`;
-    const awayKey = `${fixture.gameweek}:${fixture.away_team}`;
-    if (!opponentsByGwAndTeam.has(homeKey)) opponentsByGwAndTeam.set(homeKey, []);
-    opponentsByGwAndTeam.get(homeKey)!.push(fixture.away_team);
-    if (!opponentsByGwAndTeam.has(awayKey)) opponentsByGwAndTeam.set(awayKey, []);
-    opponentsByGwAndTeam.get(awayKey)!.push(fixture.home_team);
-  }
-
-  // Accumulate raw_fantrax_pts per opponent for this player's position only
-  const opponentTotals = new Map<string, { pts: number; starts: number }>();
-  for (const row of (fdrGameweeks ?? []) as FdrGameweekRow[]) {
-    const rowPlayer = Array.isArray(row.players) ? row.players[0] : row.players;
-    if (!rowPlayer || rowPlayer.position !== playerRow.position) continue;
-    const pts = Number(row.raw_fantrax_pts ?? 0);
-    for (const opp of opponentsByGwAndTeam.get(`${row.gameweek}:${rowPlayer.team}`) ?? []) {
-      const entry = opponentTotals.get(opp) ?? { pts: 0, starts: 0 };
-      entry.pts += pts;
-      entry.starts += 1;
-      opponentTotals.set(opp, entry);
-    }
-  }
-
-  // Rank ascending: 1 = hardest (fewest pts conceded per start), 20 = easiest
   const fdrRankByTeam: Record<string, number> = {};
-  [...opponentTotals.entries()]
-    .map(([team, { pts, starts }]) => ({ team, avg: starts > 0 ? pts / starts : 0 }))
-    .sort((a, b) => a.avg - b.avg)
-    .forEach(({ team }, idx) => { fdrRankByTeam[team] = idx + 1; });
+  for (const row of (fdrResult.data ?? []) as Array<{ team: string; rank: number }>) {
+    fdrRankByTeam[row.team] = row.rank;
+  }
+
+  const summary = toPlayerSeasonSummary((windowStatsResult.data as PlayerWindowStatsRow | null) ?? emptyWindowStatsRow(id, season, "season"));
 
   const fplData = Array.isArray(playerRow.fpl_player_data) ? playerRow.fpl_player_data[0] : playerRow.fpl_player_data;
   const xgPer90 = toNumber(fplData?.expected_goals_per_90);
@@ -362,51 +265,12 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   );
   const decorated = decorateGameweeks((gameweeks ?? []) as PlayerGameweekRow[], playerRow.team, fixturesForTeam);
   const tableDecorated = decorateGameweeks(tableGameweeks as PlayerGameweekRow[], playerRow.team, tableFixturesForTeam);
-  const summary = summarizePlayerSeason(decorated);
   const playerPosition = mapPosition(playerRow.position);
-  const outfieldRadarPool = radarPool.filter((radarPlayer) => radarPlayer.position !== "GK");
-  const goalkeeperRadarPool = radarPool.filter(
-    (radarPlayer) => radarPlayer.position === "GK" && radarPlayer.summary.total_games_started >= 1
-  );
-  const fantasyMetrics: RadarMetric[] = [
-    { label: "Season Pts", value: (playerSummary) => playerSummary.season_total_pts },
-    { label: "Avg Pts/Start", value: (playerSummary) => playerSummary.avg_pts_per_start },
-    { label: "Ghost Pts/Start", value: (playerSummary) => playerSummary.avg_ghost_per_start },
-    { label: "Games Started", value: (playerSummary) => playerSummary.total_games_started },
-  ];
-  const attackingMetrics: RadarMetric[] = [
-    { label: "Goals", value: (playerSummary) => playerSummary.goals },
-    { label: "Assists", value: (playerSummary) => playerSummary.assists },
-    { label: "Key Passes", value: (playerSummary) => playerSummary.key_passes },
-    { label: "Shots on Target", value: (playerSummary) => playerSummary.shots_on_target },
-    { label: "Dribbles Succeeded", value: (playerSummary) => playerSummary.dribbles_succeeded },
-  ];
-  const defensiveMetrics: RadarMetric[] = [
-    { label: "Tackles Won", value: (playerSummary) => playerSummary.tackles },
-    { label: "Interceptions", value: (playerSummary) => playerSummary.interceptions },
-    { label: "Clearances", value: (playerSummary) => playerSummary.clearances },
-    { label: "Aerials Won", value: (playerSummary) => playerSummary.aerials },
-    { label: "Clean Sheets", value: (playerSummary) => playerSummary.clean_sheets },
-  ];
-  const goalkeeperMetrics: RadarMetric[] = [
-    { label: "Saves", value: (playerSummary) => playerSummary.saves },
-    { label: "Clean Sheets", value: (playerSummary) => playerSummary.clean_sheets },
-    { label: "Penalty Saves", value: (playerSummary) => playerSummary.penalty_saves },
-    { label: "High Claims", value: (playerSummary) => playerSummary.high_claims },
-    { label: "Smothers", value: (playerSummary) => playerSummary.smothers },
-    { label: "Goals Against", value: (playerSummary) => playerSummary.goals_against, direction: "lower_is_better" },
-  ];
   const radarDatasets = {
-    fantasy: buildRadarDataset(
-      playerPosition === "GK" ? goalkeeperRadarPool : outfieldRadarPool,
-      playerRow.id,
-      fantasyMetrics,
-      playerPosition === "GK" ? 35 : 300,
-      playerPosition === "GK" ? "even" : "skewed"
-    ),
-    attacking: playerPosition === "GK" ? null : buildRadarDataset(outfieldRadarPool, playerRow.id, attackingMetrics, 300),
-    defensive: playerPosition === "GK" ? null : buildRadarDataset(outfieldRadarPool, playerRow.id, defensiveMetrics, 300),
-    goalkeeper: playerPosition === "GK" ? buildRadarDataset(goalkeeperRadarPool, playerRow.id, goalkeeperMetrics, 35, "even") : null,
+    fantasy: radarProfileByKey.get("fantasy") ?? [],
+    attacking: playerPosition === "GK" ? null : radarProfileByKey.get("attacking") ?? [],
+    defensive: playerPosition === "GK" ? null : radarProfileByKey.get("defensive") ?? [],
+    goalkeeper: playerPosition === "GK" ? radarProfileByKey.get("goalkeeper") ?? [] : null,
   };
   const radarCharts = (
     <div className={playerPosition === "GK" ? "grid h-full gap-4 sm:grid-cols-2" : "grid h-full gap-4 sm:grid-cols-2 xl:grid-cols-3"}>

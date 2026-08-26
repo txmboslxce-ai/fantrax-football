@@ -1,10 +1,10 @@
+import { mapPosition, type PlayerWindowStats } from "@/lib/portal/playerMetrics";
 import {
-  decorateGameweeks,
-  mapPosition,
-  summarizePlayerWindow,
-  type PlayerGameweekRow,
-  type PlayerWindowStats,
-} from "@/lib/portal/playerMetrics";
+  PLAYER_WINDOW_STATS_COLUMNS,
+  emptyWindowStatsRow,
+  toPlayerWindowStats,
+  type PlayerWindowStatsRow,
+} from "@/lib/portal/summaryAdapters";
 import { DRAFT_POOL_SEASON, DRAFT_STATS_SEASON } from "@/lib/season/draft";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -39,10 +39,6 @@ type DraftPlayer = {
   tier: number | null;
   tierOrder: number | null;
 };
-
-const PLAYER_GAMEWEEK_QUERY_COLUMNS =
-  "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won, corner_kicks, free_kick_shots";
-const PLAYER_ID_BATCH_SIZE = 100;
 
 function normalizeAdp(value: unknown): number | null {
   const parsed = Number(value);
@@ -118,41 +114,28 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
     return [];
   }
 
-  const playerIdBatches = Array.from(
-    { length: Math.ceil(playerIds.length / PLAYER_ID_BATCH_SIZE) },
-    (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
-  );
+  // Draft Tool always shows season-window stats from DRAFT_STATS_SEASON,
+  // precomputed by lib/portal/summaryRecompute.ts — this is a lookup, not
+  // a recalculation across the whole draft pool.
+  const { data: windowRows, error: windowError } = await supabase
+    .from("player_window_stats")
+    .select(PLAYER_WINDOW_STATS_COLUMNS)
+    .eq("season", DRAFT_STATS_SEASON)
+    .eq("window", "season")
+    .in("player_id", playerIds);
 
-  const gameweekResults = await Promise.all(
-    playerIdBatches.map((playerIdBatch) =>
-      supabase
-        .from("player_gameweeks")
-        .select(PLAYER_GAMEWEEK_QUERY_COLUMNS)
-        .eq("season", DRAFT_STATS_SEASON)
-        .in("player_id", playerIdBatch)
-        .range(0, 40000)
-    )
-  );
-
-  const gameweeksError = gameweekResults.find((result) => result.error)?.error;
-
-  if (gameweeksError) {
-    throw new Error(`Unable to load ${DRAFT_STATS_SEASON} player statistics: ${gameweeksError.message}`);
+  if (windowError) {
+    throw new Error(`Unable to load ${DRAFT_STATS_SEASON} player statistics: ${windowError.message}`);
   }
-  const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
-  for (const row of gameweekResults.flatMap((result) => (result.data ?? []) as PlayerGameweekRow[])) {
-    const existing = rowsByPlayer.get(row.player_id);
-    if (existing) {
-      existing.push(row);
-    } else {
-      rowsByPlayer.set(row.player_id, [row]);
-    }
-  }
+
+  const windowRowByPlayer = new Map<string, PlayerWindowStatsRow>(
+    ((windowRows ?? []) as PlayerWindowStatsRow[]).map((row) => [row.player_id, row])
+  );
 
   const unrankedPlayers = playerRows.map((player) => {
     const fplData = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
     const position = mapPosition(player.position);
-    const decoratedRows = decorateGameweeks(rowsByPlayer.get(player.id) ?? [], player.team, []);
+    const windowRow = windowRowByPlayer.get(player.id) ?? emptyWindowStatsRow(player.id, DRAFT_STATS_SEASON, "season");
     return {
       id: player.id,
       fantrax_id: player.fantrax_id,
@@ -168,11 +151,11 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
       chanceOfPlaying: fplData?.chance_of_playing_next_round ?? null,
       availabilityStatus: fplData?.status ?? null,
       availabilityNews: fplData?.news ?? null,
-      stats: summarizePlayerWindow(decoratedRows, position),
-      corners: decoratedRows.reduce((sum, row) => sum + row.corner_kicks, 0),
-      freeKickShots: decoratedRows.reduce((sum, row) => sum + row.free_kick_shots, 0),
-      goals: decoratedRows.reduce((sum, row) => sum + row.goals, 0),
-      assists: decoratedRows.reduce((sum, row) => sum + row.assists, 0),
+      stats: toPlayerWindowStats(windowRow),
+      corners: windowRow.corner_kicks,
+      freeKickShots: windowRow.free_kick_shots,
+      goals: windowRow.goals,
+      assists: windowRow.assists,
       adp: adpByFantraxId.get(player.fantrax_id) ?? null,
       rank: 0,
       picked: false,

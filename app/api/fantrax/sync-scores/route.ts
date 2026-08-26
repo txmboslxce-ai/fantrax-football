@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { FANTRAX_POSITIONS, getCurrentGameweek, syncFantraxScores } from "@/lib/fantrax/sync-scores";
+import { recomputePlayerSummaries } from "@/lib/portal/summaryRecompute";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -100,6 +101,8 @@ export async function POST(request: Request) {
       for (const positionGroup of positionGroups) {
         results.push(await syncFantraxScores(gameweek, positionGroup, requestedSeason || undefined));
       }
+
+      await recomputePlayerSummaries(targetSeason);
 
       if (!syncAllPositions) {
         return NextResponse.json({ success: true, ...results[0] });
