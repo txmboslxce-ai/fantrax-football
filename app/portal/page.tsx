@@ -60,6 +60,13 @@ export default async function PortalPage() {
               ))
             )}
           </div>
+          <Link
+            href="/portal/updates"
+            prefetch={false}
+            className="mt-3 shrink-0 border-t border-amber-400/20 pt-3 text-xs font-semibold uppercase tracking-wide text-amber-300 transition-colors hover:text-amber-200"
+          >
+            View all updates &rarr;
+          </Link>
         </div>
 
         {portalCards.map((card) => (
