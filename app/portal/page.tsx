@@ -41,7 +41,7 @@ export default async function PortalPage() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="flex max-h-80 flex-col rounded-xl border border-amber-400/50 bg-amber-500/10 p-6">
+        <div className="flex max-h-80 flex-col rounded-xl border-2 border-amber-400/70 bg-brand-dark p-6">
           <h2 className="text-2xl font-bold text-amber-200">What&apos;s New</h2>
           <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-1">
             {recentUpdates.length === 0 ? (
