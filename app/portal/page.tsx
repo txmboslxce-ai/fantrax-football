@@ -1,16 +1,9 @@
 import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-type ProductUpdate = {
-  id: string;
+type LatestUpdate = {
   title: string;
-  body: string;
-  created_at: string;
 };
-
-function formatUpdateDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
 
 const portalCards = [
   { href: "/portal/players", title: "Players", description: "Search and filter all 900+ players by position and form. Click any player for an in-depth profile including full stat history and gameweek breakdown." },
@@ -27,41 +20,31 @@ export default async function PortalPage() {
   const supabase = await createServerSupabaseClient();
   const { data: latestUpdateRow } = await supabase
     .from("product_updates")
-    .select("id, title, body, created_at")
+    .select("title")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  const latestUpdate = latestUpdateRow as ProductUpdate | null;
+  const latestUpdate = latestUpdateRow as LatestUpdate | null;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Dashboard</h1>
-        <p className="mt-2 text-sm text-brand-dark/70">Your Draft Academical subscriber portal.</p>
-      </div>
-
-      <div className="flex flex-col gap-4 rounded-xl border-2 border-amber-400/70 bg-brand-dark p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <span className="text-xs font-bold uppercase tracking-widest text-amber-300">What&apos;s New</span>
-          {latestUpdate ? (
-            <>
-              <p className="mt-1 text-lg font-bold text-brand-cream">{latestUpdate.title}</p>
-              <p className="mt-1 line-clamp-2 text-sm text-brand-creamDark">{latestUpdate.body}</p>
-              <p className="mt-1 text-[10px] uppercase tracking-wide text-brand-creamDark/70">
-                {formatUpdateDate(latestUpdate.created_at)}
-              </p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-brand-creamDark">Nothing posted yet — check back soon.</p>
-          )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Dashboard</h1>
+          <p className="mt-2 text-sm text-brand-dark/70">Your Draft Academical subscriber portal.</p>
         </div>
+
         <Link
           href="/portal/updates"
           prefetch={false}
-          className="shrink-0 rounded-md border border-amber-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-amber-300 transition-colors hover:bg-amber-500/10 hover:text-amber-200"
+          className="flex min-w-0 shrink-0 items-center gap-2 rounded-full border border-amber-400/60 bg-brand-dark px-4 py-1.5 text-xs transition-colors hover:bg-amber-500/10"
         >
-          View all updates &rarr;
+          <span className="shrink-0 font-bold uppercase tracking-wide text-amber-300">What&apos;s New</span>
+          <span className="truncate text-brand-creamDark">
+            {latestUpdate ? latestUpdate.title : "Nothing posted yet"}
+          </span>
+          <span className="shrink-0 text-amber-300">&rarr;</span>
         </Link>
       </div>
 
