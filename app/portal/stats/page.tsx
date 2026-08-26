@@ -5,10 +5,9 @@ import { getWatchlistData } from "@/lib/portal/watchlist";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { resolvePortalSeason } from "@/lib/season/portal-season";
 import {
-  PLAYER_WINDOW_STATS_COLUMNS,
   emptyWindowStatsRow,
+  fetchPlayerWindowStatsByPlayerId,
   toStatsWindowRow,
-  type PlayerWindowStatsRow,
   type StatsWindowRow,
 } from "@/lib/portal/summaryAdapters";
 
@@ -94,21 +93,11 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
   // Season totals and box-score breakdowns are precomputed by
   // lib/portal/summaryRecompute.ts whenever scores sync — this is a
   // lookup, not a recalculation across the whole pool.
-  const [windowResult, leagueRoster, watchlistData] = await Promise.all([
-    playerIds.length > 0
-      ? supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", SEASON).eq("stat_window", "season").in("player_id", playerIds)
-      : Promise.resolve({ data: [], error: null }),
+  const [windowRowByPlayer, leagueRoster, watchlistData] = await Promise.all([
+    fetchPlayerWindowStatsByPlayerId(SEASON, "season", playerIds),
     user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
     user ? getWatchlistData(user.id) : Promise.resolve({ watchlistedIds: [], orderById: {} }),
   ]);
-
-  if (windowResult.error) {
-    throw new Error(`Unable to load ${SEASON} player summaries: ${windowResult.error.message}`);
-  }
-
-  const windowRowByPlayer = new Map<string, PlayerWindowStatsRow>(
-    ((windowResult.data ?? []) as PlayerWindowStatsRow[]).map((row) => [row.player_id, row])
-  );
 
   let latestGameweek = 0;
   for (const row of windowRowByPlayer.values()) {

@@ -1,10 +1,5 @@
 import { mapPosition, type PlayerWindowStats } from "@/lib/portal/playerMetrics";
-import {
-  PLAYER_WINDOW_STATS_COLUMNS,
-  emptyWindowStatsRow,
-  toPlayerWindowStats,
-  type PlayerWindowStatsRow,
-} from "@/lib/portal/summaryAdapters";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsByPlayerId, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { DRAFT_POOL_SEASON, DRAFT_STATS_SEASON } from "@/lib/season/draft";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -117,20 +112,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   // Draft Tool always shows season-window stats from DRAFT_STATS_SEASON,
   // precomputed by lib/portal/summaryRecompute.ts — this is a lookup, not
   // a recalculation across the whole draft pool.
-  const { data: windowRows, error: windowError } = await supabase
-    .from("player_window_stats")
-    .select(PLAYER_WINDOW_STATS_COLUMNS)
-    .eq("season", DRAFT_STATS_SEASON)
-    .eq("stat_window", "season")
-    .in("player_id", playerIds);
-
-  if (windowError) {
-    throw new Error(`Unable to load ${DRAFT_STATS_SEASON} player statistics: ${windowError.message}`);
-  }
-
-  const windowRowByPlayer = new Map<string, PlayerWindowStatsRow>(
-    ((windowRows ?? []) as PlayerWindowStatsRow[]).map((row) => [row.player_id, row])
-  );
+  const windowRowByPlayer = await fetchPlayerWindowStatsByPlayerId(DRAFT_STATS_SEASON, "season", playerIds);
 
   const unrankedPlayers = playerRows.map((player) => {
     const fplData = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;

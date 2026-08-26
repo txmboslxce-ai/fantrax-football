@@ -4,12 +4,7 @@ import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
 import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
 import { mapPosition, type PlayerTableWindowKey, type PlayerWindowStats } from "@/lib/portal/playerMetrics";
-import {
-  PLAYER_WINDOW_STATS_COLUMNS,
-  emptyWindowStatsRow,
-  toPlayerWindowStats,
-  type PlayerWindowStatsRow,
-} from "@/lib/portal/summaryAdapters";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsByPlayerId, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { getWatchlistData } from "@/lib/portal/watchlist";
@@ -111,20 +106,7 @@ async function getPlayersTableData(season: string): Promise<PlayersTableData> {
   // Season totals, per-start averages, and points-source breakdowns are
   // precomputed by lib/portal/summaryRecompute.ts whenever scores sync —
   // this is a lookup, not a recalculation across the whole pool.
-  const { data: windowRows, error: windowError } = await supabase
-    .from("player_window_stats")
-    .select(PLAYER_WINDOW_STATS_COLUMNS)
-    .eq("season", season)
-    .eq("stat_window", "season")
-    .in("player_id", playerIds);
-
-  if (windowError) {
-    throw new Error(`Unable to load ${season} player summaries: ${windowError.message}`);
-  }
-
-  const windowRowByPlayer = new Map<string, PlayerWindowStatsRow>(
-    (windowRows ?? []).map((row) => [row.player_id as string, row as PlayerWindowStatsRow])
-  );
+  const windowRowByPlayer = await fetchPlayerWindowStatsByPlayerId(season, "season", playerIds);
 
   let latestGameweek = 0;
   for (const row of windowRowByPlayer.values()) {

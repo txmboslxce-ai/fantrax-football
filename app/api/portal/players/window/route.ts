@@ -1,9 +1,4 @@
-import {
-  PLAYER_WINDOW_STATS_COLUMNS,
-  emptyWindowStatsRow,
-  toPlayerWindowStats,
-  type PlayerWindowStatsRow,
-} from "@/lib/portal/summaryAdapters";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsByPlayerId, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
@@ -59,20 +54,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ statsByPlayerId: {} });
   }
 
-  const { data: windowRows, error: windowError } = await supabase
-    .from("player_window_stats")
-    .select(PLAYER_WINDOW_STATS_COLUMNS)
-    .eq("season", season)
-    .eq("stat_window", window)
-    .in("player_id", playerIds);
-
-  if (windowError) {
-    return NextResponse.json({ message: windowError.message }, { status: 500 });
+  let windowRowByPlayer;
+  try {
+    windowRowByPlayer = await fetchPlayerWindowStatsByPlayerId(season, window, playerIds);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load player summaries.";
+    return NextResponse.json({ message }, { status: 500 });
   }
-
-  const windowRowByPlayer = new Map<string, PlayerWindowStatsRow>(
-    ((windowRows ?? []) as PlayerWindowStatsRow[]).map((row) => [row.player_id, row])
-  );
 
   const statsByPlayerId = Object.fromEntries(
     playerIds.map((playerId) => [
