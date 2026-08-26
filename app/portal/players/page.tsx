@@ -3,15 +3,8 @@ import FixturePlannerClient from "@/app/portal/players/FixturePlannerClient";
 import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
 import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
-import {
-  decorateGameweeks,
-  mapPosition,
-  summarizePlayerWindow,
-  type FixtureRow,
-  type PlayerGameweekRow,
-  type PlayerTableWindowKey,
-  type PlayerWindowStats,
-} from "@/lib/portal/playerMetrics";
+import { mapPosition, type PlayerTableWindowKey, type PlayerWindowStats } from "@/lib/portal/playerMetrics";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { getWatchlistData } from "@/lib/portal/watchlist";
@@ -58,10 +51,7 @@ const PLAYER_TABS: Array<{ key: PlayersTabKey; label: string }> = [
   { key: "fixtures", label: "Fixture Planner" },
 ];
 
-const PLAYER_ID_BATCH_SIZE = 100;
 const FIXTURE_PLANNER_SEASON = "2026-27";
-const PLAYER_GAMEWEEK_QUERY_COLUMNS =
-  "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won";
 
 function parseOwnership(value: string | null): number {
   if (!value) {
@@ -84,10 +74,12 @@ function toTabKey(value: string | string[] | undefined): PlayersTabKey {
 async function getPlayersTableData(season: string): Promise<PlayersTableData> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: poolRows, error: poolError } = await supabase
-    .from("season_player_pool")
-    .select("fantrax_id")
-    .eq("season", season);
+  // The summary lookup only needs `season`, not the pool/player rows
+  // below, so it can run alongside them instead of waiting in line.
+  const [{ data: poolRows, error: poolError }, windowRowByPlayer] = await Promise.all([
+    supabase.from("season_player_pool").select("fantrax_id").eq("season", season),
+    fetchPlayerWindowStatsBySeason(season, "season"),
+  ]);
 
   if (poolError) {
     throw new Error(`Unable to load the ${season} player pool: ${poolError.message}`);
@@ -113,63 +105,9 @@ async function getPlayersTableData(season: string): Promise<PlayersTableData> {
     return { players: [], latestGameweek: 0 };
   }
 
-  const playerIdBatches = Array.from(
-    { length: Math.ceil(playerIds.length / PLAYER_ID_BATCH_SIZE) },
-    (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
-  );
-
-  const [gameweekResults, fixturesResult] = await Promise.all([
-    Promise.all(
-      playerIdBatches.map((playerIdBatch) =>
-        supabase
-          .from("player_gameweeks")
-          .select(PLAYER_GAMEWEEK_QUERY_COLUMNS)
-          .eq("season", season)
-          .in("player_id", playerIdBatch)
-          .range(0, 40000)
-      )
-    ),
-    supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", season),
-  ]);
-
-  const gameweeksError = gameweekResults.find((result) => result.error)?.error;
-  const fixturesError = fixturesResult.error;
-  if (gameweeksError) {
-    throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
-  }
-  if (fixturesError) {
-    throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
-  }
-
-  const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
   let latestGameweek = 0;
-
-  for (const row of gameweekResults.flatMap((result) => (result.data ?? []) as PlayerGameweekRow[])) {
-    latestGameweek = Math.max(latestGameweek, row.gameweek);
-    const existing = rowsByPlayer.get(row.player_id);
-    if (existing) {
-      existing.push(row);
-      continue;
-    }
-
-    rowsByPlayer.set(row.player_id, [row]);
-  }
-
-  const fixturesByTeam = new Map<string, FixtureRow[]>();
-  for (const fixture of (fixturesResult.data ?? []) as FixtureRow[]) {
-    const homeTeamFixtures = fixturesByTeam.get(fixture.home_team);
-    if (homeTeamFixtures) {
-      homeTeamFixtures.push(fixture);
-    } else {
-      fixturesByTeam.set(fixture.home_team, [fixture]);
-    }
-
-    const awayTeamFixtures = fixturesByTeam.get(fixture.away_team);
-    if (awayTeamFixtures) {
-      awayTeamFixtures.push(fixture);
-    } else {
-      fixturesByTeam.set(fixture.away_team, [fixture]);
-    }
+  for (const row of windowRowByPlayer.values()) {
+    latestGameweek = Math.max(latestGameweek, row.current_gameweek);
   }
 
   const records = ((players ?? []) as Array<{
@@ -193,8 +131,7 @@ async function getPlayersTableData(season: string): Promise<PlayersTableData> {
   }>)
     .map((player) => {
       const position = mapPosition(player.position);
-      const playerRows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
-      const decoratedRows = decorateGameweeks(playerRows, player.team, fixturesByTeam.get(player.team) ?? []);
+      const windowRow = windowRowByPlayer.get(player.id) ?? emptyWindowStatsRow(player.id, season, "season");
       const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
 
       return {
@@ -206,7 +143,7 @@ async function getPlayersTableData(season: string): Promise<PlayersTableData> {
         chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
         availabilityStatus: availabilityRaw?.status ?? null,
         availabilityNews: availabilityRaw?.news ?? null,
-        windows: { season: summarizePlayerWindow(decoratedRows, position) },
+        windows: { season: toPlayerWindowStats(windowRow) },
       };
     })
     .sort((a, b) => b.windows.season!.season_pts - a.windows.season!.season_pts);
@@ -223,11 +160,14 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
-    : { data: null };
   const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
-  const { availableSeasons, season } = await resolvePortalSeason(supabase, requestedSeason);
+
+  // Neither of these depends on the other's result, so they don't need
+  // to wait in line — only the profile lookup itself needs `user`.
+  const [{ data: profile }, { availableSeasons, season }] = await Promise.all([
+    user ? supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    resolvePortalSeason(supabase, requestedSeason),
+  ]);
 
   const [playersTableData, formData, leagueRoster, watchlistData] = await Promise.all([
     activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),

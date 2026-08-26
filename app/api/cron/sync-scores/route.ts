@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { FANTRAX_POSITIONS, getCurrentGameweek, syncFantraxScores } from "@/lib/fantrax/sync-scores";
 import { getCurrentSeason } from "@/lib/season/current";
+import { recomputePlayerSummaries } from "@/lib/portal/summaryRecompute";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
+
+// The recompute step at the end of this route can take a while as the
+// season's gameweek count grows — give this route more room than the
+// platform default before it gets killed. Vercel caps this to whatever
+// the hosting plan allows, so it's safe to ask for more than needed.
+export const maxDuration = 300;
 
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -61,6 +68,48 @@ export async function GET(request: Request) {
 
     if (heartbeatError) {
       throw new Error(`Unable to write score-sync heartbeat: ${heartbeatError.message}`);
+    }
+
+    // Recompute the precomputed Players/Stats/Draft Tool/Player Detail
+    // summaries for this season now that new scores have landed. This is
+    // logged as its own job so a recompute failure (stale summaries) is
+    // visible separately from a raw score-sync failure.
+    try {
+      await recomputePlayerSummaries(season);
+      const recomputeNow = new Date().toISOString();
+      await supabase.from("sync_log").upsert(
+        {
+          job: "player-summary-recompute",
+          last_run_at: recomputeNow,
+          last_success_at: recomputeNow,
+          status: "success",
+          gameweek,
+          error: null,
+        },
+        { onConflict: "job" }
+      );
+    } catch (recomputeError) {
+      // Raw scores synced fine — only the recompute step failed. Log and
+      // report that distinctly instead of falling into the catch block
+      // below, which would otherwise overwrite the "fantrax-score-sync"
+      // heartbeat we just marked as successful.
+      const recomputeMessage =
+        recomputeError instanceof Error ? recomputeError.message : "Failed to recompute player summaries.";
+      await supabase.from("sync_log").upsert(
+        {
+          job: "player-summary-recompute",
+          last_run_at: new Date().toISOString(),
+          status: "error",
+          gameweek,
+          error: recomputeMessage,
+        },
+        { onConflict: "job" }
+      );
+
+      return NextResponse.json(
+        { ok: false, season, gameweek, positionsSynced, error: `Scores synced but summary recompute failed: ${recomputeMessage}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true, season, gameweek, positionsSynced, error: null });
