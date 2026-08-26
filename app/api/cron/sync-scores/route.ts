@@ -4,6 +4,12 @@ import { getCurrentSeason } from "@/lib/season/current";
 import { recomputePlayerSummaries } from "@/lib/portal/summaryRecompute";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 
+// The recompute step at the end of this route can take a while as the
+// season's gameweek count grows — give this route more room than the
+// platform default before it gets killed. Vercel caps this to whatever
+// the hosting plan allows, so it's safe to ask for more than needed.
+export const maxDuration = 300;
+
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {

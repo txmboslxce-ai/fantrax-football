@@ -3,6 +3,12 @@ import { isAdminEmail } from "@/lib/admin";
 import { recomputePlayerSummaries } from "@/lib/portal/summaryRecompute";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+// A full, completed season can take a while to recompute (see
+// lib/portal/summaryRecompute.ts) — give this route more room than the
+// platform default before it gets killed. Vercel caps this to whatever
+// the hosting plan allows, so it's safe to ask for more than needed.
+export const maxDuration = 300;
+
 // Manual/backfill trigger for the precomputed Players/Stats/Draft
 // Tool/Player Detail summary tables. The 6-hourly score sync already
 // triggers this automatically for whatever season it just synced — this

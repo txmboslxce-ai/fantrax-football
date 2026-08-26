@@ -26,7 +26,7 @@ import {
 import { computeRadarValue, rankRadarValues, type RadarBandShape, type RadarDirection } from "@/lib/portal/radarScaling";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 
-const PLAYER_ID_BATCH_SIZE = 100;
+const PLAYER_ID_BATCH_SIZE = 50;
 
 // The full set of player_gameweeks columns needed across every calculation
 // below (this matches RADAR_PLAYER_GAMEWEEK_COLUMNS from the old Player
@@ -285,19 +285,24 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
     (_, index) => playerIds.slice(index * PLAYER_ID_BATCH_SIZE, (index + 1) * PLAYER_ID_BATCH_SIZE)
   );
 
-  const gameweekResults = await Promise.all(
-    playerIdBatches.map((batch) =>
-      supabase.from("player_gameweeks").select(FULL_GAMEWEEK_COLUMNS).eq("season", season).in("player_id", batch).range(0, 40000)
-    )
-  );
-  const gameweeksError = gameweekResults.find((result) => result.error)?.error;
-  if (gameweeksError) {
-    throw new Error(`Unable to load ${season} player gameweeks: ${gameweeksError.message}`);
+  // Fetched one batch at a time rather than all at once: for a full,
+  // completed season (38 gameweeks x hundreds of players) firing every
+  // batch concurrently competes for the database's query capacity and
+  // can get individual queries killed by its statement timeout. A
+  // one-time admin backfill can afford to take longer in exchange for
+  // not timing out.
+  const gameweekRows: PlayerGameweekRow[] = [];
+  for (const batch of playerIdBatches) {
+    const { data, error } = await supabase.from("player_gameweeks").select(FULL_GAMEWEEK_COLUMNS).eq("season", season).in("player_id", batch).range(0, 40000);
+    if (error) {
+      throw new Error(`Unable to load ${season} player gameweeks: ${error.message}`);
+    }
+    gameweekRows.push(...((data ?? []) as PlayerGameweekRow[]));
   }
 
   const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
   let latestGameweek = 0;
-  for (const row of gameweekResults.flatMap((result) => (result.data ?? []) as PlayerGameweekRow[])) {
+  for (const row of gameweekRows) {
     latestGameweek = Math.max(latestGameweek, row.gameweek);
     const existing = rowsByPlayer.get(row.player_id);
     if (existing) existing.push(row);

@@ -5,6 +5,12 @@ import { recomputePlayerSummaries } from "@/lib/portal/summaryRecompute";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+// The recompute step this route triggers can take a while as the
+// season's gameweek count grows — give this route more room than the
+// platform default before it gets killed. Vercel caps this to whatever
+// the hosting plan allows, so it's safe to ask for more than needed.
+export const maxDuration = 300;
+
 async function isAuthorizedAdmin() {
   const supabase = await createServerSupabaseClient();
   const {
