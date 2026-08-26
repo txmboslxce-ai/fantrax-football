@@ -58,7 +58,13 @@ export default function PercentileRadarChart({ title, caption, players, height =
 
     for (const player of players) {
       const point = player.data[index];
-      row[player.id] = point?.value ?? 0;
+      // Floor the plotted radius just above zero. In a radar chart, r=0 is
+      // the exact same pixel (the chart's center) no matter which spoke it's
+      // on, so a 0-value stat's dot lands dead-center and looks like a stray
+      // extra dot unconnected to any spoke. A small floor keeps it visibly
+      // out on its own spoke instead. Only the plotted position is floored -
+      // the percentile number and dot color still show the true value.
+      row[player.id] = Math.max(point?.value ?? 0, 4);
       row[`${player.id}__pct`] = point?.percentile ?? 0;
       row[`${player.id}__raw`] = point?.rawValue ?? 0;
     }

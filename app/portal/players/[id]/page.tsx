@@ -375,8 +375,8 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
 
   return (
       <div className="space-y-6">
-        <div className="grid gap-4 xl:grid-cols-4">
-        <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6 xl:col-span-3">
+        <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -410,7 +410,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             </article>
           ) : null}
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <article className="rounded-lg border border-brand-cream/20 bg-brand-green/20 px-3 py-2">
               <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Season Points</p>
               <p className="mt-0.5 text-xl font-black">{formatFixed(summary.season_total_pts, 2)}</p>

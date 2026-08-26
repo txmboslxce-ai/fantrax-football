@@ -28,18 +28,26 @@ const EVEN_RANK_BANDS = [
 
 export function rankRadarValues(values: RankedValue[], direction: RadarDirection = "higher_is_better"): Map<string, number> {
   const ranks = new Map<string, number>();
-  let rank = 0;
-  let previousValue: number | undefined;
+  const sorted = [...values].sort((a, b) => direction === "higher_is_better" ? b.value - a.value : a.value - b.value);
 
-  [...values]
-    .sort((a, b) => direction === "higher_is_better" ? b.value - a.value : a.value - b.value)
-    .forEach((entry, index) => {
-      if (index === 0 || entry.value !== previousValue) {
-        rank = index + 1;
-        previousValue = entry.value;
-      }
-      ranks.set(entry.id, rank);
-    });
+  let index = 0;
+  while (index < sorted.length) {
+    let end = index + 1;
+    while (end < sorted.length && sorted[end].value === sorted[index].value) {
+      end += 1;
+    }
+    // Fractional ("mid") rank: everyone tied at the same value shares the
+    // average rank of the whole tied block, not the best rank in it. Without
+    // this, a value shared by most of the pool (e.g. "0 goals") would let
+    // every one of those players inherit the rank of the best player in that
+    // huge tied group, producing an unrealistically high percentile for an
+    // extremely common result.
+    const averageRank = (index + 1 + end) / 2;
+    for (let i = index; i < end; i += 1) {
+      ranks.set(sorted[i].id, averageRank);
+    }
+    index = end;
+  }
 
   return ranks;
 }
