@@ -297,7 +297,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const selfSeries = (data: RadarDatum[]) => [{ id: playerRow.id, name: playerRow.name, color: "#005B3A", data }];
 
   const radarCharts = (
-    <div className={isGoalkeeper ? "grid h-full gap-4 sm:grid-cols-2" : "grid h-full gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
+    <div className={isGoalkeeper ? "grid gap-4 sm:grid-cols-2" : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
       <div className="flex flex-col gap-2">
         <PercentileRadarChart
           title="Fantasy Profile"
