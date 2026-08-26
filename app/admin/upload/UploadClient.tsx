@@ -75,6 +75,15 @@ type MultiPositionSyncResponse = {
   message?: string;
 };
 
+type RecomputeSummariesResponse = {
+  success: boolean;
+  season?: string;
+  playersProcessed?: number;
+  radarProfilesWritten?: number;
+  fdrRowsWritten?: number;
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -656,6 +665,80 @@ function AdpRefreshPanel() {
   );
 }
 
+function RecomputeSummariesPanel({ defaultSeason, seasons }: { defaultSeason: string; seasons: string[] }) {
+  const [season, setSeason] = useState(defaultSeason);
+  const [isRecomputing, setIsRecomputing] = useState(false);
+  const [result, setResult] = useState<RecomputeSummariesResponse | null>(null);
+
+  async function handleRecompute() {
+    setIsRecomputing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/recompute-summaries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ season }),
+      });
+      setResult((await response.json()) as RecomputeSummariesResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Recompute failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsRecomputing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Recompute Player Summaries</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Rebuilds the precomputed Season/Last 5/Last 10 stats, radar chart rankings, and fixture-difficulty rankings that the
+        Players, Stats, Draft Tool, and Player Detail pages read from — for the selected season only. This recalculates from
+        scores already saved in the database; it does not re-download anything from Fantrax. Runs automatically after every
+        score sync — use this to backfill a season for the first time, or to re-run one manually.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <label className="block text-sm font-semibold text-brand-cream">Season</label>
+        <select
+          value={season}
+          onChange={(event) => setSeason(event.target.value)}
+          className="mt-2 w-full rounded-md border border-brand-cream/30 bg-brand-dark px-3 py-2 text-brand-cream sm:w-64"
+        >
+          {seasons.map((availableSeason) => (
+            <option key={availableSeason} value={availableSeason}>
+              {availableSeason}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={handleRecompute}
+          disabled={isRecomputing}
+          className="mt-4 rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isRecomputing ? `Recomputing ${season}...` : `Recompute ${season}`}
+        </button>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <p className="font-semibold">
+                {result.season}: {result.playersProcessed ?? 0} players recomputed, {result.radarProfilesWritten ?? 0} radar
+                profiles written, {result.fdrRowsWritten ?? 0} fixture-difficulty rows written.
+              </p>
+            ) : (
+              <p>{result.message ?? "Recompute failed."}</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function UploadClient({ defaultSeason, seasons }: { defaultSeason: string; seasons: string[] }) {
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
@@ -669,6 +752,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
         <FantraxPlayerSyncPanel seasons={seasons} defaultSeason={defaultSeason} />
         <MultiPositionSyncPanel />
         <AdpRefreshPanel />
+        <RecomputeSummariesPanel defaultSeason={defaultSeason} seasons={seasons} />
         <FplSyncNowPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
