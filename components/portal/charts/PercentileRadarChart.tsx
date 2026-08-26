@@ -81,7 +81,7 @@ export default function PercentileRadarChart({ title, caption, players, height =
       <div className="mt-2" style={{ height }}>
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={mergedData} outerRadius="66%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
+            <RadarChart data={mergedData} outerRadius="78%" margin={{ top: 4, right: 12, bottom: 4, left: 12 }}>
               <PolarGrid stroke="#CBD5E1" />
               <PolarAngleAxis
                 dataKey="axisLabel"
