@@ -3,38 +3,11 @@
 import { useMemo, useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
-import { computeRadarValue } from "@/lib/portal/radarScaling";
+import PercentileRadarChart, { type RadarPlayerSeries, type RadarStatPoint } from "@/components/portal/charts/PercentileRadarChart";
+import PercentileStatsTable, { type StatTableRow } from "@/components/portal/charts/PercentileStatsTable";
+import { digitsForRadarStat, type RadarDatum, type RadarProfileKey } from "@/lib/portal/radarTypes";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
-import { Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
-
-type ComparePlayerSnapshot = {
-  id: string;
-  name: string;
-  team: string;
-  teamName: string;
-  position: "GK" | "DEF" | "MID" | "FWD";
-  chanceOfPlaying: number | null;
-  availabilityStatus: string | null;
-  availabilityNews: string | null;
-  avgPtsPerGame: number;
-  avgPtsPerStart: number;
-  ghostPtsPerStart: number;
-  nextOpponent: string;
-  homePct: number;
-  awayPct: number;
-  comparison: {
-    seasonPts: number;
-    avgGw: number;
-    avgStart: number;
-    ghostGw: number;
-    ghostStart: number;
-    goals: number;
-    assists: number;
-    cleanSheets: number;
-    homeAvg: number;
-    awayAvg: number;
-  };
-};
+import type { ComparePlayerSnapshot } from "@/app/portal/compare/page";
 
 type CompareClientProps = {
   players: ComparePlayerSnapshot[];
@@ -46,32 +19,63 @@ type CompareSlot = {
   label: string;
 };
 
-const rows: Array<{ label: string; key: keyof ComparePlayerSnapshot["comparison"] }> = [
-  { label: "Season Pts", key: "seasonPts" },
-  { label: "Avg/GW", key: "avgGw" },
-  { label: "Avg/Start", key: "avgStart" },
-  { label: "Ghost Pts/GW", key: "ghostGw" },
-  { label: "Ghost/Start", key: "ghostStart" },
-  { label: "Goals", key: "goals" },
-  { label: "Assists", key: "assists" },
-  { label: "Clean Sheets", key: "cleanSheets" },
-  { label: "Home Avg", key: "homeAvg" },
-  { label: "Away Avg", key: "awayAvg" },
-];
-
-const radarStats: Array<{ label: string; key: keyof ComparePlayerSnapshot["comparison"] }> = [
-  { label: "Season Pts", key: "seasonPts" },
-  { label: "Avg/Start", key: "avgStart" },
-  { label: "Ghost/Start", key: "ghostStart" },
-  { label: "Goals", key: "goals" },
-  { label: "Assists", key: "assists" },
-  { label: "Clean Sheets", key: "cleanSheets" },
-];
-
-const radarColors = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
+const PLAYER_COLORS = ["#005B3A", "#1D4ED8", "#DC2626", "#7E22CE"];
 
 function playerLabel(player: ComparePlayerSnapshot): string {
   return `${player.name} (${player.team})`;
+}
+
+// Different positions carry different Stats-radar axes (see
+// lib/portal/summaryRecompute.ts's STATS_METRICS) — comparing a defender
+// against a forward only makes sense on the stats they both actually have,
+// so the chart falls back to whichever axes every selected player shares.
+function commonStatLabels(datasets: RadarDatum[][]): string[] {
+  if (datasets.length === 0) return [];
+  const [first, ...rest] = datasets;
+  return first.map((point) => point.stat).filter((stat) => rest.every((data) => data.some((point) => point.stat === stat)));
+}
+
+function alignToStats(data: RadarDatum[], stats: string[]): RadarStatPoint[] {
+  return stats.map((stat) => {
+    const point = data.find((entry) => entry.stat === stat);
+    return {
+      stat,
+      shortLabel: point?.shortLabel,
+      rawValue: point?.rawValue ?? 0,
+      percentile: point?.percentile ?? 0,
+      value: point?.value ?? 0,
+    };
+  });
+}
+
+function buildSeries(
+  profile: RadarProfileKey,
+  playersSubset: ComparePlayerSnapshot[],
+  colorByPlayerId: Map<string, string>
+): RadarPlayerSeries[] {
+  const datasets = playersSubset.map((player) => player.radarProfiles[profile] ?? []);
+  const statLabels = commonStatLabels(datasets);
+
+  return playersSubset.map((player) => ({
+    id: player.id,
+    name: player.name,
+    color: colorByPlayerId.get(player.id) ?? PLAYER_COLORS[0],
+    data: alignToStats(player.radarProfiles[profile] ?? [], statLabels),
+  }));
+}
+
+function buildTableRows(profile: RadarProfileKey, series: RadarPlayerSeries[]): StatTableRow[] {
+  if (series.length === 0 || series[0].data.length === 0) return [];
+
+  return series[0].data.map((_, statIndex) => ({
+    stat: series[0].data[statIndex].stat,
+    digits: digitsForRadarStat(profile, series[0].data[statIndex].stat),
+    values: series.map((playerSeries) => ({
+      playerId: playerSeries.id,
+      rawValue: playerSeries.data[statIndex]?.rawValue ?? 0,
+      percentile: playerSeries.data[statIndex]?.percentile ?? 0,
+    })),
+  }));
 }
 
 function SearchablePlayerPicker({
@@ -159,57 +163,36 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
     [players, slots]
   );
 
-  const radarRanksByPlayerId = useMemo(() => {
-    const ranksByPlayerId = new Map<string, Partial<Record<keyof ComparePlayerSnapshot["comparison"], number>>>();
-    const outfieldPlayers = players.filter((player) => player.position !== "GK");
-
-    for (const player of outfieldPlayers) {
-      ranksByPlayerId.set(player.id, {});
-    }
-
-    for (const { key } of radarStats) {
-      let rank = 0;
-      let previousValue: number | undefined;
-
-      [...outfieldPlayers]
-        .sort((a, b) => b.comparison[key] - a.comparison[key])
-        .forEach((player, index) => {
-          const value = player.comparison[key];
-          if (index === 0 || value !== previousValue) {
-            rank = index + 1;
-            previousValue = value;
-          }
-          ranksByPlayerId.get(player.id)![key] = rank;
-        });
-    }
-
-    return ranksByPlayerId;
-  }, [players]);
-
-  const radarPlayers = useMemo(
-    () => selectedPlayers.filter((player) => player.position !== "GK"),
+  const colorByPlayerId = useMemo(
+    () => new Map(selectedPlayers.map((player, index) => [player.id, PLAYER_COLORS[index % PLAYER_COLORS.length]])),
     [selectedPlayers]
   );
 
-  const radarData = useMemo(
-    () => {
-      if (radarPlayers.length < 2) {
-        return [];
-      }
+  const outfieldSelected = selectedPlayers.filter((player) => player.position !== "GK");
+  const goalkeepersSelected = selectedPlayers.filter((player) => player.position === "GK");
+  const showStatsRadar = selectedPlayers.length >= 2 && goalkeepersSelected.length === 0;
+  const showGoalkeeperRadar = selectedPlayers.length >= 2 && outfieldSelected.length === 0;
+  const mixedGkAndOutfield = selectedPlayers.length >= 2 && outfieldSelected.length > 0 && goalkeepersSelected.length > 0;
 
-      return radarStats.map(({ label, key }) => {
-        const dataPoint: Record<string, string | number> = { stat: label };
-
-        radarPlayers.forEach((player) => {
-          const rank = radarRanksByPlayerId.get(player.id)?.[key] ?? 301;
-          dataPoint[player.name] = computeRadarValue(rank, players.length, 300);
-        });
-
-        return dataPoint;
-      });
-    },
-    [players, radarPlayers, radarRanksByPlayerId]
+  const fantasySeries = useMemo(
+    () => (selectedPlayers.length >= 2 ? buildSeries("fantasy", selectedPlayers, colorByPlayerId) : []),
+    [selectedPlayers, colorByPlayerId]
   );
+  const statsTotalSeries = useMemo(
+    () => (showStatsRadar ? buildSeries("stats_total", outfieldSelected, colorByPlayerId) : []),
+    [showStatsRadar, outfieldSelected, colorByPlayerId]
+  );
+  const statsPer90Series = useMemo(
+    () => (showStatsRadar ? buildSeries("stats_per90", outfieldSelected, colorByPlayerId) : []),
+    [showStatsRadar, outfieldSelected, colorByPlayerId]
+  );
+  const goalkeeperSeries = useMemo(
+    () => (showGoalkeeperRadar ? buildSeries("goalkeeper", goalkeepersSelected, colorByPlayerId) : []),
+    [showGoalkeeperRadar, goalkeepersSelected, colorByPlayerId]
+  );
+
+  const tablePlayers = (series: RadarPlayerSeries[]) =>
+    series.map((entry) => ({ id: entry.id, name: entry.name, color: entry.color }));
 
   function updateSlot(index: number, nextSlot: CompareSlot) {
     setSlots((current) => current.map((slot, slotIndex) => (slotIndex === index ? nextSlot : slot)));
@@ -266,6 +249,10 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
             {selectedPlayers.map((player) => (
               <article key={player.id} className="rounded-xl border border-slate-200 bg-white p-5 text-brand-dark">
                 <h2 className="inline-flex items-center gap-1 text-xl font-black">
+                  <span
+                    className="mr-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: colorByPlayerId.get(player.id) }}
+                  />
                   <span>{player.name}</span>
                   <AvailabilityIcon
                     chanceOfPlaying={player.chanceOfPlaying}
@@ -290,84 +277,50 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5">
-            <div>
-              <h2 className="text-lg font-black text-brand-dark">Player profile comparison</h2>
-              {radarPlayers.length >= 2 ? (
-                <p className="mt-1 text-sm text-slate-500">Outfield players ranked 1st to 300th, banded from elite (outer edge) to below-average (center).</p>
-              ) : null}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <PercentileRadarChart
+                title="Fantasy Profile"
+                caption="Ranked against the same guard-railed pool used on each player's own page."
+                players={fantasySeries}
+              />
+              <PercentileStatsTable players={tablePlayers(fantasySeries)} rows={buildTableRows("fantasy", fantasySeries)} />
             </div>
-            {radarPlayers.length >= 2 ? (
-              <div className="h-96 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData} outerRadius="68%">
-                    <PolarGrid stroke="#CBD5E1" />
-                    <PolarAngleAxis dataKey="stat" tick={{ fill: "#475569", fontSize: 12 }} />
-                    <PolarRadiusAxis domain={[0, 100]} tick={false} />
-                    {radarPlayers.map((player, index) => (
-                      <Radar
-                        key={player.id}
-                        name={player.name}
-                        dataKey={player.name}
-                        stroke={radarColors[index]}
-                        fill={radarColors[index]}
-                        fillOpacity={0.1}
-                        strokeWidth={2}
-                      />
-                    ))}
-                    <Legend />
-                  </RadarChart>
-                </ResponsiveContainer>
+
+            {showStatsRadar ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <PercentileRadarChart
+                    title="Stats Profile (Season Total)"
+                    caption="Only axes every selected player shares are shown."
+                    players={statsTotalSeries}
+                  />
+                  <PercentileStatsTable players={tablePlayers(statsTotalSeries)} rows={buildTableRows("stats_total", statsTotalSeries)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <PercentileRadarChart
+                    title="Stats Profile (Per 90)"
+                    caption="Same stats, adjusted for minutes played."
+                    players={statsPer90Series}
+                  />
+                  <PercentileStatsTable players={tablePlayers(statsPer90Series)} rows={buildTableRows("stats_per90", statsPer90Series)} />
+                </div>
               </div>
-            ) : (
-              <p className="py-12 text-sm text-slate-500">Radar comparison isn&apos;t available for goalkeepers yet — select at least 2 outfield players to see this chart.</p>
-            )}
-          </section>
+            ) : null}
 
-          <div className="min-w-0 max-w-full overflow-x-auto">
-            <div className="w-max rounded-xl border border-slate-200 bg-white">
-              <table className="w-max text-left text-sm text-brand-dark">
-              <thead className="bg-brand-green text-brand-cream">
-                <tr>
-                  <th className="w-32 min-w-32 px-4 py-3">Stat</th>
-                  {selectedPlayers.map((player) => (
-                    <th key={player.id} className="w-40 min-w-40 whitespace-nowrap px-4 py-3">
-                      <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                        <span>{player.name}</span>
-                        <AvailabilityIcon
-                          chanceOfPlaying={player.chanceOfPlaying}
-                          status={player.availabilityStatus}
-                          news={player.availabilityNews}
-                        />
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => {
-                  const values = selectedPlayers.map((player) => player.comparison[row.key]);
-                  const bestValue = Math.max(...values);
+            {showGoalkeeperRadar ? (
+              <div className="flex flex-col gap-2">
+                <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against starting goalkeepers." players={goalkeeperSeries} />
+                <PercentileStatsTable players={tablePlayers(goalkeeperSeries)} rows={buildTableRows("goalkeeper", goalkeeperSeries)} />
+              </div>
+            ) : null}
 
-                  return (
-                    <tr
-                      key={row.key}
-                      className={index % 2 === 0 ? "bg-white text-brand-dark" : "bg-slate-50 text-brand-dark"}
-                    >
-                      <td className="w-32 min-w-32 px-4 py-3 font-semibold">{row.label}</td>
-                      {values.map((value, valueIndex) => (
-                      <td key={`${row.key}-${selectedPlayers[valueIndex].id}`} className={`w-40 min-w-40 px-4 py-3 ${value === bestValue ? "font-bold text-brand-green" : ""}`}>
-                          {value.toFixed(2)}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          </div>
+            {mixedGkAndOutfield ? (
+              <p className="text-sm text-slate-500">
+                Goalkeepers and outfield players don&apos;t share a stats profile, so only the Fantasy chart above compares this mix. Select
+                all goalkeepers or all outfield players to see a Stats or Goalkeeping profile too.
+              </p>
+            ) : null}
           </div>
         </>
       )}

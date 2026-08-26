@@ -1,20 +1,17 @@
 import CompareClient from "@/app/portal/compare/CompareClient";
+import { mapPosition, nextFixtures, teamNameMap, type FixtureRow, type TeamRow } from "@/lib/portal/playerMetrics";
 import {
-  decorateGameweeks,
-  mapPosition,
-  nextFixtures,
-  summarizePlayerSeason,
-  teamNameMap,
-  type FixtureRow,
-  type PlayerGameweekRow,
-  type PlayerRow,
-  type TeamRow,
-} from "@/lib/portal/playerMetrics";
+  fetchPlayerRadarProfilesBySeason,
+  fetchPlayerWindowStatsBySeason,
+  emptyWindowStatsRow,
+  type RadarDatum,
+  type RadarProfileKey,
+} from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 
-type ComparePlayerSnapshot = {
+export type ComparePlayerSnapshot = {
   id: string;
   name: string;
   team: string;
@@ -41,6 +38,7 @@ type ComparePlayerSnapshot = {
     homeAvg: number;
     awayAvg: number;
   };
+  radarProfiles: Partial<Record<RadarProfileKey, RadarDatum[]>>;
 };
 
 export default async function ComparePage() {
@@ -53,52 +51,42 @@ export default async function ComparePage() {
     : { data: null };
   const SEASON = await getCurrentSeason(supabase);
 
-  const { data: poolRows, error: poolError } = await supabase
-    .from("season_player_pool")
-    .select("fantrax_id")
-    .eq("season", SEASON);
-
-  if (poolError) {
-    throw new Error(`Unable to load the ${SEASON} player pool: ${poolError.message}`);
-  }
-
-  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
-
+  // None of these four depend on each other's result.
   const [
-    { data: players, error: playersError },
-    { data: gameweeks, error: gameweeksError },
+    { data: poolRows, error: poolError },
+    windowRowByPlayer,
+    radarProfilesByPlayer,
     { data: fixtures, error: fixturesError },
     { data: teams, error: teamsError },
   ] = await Promise.all([
-    supabase
-      .from("players")
-      .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
-      .in("fantrax_id", poolFantraxIds)
-      .order("name")
-      .range(0, 40000),
-    supabase
-      .from("player_gameweeks")
-      .select(
-        "id, player_id, season, gameweek, games_played, games_started, minutes_played, raw_fantrax_pts, ghost_pts, goals, assists, clean_sheet, goals_against, saves, key_passes, tackles_won, interceptions, clearances, aerials_won"
-      )
-      .eq("season", SEASON)
-      .gt("games_played", 0)
-      .range(0, 40000),
+    supabase.from("season_player_pool").select("fantrax_id").eq("season", SEASON),
+    fetchPlayerWindowStatsBySeason(SEASON, "season"),
+    fetchPlayerRadarProfilesBySeason(SEASON),
     supabase.from("fixtures").select("id, season, gameweek, home_team, away_team").eq("season", SEASON),
     supabase.from("teams").select("abbrev, name, full_name"),
   ]);
 
-  if (playersError) {
-    throw new Error(`Unable to load players: ${playersError.message}`);
-  }
-  if (gameweeksError) {
-    throw new Error(`Unable to load player gameweeks: ${gameweeksError.message}`);
+  if (poolError) {
+    throw new Error(`Unable to load the ${SEASON} player pool: ${poolError.message}`);
   }
   if (fixturesError) {
     throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
   }
   if (teamsError) {
     throw new Error(`Unable to load teams: ${teamsError.message}`);
+  }
+
+  const poolFantraxIds = (poolRows ?? []).map((row) => row.fantrax_id as string);
+
+  const { data: players, error: playersError } = await supabase
+    .from("players")
+    .select("id, name, team, position, fpl_player_data(chance_of_playing_next_round, status, news)")
+    .in("fantrax_id", poolFantraxIds)
+    .order("name")
+    .range(0, 40000);
+
+  if (playersError) {
+    throw new Error(`Unable to load players: ${playersError.message}`);
   }
 
   const teamNames = teamNameMap((teams ?? []) as TeamRow[]);
@@ -114,35 +102,27 @@ export default async function ComparePage() {
     fixturesByTeam.get(fixture.away_team)?.push(fixture);
   }
 
-  const rowsByPlayer = new Map<string, PlayerGameweekRow[]>();
-  for (const row of (gameweeks ?? []) as PlayerGameweekRow[]) {
-    if (!rowsByPlayer.has(row.player_id)) {
-      rowsByPlayer.set(row.player_id, []);
-    }
-    rowsByPlayer.get(row.player_id)?.push(row);
-  }
-
-  const snapshots: ComparePlayerSnapshot[] = ((players ?? []) as Array<
-    PlayerRow & {
-      fpl_player_data:
-        | {
-            chance_of_playing_next_round: number | null;
-            status: string | null;
-            news: string | null;
-          }
-        | Array<{
-            chance_of_playing_next_round: number | null;
-            status: string | null;
-            news: string | null;
-          }>
-        | null;
-    }
-  >).map((player) => {
-    const playerRows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
+  const snapshots: ComparePlayerSnapshot[] = ((players ?? []) as Array<{
+    id: string;
+    name: string;
+    team: string;
+    position: string;
+    fpl_player_data:
+      | {
+          chance_of_playing_next_round: number | null;
+          status: string | null;
+          news: string | null;
+        }
+      | Array<{
+          chance_of_playing_next_round: number | null;
+          status: string | null;
+          news: string | null;
+        }>
+      | null;
+  }>).map((player) => {
+    const windowRow = windowRowByPlayer.get(player.id) ?? emptyWindowStatsRow(player.id, SEASON, "season");
     const playerFixtures = fixturesByTeam.get(player.team) ?? [];
-    const decorated = decorateGameweeks(playerRows, player.team, playerFixtures);
-    const summary = summarizePlayerSeason(decorated);
-    const next = nextFixtures(player.team, playerFixtures, summary.current_gameweek, teamNames, 1)[0];
+    const next = nextFixtures(player.team, playerFixtures, windowRow.current_gameweek, teamNames, 1)[0];
     const availabilityRaw = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
 
     return {
@@ -154,24 +134,25 @@ export default async function ComparePage() {
       chanceOfPlaying: availabilityRaw?.chance_of_playing_next_round ?? null,
       availabilityStatus: availabilityRaw?.status ?? null,
       availabilityNews: availabilityRaw?.news ?? null,
-      avgPtsPerGame: summary.avg_pts_per_game,
-      avgPtsPerStart: summary.avg_pts_per_start,
-      ghostPtsPerStart: summary.avg_ghost_per_start,
+      avgPtsPerGame: windowRow.avg_pts_per_game,
+      avgPtsPerStart: windowRow.season_avg_pts_per_start,
+      ghostPtsPerStart: windowRow.season_avg_ghost_per_start,
       nextOpponent: next ? `${next.opponentName} ${next.isHome ? "(H)" : "(A)"}` : "TBD",
-      homePct: summary.home_pct,
-      awayPct: summary.away_pct,
+      homePct: windowRow.home_pct,
+      awayPct: windowRow.away_pct,
       comparison: {
-        seasonPts: summary.season_total_pts,
-        avgGw: summary.avg_pts_per_gameweek,
-        avgStart: summary.avg_pts_per_start,
-        ghostGw: summary.avg_ghost_per_gameweek,
-        ghostStart: summary.avg_ghost_per_start,
-        goals: summary.goals,
-        assists: summary.assists,
-        cleanSheets: summary.clean_sheets,
-        homeAvg: summary.home_avg,
-        awayAvg: summary.away_avg,
+        seasonPts: windowRow.season_pts,
+        avgGw: windowRow.avg_pts_per_gameweek,
+        avgStart: windowRow.season_avg_pts_per_start,
+        ghostGw: windowRow.avg_ghost_per_gameweek,
+        ghostStart: windowRow.season_avg_ghost_per_start,
+        goals: windowRow.goals,
+        assists: windowRow.assists,
+        cleanSheets: windowRow.clean_sheets,
+        homeAvg: windowRow.home_avg,
+        awayAvg: windowRow.away_avg,
       },
+      radarProfiles: radarProfilesByPlayer.get(player.id) ?? {},
     };
   });
   const leagueRoster = user

@@ -44,6 +44,17 @@ export function rankRadarValues(values: RankedValue[], direction: RadarDirection
   return ranks;
 }
 
+// A plain percentile (100 = best in the pool, 0 = worst), independent of
+// the skewed rank-band scaling below. `rank` may exceed `poolSize` — that's
+// the sentinel used for a player who isn't a member of the ranking pool at
+// all (e.g. hasn't played), and is clamped to "last place" here rather than
+// allowed to go negative.
+export function percentileFromRank(rank: number, poolSize: number): number {
+  if (poolSize <= 1) return 100;
+  const clampedRank = Math.min(Math.max(rank, 1), poolSize);
+  return Math.round(((poolSize - clampedRank) / (poolSize - 1)) * 100);
+}
+
 export function computeRadarValue(
   rank: number,
   poolSize: number,

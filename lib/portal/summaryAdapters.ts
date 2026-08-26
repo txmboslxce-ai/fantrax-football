@@ -5,7 +5,10 @@
 // place means every page's displayed numbers keep coming from the same
 // column, however many pages read it.
 import type { PlayerSeasonSummary, PlayerWindowStats } from "@/lib/portal/playerMetrics";
+import { type RadarDatum, type RadarProfileKey } from "@/lib/portal/radarTypes";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+export { digitsForRadarStat, type RadarDatum, type RadarProfileKey } from "@/lib/portal/radarTypes";
 
 export type PlayerWindowStatsRow = {
   player_id: string;
@@ -296,6 +299,36 @@ export function toStatsWindowRow(row: PlayerWindowStatsRow): StatsWindowRow {
     corner_kicks: row.corner_kicks,
     free_kick_shots: row.free_kick_shots,
   };
+}
+
+// Every player in this season's pool has up to 4 precomputed radar rows
+// (fantasy + stats_total + stats_per90 for outfield, fantasy + goalkeeper
+// for keepers) — fetched once for the whole pool here, same reasoning as
+// fetchPlayerWindowStatsBySeason above, so pages that need more than one
+// player's radar data (e.g. Compare) don't have to round-trip per player.
+export async function fetchPlayerRadarProfilesBySeason(
+  season: string
+): Promise<Map<string, Partial<Record<RadarProfileKey, RadarDatum[]>>>> {
+  const byPlayerId = new Map<string, Partial<Record<RadarProfileKey, RadarDatum[]>>>();
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("player_radar_profiles")
+    .select("player_id, profile, data")
+    .eq("season", season)
+    .range(0, 40000);
+
+  if (error) {
+    throw new Error(`Unable to load ${season} radar profiles: ${error.message}`);
+  }
+
+  for (const row of (data ?? []) as Array<{ player_id: string; profile: RadarProfileKey; data: RadarDatum[] }>) {
+    const existing = byPlayerId.get(row.player_id) ?? {};
+    existing[row.profile] = row.data;
+    byPlayerId.set(row.player_id, existing);
+  }
+
+  return byPlayerId;
 }
 
 export function toPlayerSeasonSummary(row: PlayerWindowStatsRow): PlayerSeasonSummary {
