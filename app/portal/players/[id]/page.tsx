@@ -415,7 +415,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             </article>
           ) : null}
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-2">
             <article className="rounded-lg border border-brand-cream/20 bg-brand-green/20 px-3 py-2">
               <p className="text-[10px] uppercase tracking-wide text-brand-creamDark">Season Points</p>
               <p className="mt-0.5 text-xl font-black">{formatFixed(summary.season_total_pts, 2)}</p>
