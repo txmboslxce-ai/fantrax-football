@@ -97,12 +97,23 @@ export default function PercentileRadarChart({ title, caption, players, height =
                   fill={player.color}
                   fillOpacity={players.length > 1 ? 0.08 : 0.16}
                   strokeWidth={2}
-                  dot={(dotProps: { cx?: number; cy?: number; payload?: Record<string, number> }) => {
-                    const { cx, cy, payload } = dotProps;
-                    const pct = payload?.[`${player.id}__pct`] ?? 0;
+                  dot={(dotProps: { cx?: number; cy?: number; index?: number; payload?: { payload?: Record<string, number> } }) => {
+                    const { cx, cy, index, payload } = dotProps;
+                    // Recharts nests the actual data row one level deeper than
+                    // `payload` itself (`payload.payload`) - it wraps our row in
+                    // its own polar-point descriptor first.
+                    const row = payload?.payload;
+                    const pct = row?.[`${player.id}__pct`] ?? 0;
                     return (
                       <circle
-                        key={`${player.id}-${cx}-${cy}`}
+                        // Keyed by the point's fixed index, not its (animated)
+                        // coordinates. Recharts' entrance animation grows every
+                        // point outward from the same center point on its first
+                        // frame, so all points briefly share identical cx/cy -
+                        // keying off that let React lose track of which circle
+                        // was which as the frames diverged, leaving stale
+                        // circles stuck at the center.
+                        key={`${player.id}-${index}`}
                         cx={cx}
                         cy={cy}
                         r={3.5}
