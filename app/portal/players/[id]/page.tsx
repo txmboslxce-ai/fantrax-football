@@ -1,4 +1,4 @@
-import PlayerDetailCharts from "@/components/portal/charts/PlayerDetailCharts";
+import PlayerFormPanel from "@/components/portal/charts/PlayerFormPanel";
 import PercentileRadarChart from "@/components/portal/charts/PercentileRadarChart";
 import PercentileStatsTable, { type StatTableRow } from "@/components/portal/charts/PercentileStatsTable";
 import {
@@ -82,6 +82,16 @@ const POSITION_PLURAL: Record<"DEF" | "MID" | "FWD", string> = {
   MID: "midfielders",
   FWD: "forwards",
 };
+
+function percentileNoteFor(profile: RadarProfileKey, position: "GK" | "DEF" | "MID" | "FWD"): string {
+  if (profile === "stats_total" || profile === "stats_per90") {
+    return "Percentile against all other same-position players who have started 1 game.";
+  }
+  if (profile === "goalkeeper" || position === "GK") {
+    return "Percentile against all goalkeepers who have started at least one game.";
+  }
+  return "Percentile against all outfield players who have started at least one game.";
+}
 
 function toNumber(value: number | string | null | undefined): number | null {
   if (typeof value === "number") {
@@ -295,48 +305,56 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const goalkeeperData = radarProfileByKey.get("goalkeeper") ?? [];
 
   const selfSeries = (data: RadarDatum[]) => [{ id: playerRow.id, name: playerRow.name, color: "#005B3A", data }];
+  const selfTablePlayers = [{ id: "self", name: playerRow.name, color: "#005B3A" }];
 
-  const radarCharts = (
-    <div className={isGoalkeeper ? "grid gap-4 sm:grid-cols-2" : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
-      <div className="flex flex-col gap-2">
-        <PercentileRadarChart
-          title="Fantasy Profile"
-          caption={isGoalkeeper ? "Ranked against starting goalkeepers." : "Ranked against outfield players who've started at least one game."}
-          players={selfSeries(fantasyData)}
-        />
-        <PercentileStatsTable players={[{ id: "self", name: playerRow.name, color: "#005B3A" }]} rows={toStatTableRows("fantasy", fantasyData)} />
-      </div>
-      {isGoalkeeper ? (
-        <div className="flex flex-col gap-2">
-          <PercentileRadarChart
-            title="Goalkeeping Profile"
-            caption="Ranked against starting goalkeepers."
-            players={selfSeries(goalkeeperData)}
-          />
-          <PercentileStatsTable players={[{ id: "self", name: playerRow.name, color: "#005B3A" }]} rows={toStatTableRows("goalkeeper", goalkeeperData)} />
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-col gap-2">
-            <PercentileRadarChart
-              title="Stats Profile (Season Total)"
-              caption={`Ranked against other ${POSITION_PLURAL[playerPosition as "DEF" | "MID" | "FWD"]} who've started at least one game.`}
-              players={selfSeries(statsTotalData)}
-            />
-            <PercentileStatsTable players={[{ id: "self", name: playerRow.name, color: "#005B3A" }]} rows={toStatTableRows("stats_total", statsTotalData)} />
-          </div>
-          <div className="flex flex-col gap-2">
-            <PercentileRadarChart
-              title="Stats Profile (Per 90)"
-              caption="Same stats, adjusted for minutes played."
-              players={selfSeries(statsPer90Data)}
-            />
-            <PercentileStatsTable players={[{ id: "self", name: playerRow.name, color: "#005B3A" }]} rows={toStatTableRows("stats_per90", statsPer90Data)} />
-          </div>
-        </>
-      )}
+  const fantasyCard = (
+    <div key="fantasy" className="flex flex-col gap-2">
+      <PercentileRadarChart
+        title="Fantasy Profile"
+        caption={isGoalkeeper ? "Ranked against starting goalkeepers." : "Ranked against outfield players who've started at least one game."}
+        players={selfSeries(fantasyData)}
+      />
+      <PercentileStatsTable
+        players={selfTablePlayers}
+        rows={toStatTableRows("fantasy", fantasyData)}
+        percentileNote={percentileNoteFor("fantasy", playerPosition)}
+      />
     </div>
   );
+
+  const otherCards = isGoalkeeper
+    ? [
+        <div key="goalkeeper" className="flex flex-col gap-2">
+          <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against starting goalkeepers." players={selfSeries(goalkeeperData)} />
+          <PercentileStatsTable
+            players={selfTablePlayers}
+            rows={toStatTableRows("goalkeeper", goalkeeperData)}
+            percentileNote={percentileNoteFor("goalkeeper", playerPosition)}
+          />
+        </div>,
+      ]
+    : [
+        <div key="stats_total" className="flex flex-col gap-2">
+          <PercentileRadarChart
+            title="Stats Profile (Season Total)"
+            caption={`Ranked against other ${POSITION_PLURAL[playerPosition as "DEF" | "MID" | "FWD"]} who've started at least one game.`}
+            players={selfSeries(statsTotalData)}
+          />
+          <PercentileStatsTable
+            players={selfTablePlayers}
+            rows={toStatTableRows("stats_total", statsTotalData)}
+            percentileNote={percentileNoteFor("stats_total", playerPosition)}
+          />
+        </div>,
+        <div key="stats_per90" className="flex flex-col gap-2">
+          <PercentileRadarChart title="Stats Profile (Per 90)" caption="Same stats, adjusted for minutes played." players={selfSeries(statsPer90Data)} />
+          <PercentileStatsTable
+            players={selfTablePlayers}
+            rows={toStatTableRows("stats_per90", statsPer90Data)}
+            percentileNote={percentileNoteFor("stats_per90", playerPosition)}
+          />
+        </div>,
+      ];
   const upcoming = nextFixtures(playerRow.team, fixturesForTeam, summary.current_gameweek, teamNames, 5);
 
   const playedRows = decorated.filter((row) => row.games_played > 0);
@@ -345,9 +363,25 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
 
   const teamNamesRecord = Object.fromEntries(teamNames.entries());
 
+  const trendPanel = (
+    <PlayerFormPanel
+      pointsByGw={pointsByGw}
+      last5={last5}
+      homeAway={[
+        { label: "Home", value: summary.home_avg },
+        { label: "Away", value: summary.away_avg },
+      ]}
+      breakdown={[
+        { name: "Ghost Pts", value: summary.ghost_pts_total, color: "#005B3A" },
+        { name: "G/A/CS", value: summary.attack_pts, color: "#F59E0B" },
+      ]}
+    />
+  );
+
   return (
       <div className="space-y-6">
-        <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6">
+        <div className="grid gap-4 xl:grid-cols-4">
+        <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6 xl:col-span-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -457,20 +491,14 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             </div>
           ) : null}
         </section>
+        <div className="hidden xl:block">{trendPanel}</div>
+        </div>
 
-        <PlayerDetailCharts
-          pointsByGw={pointsByGw}
-          last5={last5}
-          radarCharts={radarCharts}
-          homeAway={[
-            { label: "Home", value: summary.home_avg },
-            { label: "Away", value: summary.away_avg },
-          ]}
-          breakdown={[
-            { name: "Ghost Pts", value: summary.ghost_pts_total, color: "#005B3A" },
-            { name: "G/A/CS", value: summary.attack_pts, color: "#F59E0B" },
-          ]}
-        />
+        <div className={isGoalkeeper ? "grid gap-4 sm:grid-cols-2" : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
+          {fantasyCard}
+          <div className="order-first sm:order-none xl:hidden">{trendPanel}</div>
+          {otherCards}
+        </div>
 
         <section className="space-y-2">
           <h2 className="text-lg font-black text-brand-dark">Next Fixtures</h2>

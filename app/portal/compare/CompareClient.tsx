@@ -64,6 +64,13 @@ function buildSeries(
   }));
 }
 
+const PERCENTILE_NOTES: Record<RadarProfileKey, string> = {
+  fantasy: "Percentile against all outfield players (or all goalkeepers, for a keeper) who have started at least one game.",
+  stats_total: "Percentile against all other same-position players who have started 1 game.",
+  stats_per90: "Percentile against all other same-position players who have started 1 game.",
+  goalkeeper: "Percentile against all goalkeepers who have started at least one game.",
+};
+
 function buildTableRows(profile: RadarProfileKey, series: RadarPlayerSeries[]): StatTableRow[] {
   if (series.length === 0 || series[0].data.length === 0) return [];
 
@@ -284,7 +291,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
                 caption="Ranked against the same guard-railed pool used on each player's own page."
                 players={fantasySeries}
               />
-              <PercentileStatsTable players={tablePlayers(fantasySeries)} rows={buildTableRows("fantasy", fantasySeries)} />
+              <PercentileStatsTable players={tablePlayers(fantasySeries)} rows={buildTableRows("fantasy", fantasySeries)} percentileNote={PERCENTILE_NOTES.fantasy} />
             </div>
 
             {showStatsRadar ? (
@@ -295,7 +302,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
                     caption="Only axes every selected player shares are shown."
                     players={statsTotalSeries}
                   />
-                  <PercentileStatsTable players={tablePlayers(statsTotalSeries)} rows={buildTableRows("stats_total", statsTotalSeries)} />
+                  <PercentileStatsTable players={tablePlayers(statsTotalSeries)} rows={buildTableRows("stats_total", statsTotalSeries)} percentileNote={PERCENTILE_NOTES.stats_total} />
                 </div>
                 <div className="flex flex-col gap-2">
                   <PercentileRadarChart
@@ -303,7 +310,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
                     caption="Same stats, adjusted for minutes played."
                     players={statsPer90Series}
                   />
-                  <PercentileStatsTable players={tablePlayers(statsPer90Series)} rows={buildTableRows("stats_per90", statsPer90Series)} />
+                  <PercentileStatsTable players={tablePlayers(statsPer90Series)} rows={buildTableRows("stats_per90", statsPer90Series)} percentileNote={PERCENTILE_NOTES.stats_per90} />
                 </div>
               </div>
             ) : null}
@@ -311,7 +318,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
             {showGoalkeeperRadar ? (
               <div className="flex flex-col gap-2">
                 <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against starting goalkeepers." players={goalkeeperSeries} />
-                <PercentileStatsTable players={tablePlayers(goalkeeperSeries)} rows={buildTableRows("goalkeeper", goalkeeperSeries)} />
+                <PercentileStatsTable players={tablePlayers(goalkeeperSeries)} rows={buildTableRows("goalkeeper", goalkeeperSeries)} percentileNote={PERCENTILE_NOTES.goalkeeper} />
               </div>
             ) : null}
 
