@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     .from("player_window_stats")
     .select(PLAYER_WINDOW_STATS_COLUMNS)
     .eq("season", season)
-    .eq("window", window)
+    .eq("stat_window", window)
     .in("player_id", playerIds);
 
   if (windowError) {

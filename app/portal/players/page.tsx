@@ -115,7 +115,7 @@ async function getPlayersTableData(season: string): Promise<PlayersTableData> {
     .from("player_window_stats")
     .select(PLAYER_WINDOW_STATS_COLUMNS)
     .eq("season", season)
-    .eq("window", "season")
+    .eq("stat_window", "season")
     .in("player_id", playerIds);
 
   if (windowError) {

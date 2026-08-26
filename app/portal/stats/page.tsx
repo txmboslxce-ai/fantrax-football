@@ -96,7 +96,7 @@ export default async function StatsPage({ searchParams }: StatsPageProps) {
   // lookup, not a recalculation across the whole pool.
   const [windowResult, leagueRoster, watchlistData] = await Promise.all([
     playerIds.length > 0
-      ? supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", SEASON).eq("window", "season").in("player_id", playerIds)
+      ? supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", SEASON).eq("stat_window", "season").in("player_id", playerIds)
       : Promise.resolve({ data: [], error: null }),
     user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
     user ? getWatchlistData(user.id) : Promise.resolve({ watchlistedIds: [], orderById: {} }),

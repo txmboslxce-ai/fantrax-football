@@ -15,7 +15,9 @@
 create table public.player_window_stats (
   player_id uuid not null references public.players(id) on delete cascade,
   season text not null references public.seasons(id) on delete cascade,
-  window text not null check (window in ('season', 'last5', 'last10')),
+  -- Named stat_window, not window: WINDOW is a reserved SQL keyword
+  -- (used for window functions) and breaks as a bare column name.
+  stat_window text not null check (stat_window in ('season', 'last5', 'last10')),
 
   -- Scope of the window (how many gameweeks/games/starts it covers)
   gameweeks_played integer not null default 0,
@@ -104,11 +106,11 @@ create table public.player_window_stats (
 
   computed_at timestamptz not null default now(),
 
-  primary key (player_id, season, window)
+  primary key (player_id, season, stat_window)
 );
 
 create index player_window_stats_season_window_idx
-  on public.player_window_stats (season, window);
+  on public.player_window_stats (season, stat_window);
 
 -- Per-player radar chart datasets (rank + scaled value for every stat
 -- shown on the Fantasy / Attacking / Defensive / Goalkeeper profile

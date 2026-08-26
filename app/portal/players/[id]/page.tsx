@@ -219,7 +219,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const [radarProfilesResult, fdrResult, windowStatsResult] = await Promise.all([
     supabase.from("player_radar_profiles").select("profile, data").eq("season", season).eq("player_id", id),
     supabase.from("team_fixture_difficulty").select("team, rank").eq("season", tableSeason).eq("position", playerRow.position),
-    supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", season).eq("window", "season").eq("player_id", id).maybeSingle(),
+    supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", season).eq("stat_window", "season").eq("player_id", id).maybeSingle(),
   ]);
 
   if (radarProfilesResult.error) {

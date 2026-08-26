@@ -121,7 +121,7 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
     .from("player_window_stats")
     .select(PLAYER_WINDOW_STATS_COLUMNS)
     .eq("season", DRAFT_STATS_SEASON)
-    .eq("window", "season")
+    .eq("stat_window", "season")
     .in("player_id", playerIds);
 
   if (windowError) {

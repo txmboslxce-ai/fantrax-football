@@ -9,7 +9,8 @@ import type { PlayerSeasonSummary, PlayerWindowStats } from "@/lib/portal/player
 export type PlayerWindowStatsRow = {
   player_id: string;
   season: string;
-  window: "season" | "last5" | "last10";
+  // Named stat_window, not window: WINDOW is a reserved SQL keyword.
+  stat_window: "season" | "last5" | "last10";
   gameweeks_played: number;
   games_played: number;
   games_started: number;
@@ -85,12 +86,12 @@ export type PlayerWindowStatsRow = {
 export function emptyWindowStatsRow(
   playerId: string,
   season: string,
-  window: PlayerWindowStatsRow["window"]
+  window: PlayerWindowStatsRow["stat_window"]
 ): PlayerWindowStatsRow {
   return {
     player_id: playerId,
     season,
-    window,
+    stat_window: window,
     gameweeks_played: 0,
     games_played: 0,
     games_started: 0,
@@ -161,7 +162,7 @@ export function emptyWindowStatsRow(
 }
 
 export const PLAYER_WINDOW_STATS_COLUMNS =
-  "player_id, season, window, gameweeks_played, games_played, games_started, games_started_total, total_minutes, current_gameweek, season_pts, avg_pts_per_gameweek, avg_pts_per_game, avg_pts_per_start, season_avg_pts_per_start, total_ghost_pts, avg_ghost_per_gameweek, avg_ghost_per_game, avg_ghost_per_start, season_avg_ghost_per_start, attack_pts, minutes_per_start, floor_per_start, ceiling_per_start, tenth_percentile_per_start, ninetieth_percentile_per_start, std_deviation, median_pts_per_start, coefficient_of_variation, home_avg, away_avg, home_pct, away_pct, home_pts_per_start, home_pts_pct, away_pts_per_start, away_pts_pct, ghost_pts_pct, goals_pts_pct, assist_pts_pct, clean_sheet_pts_pct, attacking_pts_pct, defensive_pts_pct, total_attacking_defensive_pct, goals, assists, clean_sheets, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, saves, penalty_saves, goals_against, high_claims, smothers, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn, corner_kicks, free_kick_shots";
+  "player_id, season, stat_window, gameweeks_played, games_played, games_started, games_started_total, total_minutes, current_gameweek, season_pts, avg_pts_per_gameweek, avg_pts_per_game, avg_pts_per_start, season_avg_pts_per_start, total_ghost_pts, avg_ghost_per_gameweek, avg_ghost_per_game, avg_ghost_per_start, season_avg_ghost_per_start, attack_pts, minutes_per_start, floor_per_start, ceiling_per_start, tenth_percentile_per_start, ninetieth_percentile_per_start, std_deviation, median_pts_per_start, coefficient_of_variation, home_avg, away_avg, home_pct, away_pct, home_pts_per_start, home_pts_pct, away_pts_per_start, away_pts_pct, ghost_pts_pct, goals_pts_pct, assist_pts_pct, clean_sheet_pts_pct, attacking_pts_pct, defensive_pts_pct, total_attacking_defensive_pct, goals, assists, clean_sheets, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, saves, penalty_saves, goals_against, high_claims, smothers, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn, corner_kicks, free_kick_shots";
 
 export function toPlayerWindowStats(row: PlayerWindowStatsRow): PlayerWindowStats {
   return {

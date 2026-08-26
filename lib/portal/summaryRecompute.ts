@@ -142,7 +142,8 @@ function buildWindowStatsRow(
   return {
     player_id: playerId,
     season,
-    window,
+    // Column is stat_window, not window: WINDOW is a reserved SQL keyword.
+    stat_window: window,
 
     gameweeks_played: seasonSummary.gameweeks_played,
     games_played: windowStats.games_played,
@@ -325,7 +326,7 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
 
   for (let i = 0; i < windowStatsToUpsert.length; i += 500) {
     const chunk = windowStatsToUpsert.slice(i, i + 500);
-    const { error } = await supabase.from("player_window_stats").upsert(chunk, { onConflict: "player_id,season,window" });
+    const { error } = await supabase.from("player_window_stats").upsert(chunk, { onConflict: "player_id,season,stat_window" });
     if (error) {
       throw new Error(`Unable to write player_window_stats for ${season}: ${error.message}`);
     }
