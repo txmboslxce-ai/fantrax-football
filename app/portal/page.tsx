@@ -25,13 +25,14 @@ const portalCards = [
 
 export default async function PortalPage() {
   const supabase = await createServerSupabaseClient();
-  const { data: updates } = await supabase
+  const { data: latestUpdateRow } = await supabase
     .from("product_updates")
     .select("id, title, body, created_at")
     .order("created_at", { ascending: false })
-    .limit(12);
+    .limit(1)
+    .maybeSingle();
 
-  const recentUpdates = (updates ?? []) as ProductUpdate[];
+  const latestUpdate = latestUpdateRow as ProductUpdate | null;
 
   return (
     <div className="space-y-8">
@@ -40,35 +41,31 @@ export default async function PortalPage() {
         <p className="mt-2 text-sm text-brand-dark/70">Your Draft Academical subscriber portal.</p>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="flex max-h-80 flex-col rounded-xl border-2 border-amber-400/70 bg-brand-dark p-6">
-          <h2 className="text-2xl font-bold text-amber-200">What&apos;s New</h2>
-          <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-1">
-            {recentUpdates.length === 0 ? (
-              <p className="text-sm text-brand-creamDark">Nothing posted yet — check back soon.</p>
-            ) : (
-              recentUpdates.map((update) => (
-                <div key={update.id} className="border-t border-amber-400/20 pt-3 first:border-t-0 first:pt-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-sm font-bold text-brand-cream">{update.title}</p>
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-brand-creamDark">
-                      {formatUpdateDate(update.created_at)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-brand-creamDark">{update.body}</p>
-                </div>
-              ))
-            )}
-          </div>
-          <Link
-            href="/portal/updates"
-            prefetch={false}
-            className="mt-3 shrink-0 border-t border-amber-400/20 pt-3 text-xs font-semibold uppercase tracking-wide text-amber-300 transition-colors hover:text-amber-200"
-          >
-            View all updates &rarr;
-          </Link>
+      <div className="flex flex-col gap-4 rounded-xl border-2 border-amber-400/70 bg-brand-dark p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <span className="text-xs font-bold uppercase tracking-widest text-amber-300">What&apos;s New</span>
+          {latestUpdate ? (
+            <>
+              <p className="mt-1 text-lg font-bold text-brand-cream">{latestUpdate.title}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-brand-creamDark">{latestUpdate.body}</p>
+              <p className="mt-1 text-[10px] uppercase tracking-wide text-brand-creamDark/70">
+                {formatUpdateDate(latestUpdate.created_at)}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-brand-creamDark">Nothing posted yet — check back soon.</p>
+          )}
         </div>
+        <Link
+          href="/portal/updates"
+          prefetch={false}
+          className="shrink-0 rounded-md border border-amber-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-amber-300 transition-colors hover:bg-amber-500/10 hover:text-amber-200"
+        >
+          View all updates &rarr;
+        </Link>
+      </div>
 
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {portalCards.map((card) => (
           <Link
             key={card.title}
