@@ -393,13 +393,15 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
   const windowStatsToUpsert: ReturnType<typeof buildWindowStatsRow>[] = [];
   const radarPool: RadarPoolPlayer[] = [];
   const decoratedByPlayer = new Map<string, DecoratedGameweek[]>();
-  // Position -> every outfield player at that position, keyed for the Stats
-  // radar's per-position ranking pools below.
-  const statsPoolPlayersByPosition = new Map<OutfieldPosition, StatsPoolPlayer[]>([
-    ["DEF", []],
-    ["MID", []],
-    ["FWD", []],
-  ]);
+  // Every outfield player, regardless of position, for the Stats radar's
+  // ranking pool. Deliberately not split by position: a stat like Key
+  // Passes or DefCon scores the same number of points no matter who earns
+  // it, so a defender who racks up a rare number of key passes — or a
+  // midfielder who tackles like a defender — should show up as genuinely
+  // elite against the whole outfield pool, not just against their own
+  // position (which axes are shown per position is a separate decision,
+  // handled by statsMetricsForPosition below).
+  const statsPool: StatsPoolPlayer[] = [];
 
   for (const player of players) {
     const rows = (rowsByPlayer.get(player.id) ?? []).sort((a, b) => a.gameweek - b.gameweek);
@@ -408,7 +410,7 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
     decoratedByPlayer.set(player.id, decorated);
 
     let seasonWindowRow: ReturnType<typeof buildWindowStatsRow> | null = null;
-    let seasonGamesStarted = 0;
+    let seasonGamesPlayed = 0;
 
     for (const window of WINDOW_KEYS) {
       const windowRows = windowRowsFor(decorated, window, latestGameweek);
@@ -418,19 +420,21 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
       windowStatsToUpsert.push(row);
       if (window === "season") {
         seasonWindowRow = row;
-        seasonGamesStarted = seasonSummary.total_games_started;
+        seasonGamesPlayed = seasonSummary.total_games_played;
       }
     }
 
     radarPool.push({ id: player.id, position, summary: summarizePlayerSeason(decorated) });
 
-    // Guard rail: a player who hasn't started a game yet shouldn't count
-    // toward the Stats radar's ranking pool for their position — otherwise
-    // a squad full of unused bench players dilutes what "elite" looks like
-    // for everyone who has actually played (the same fix applied to the
-    // Fantasy/Goalkeeper pools below).
-    if (position !== "GK" && seasonWindowRow && seasonGamesStarted >= 1) {
-      statsPoolPlayersByPosition.get(position)?.push({
+    // Guard rail: a player who hasn't played at all yet shouldn't count
+    // toward the Stats radar's ranking pool — otherwise a squad full of
+    // unused bench players dilutes what "elite" looks like for everyone
+    // who has actually played (the same fix applied to the
+    // Fantasy/Goalkeeper pools below). Appearing at all is enough here —
+    // a substitute with real minutes and real stats (e.g. a sub who's
+    // racked up key passes) shouldn't be excluded just for not starting.
+    if (position !== "GK" && seasonWindowRow && seasonGamesPlayed >= 1) {
+      statsPool.push({
         id: player.id,
         stats: {
           goals: seasonWindowRow.goals,
@@ -458,14 +462,15 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
   }
 
   // Radar profiles are always season-scoped (matches prior Player Detail
-  // behaviour). A player must have started at least one game to count
-  // toward either ranking pool — otherwise players who've never featured
-  // dilute what "elite" looks like for everyone who has actually played.
+  // behaviour). A player must have played at all (started or come off the
+  // bench) to count toward either ranking pool — otherwise players who've
+  // never featured dilute what "elite" looks like for everyone who has
+  // actually played.
   const outfieldRadarPool = radarPool.filter(
-    (player) => player.position !== "GK" && player.summary.total_games_started >= 1
+    (player) => player.position !== "GK" && player.summary.total_games_played >= 1
   );
   const goalkeeperRadarPool = radarPool.filter(
-    (player) => player.position === "GK" && player.summary.total_games_started >= 1
+    (player) => player.position === "GK" && player.summary.total_games_played >= 1
   );
 
   const radarRowsToUpsert: Array<{ player_id: string; season: string; profile: string; data: RadarDatum[]; computed_at: string }> = [];
@@ -490,7 +495,6 @@ export async function recomputePlayerSummaries(season: string): Promise<Recomput
     });
 
     if (position !== "GK") {
-      const statsPool = statsPoolPlayersByPosition.get(position) ?? [];
       const metrics = statsMetricsForPosition(position);
       radarRowsToUpsert.push({
         player_id: player.id,

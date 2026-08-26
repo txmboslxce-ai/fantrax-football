@@ -65,10 +65,10 @@ function buildSeries(
 }
 
 const PERCENTILE_NOTES: Record<RadarProfileKey, string> = {
-  fantasy: "Percentile against all outfield players (or all goalkeepers, for a keeper) who have started at least one game.",
-  stats_total: "Percentile against all other same-position players who have started 1 game.",
-  stats_per90: "Percentile against all other same-position players who have started 1 game.",
-  goalkeeper: "Percentile against all goalkeepers who have started at least one game.",
+  fantasy: "Percentile against all outfield players (or all goalkeepers, for a keeper) who have played at least one game this season.",
+  stats_total: "Percentile against all outfield players who have played at least one game this season.",
+  stats_per90: "Percentile against all outfield players who have played at least one game this season.",
+  goalkeeper: "Percentile against all goalkeepers who have played at least one game this season.",
 };
 
 function buildTableRows(profile: RadarProfileKey, series: RadarPlayerSeries[]): StatTableRow[] {
@@ -317,7 +317,7 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
 
             {showGoalkeeperRadar ? (
               <div className="flex flex-col gap-2">
-                <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against starting goalkeepers." players={goalkeeperSeries} />
+                <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against goalkeepers who've played at least one game this season." players={goalkeeperSeries} />
                 <PercentileStatsTable players={tablePlayers(goalkeeperSeries)} rows={buildTableRows("goalkeeper", goalkeeperSeries)} percentileNote={PERCENTILE_NOTES.goalkeeper} />
               </div>
             ) : null}

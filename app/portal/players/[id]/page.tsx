@@ -77,20 +77,11 @@ function toStatTableRows(profile: RadarProfileKey, data: RadarDatum[]): StatTabl
   }));
 }
 
-const POSITION_PLURAL: Record<"DEF" | "MID" | "FWD", string> = {
-  DEF: "defenders",
-  MID: "midfielders",
-  FWD: "forwards",
-};
-
 function percentileNoteFor(profile: RadarProfileKey, position: "GK" | "DEF" | "MID" | "FWD"): string {
-  if (profile === "stats_total" || profile === "stats_per90") {
-    return "Percentile against all other same-position players who have started 1 game.";
-  }
   if (profile === "goalkeeper" || position === "GK") {
-    return "Percentile against all goalkeepers who have started at least one game.";
+    return "Percentile against all goalkeepers who have played at least one game this season.";
   }
-  return "Percentile against all outfield players who have started at least one game.";
+  return "Percentile against all outfield players who have played at least one game this season.";
 }
 
 function toNumber(value: number | string | null | undefined): number | null {
@@ -311,7 +302,11 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
     <div key="fantasy" className="flex flex-col gap-2">
       <PercentileRadarChart
         title="Fantasy Profile"
-        caption={isGoalkeeper ? "Ranked against starting goalkeepers." : "Ranked against outfield players who've started at least one game."}
+        caption={
+          isGoalkeeper
+            ? "Ranked against goalkeepers who've played at least one game this season."
+            : "Ranked against outfield players who've played at least one game this season."
+        }
         players={selfSeries(fantasyData)}
       />
       <PercentileStatsTable
@@ -325,7 +320,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const otherCards = isGoalkeeper
     ? [
         <div key="goalkeeper" className="flex flex-col gap-2">
-          <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against starting goalkeepers." players={selfSeries(goalkeeperData)} />
+          <PercentileRadarChart title="Goalkeeping Profile" caption="Ranked against goalkeepers who've played at least one game this season." players={selfSeries(goalkeeperData)} />
           <PercentileStatsTable
             players={selfTablePlayers}
             rows={toStatTableRows("goalkeeper", goalkeeperData)}
@@ -337,7 +332,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
         <div key="stats_total" className="flex flex-col gap-2">
           <PercentileRadarChart
             title="Stats Profile (Season Total)"
-            caption={`Ranked against other ${POSITION_PLURAL[playerPosition as "DEF" | "MID" | "FWD"]} who've started at least one game.`}
+            caption="Ranked against all outfield players who've played at least one game this season."
             players={selfSeries(statsTotalData)}
           />
           <PercentileStatsTable
