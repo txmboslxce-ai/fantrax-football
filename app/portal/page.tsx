@@ -41,14 +41,14 @@ export default async function PortalPage() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="flex max-h-80 flex-col rounded-xl border border-brand-cream/25 bg-brand-dark p-6">
-          <h2 className="text-2xl font-bold text-brand-cream">What&apos;s New</h2>
+        <div className="flex max-h-80 flex-col rounded-xl border border-amber-400/50 bg-amber-500/10 p-6">
+          <h2 className="text-2xl font-bold text-amber-200">What&apos;s New</h2>
           <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-1">
             {recentUpdates.length === 0 ? (
               <p className="text-sm text-brand-creamDark">Nothing posted yet — check back soon.</p>
             ) : (
               recentUpdates.map((update) => (
-                <div key={update.id} className="border-t border-brand-cream/10 pt-3 first:border-t-0 first:pt-0">
+                <div key={update.id} className="border-t border-amber-400/20 pt-3 first:border-t-0 first:pt-0">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-sm font-bold text-brand-cream">{update.title}</p>
                     <span className="shrink-0 text-[10px] uppercase tracking-wide text-brand-creamDark">
