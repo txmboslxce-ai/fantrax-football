@@ -38,10 +38,10 @@ export default async function PortalPage() {
         <Link
           href="/portal/updates"
           prefetch={false}
-          className="flex min-w-0 shrink-0 items-center gap-2 rounded-full border border-amber-400/60 bg-brand-dark px-4 py-1.5 text-xs transition-colors hover:bg-amber-500/10"
+          className="flex min-w-0 shrink-0 items-center gap-2 rounded-full border border-amber-400/60 bg-brand-dark px-5 py-1.5 text-xs transition-colors hover:bg-amber-500/10"
         >
           <span className="shrink-0 font-bold uppercase tracking-wide text-amber-300">What&apos;s New</span>
-          <span className="truncate text-brand-creamDark">
+          <span className="min-w-[10rem] truncate text-brand-creamDark sm:min-w-[16rem]">
             {latestUpdate ? latestUpdate.title : "Nothing posted yet"}
           </span>
           <span className="shrink-0 text-amber-300">&rarr;</span>
