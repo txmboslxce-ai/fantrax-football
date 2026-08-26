@@ -119,11 +119,15 @@ function formatShortDate(value: string | null): string | null {
 export default async function PlayerDetailPage({ params, searchParams }: PlayerDetailPageProps) {
   const { id } = await params;
   const supabase = await createServerSupabaseClient();
-  const season = await getCurrentSeason(supabase);
   const resolvedSearchParams =
     searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
   const requestedTableSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
-  const { availableSeasons, season: tableSeason } = await resolvePortalSeason(supabase, requestedTableSeason);
+
+  // Neither depends on the other's result.
+  const [season, { availableSeasons, season: tableSeason }] = await Promise.all([
+    getCurrentSeason(supabase),
+    resolvePortalSeason(supabase, requestedTableSeason),
+  ]);
 
   const [
     {
@@ -174,19 +178,26 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
     throw new Error(`Unable to load teams: ${teamsError.message}`);
   }
 
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
-    : { data: null };
-  const leagueRoster = user
-    ? await getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null)
-    : null;
-
   const playerRow = player as PlayerDetailRow;
 
-  const [tableGameweeksResult, tableFixturesResult] =
+  // None of these five depend on each other's result — only on `user`,
+  // `season`, `tableSeason`, and `playerRow.position`, all already known
+  // — so they run together instead of in three separate sequential
+  // round-trips. Radar chart rankings and fixture-difficulty rankings are
+  // precomputed league-wide by lib/portal/summaryRecompute.ts whenever
+  // scores sync; these are lookups scoped to this one player/team, not a
+  // recalculation across the whole pool.
+  const [
+    { data: profile },
+    tableResult,
+    radarProfilesResult,
+    fdrResult,
+    windowStatsResult,
+  ] = await Promise.all([
+    user ? supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
     tableSeason === season
-      ? [null, null]
-      : await Promise.all([
+      ? Promise.resolve(null)
+      : Promise.all([
           supabase
             .from("player_gameweeks")
             .select(
@@ -200,7 +211,17 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             .select("id, season, gameweek, home_team, away_team")
             .eq("season", tableSeason)
             .order("gameweek"),
-        ]);
+        ]),
+    supabase.from("player_radar_profiles").select("profile, data").eq("season", season).eq("player_id", id),
+    supabase.from("team_fixture_difficulty").select("team, rank").eq("season", tableSeason).eq("position", playerRow.position),
+    supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", season).eq("stat_window", "season").eq("player_id", id).maybeSingle(),
+  ]);
+
+  // leagueRoster needs `profile`, so it's the one thing that still has
+  // to wait until after the block above resolves.
+  const leagueRoster = user ? await getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : null;
+
+  const [tableGameweeksResult, tableFixturesResult] = tableResult ?? [null, null];
 
   if (tableGameweeksResult?.error) {
     throw new Error(`Unable to load ${tableSeason} player gameweeks: ${tableGameweeksResult.error.message}`);
@@ -211,16 +232,6 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
 
   const tableGameweeks = tableGameweeksResult?.data ?? gameweeks ?? [];
   const tableFixtures = tableFixturesResult?.data ?? teamFixtures ?? [];
-
-  // Radar chart rankings and fixture-difficulty rankings are precomputed
-  // league-wide by lib/portal/summaryRecompute.ts whenever scores sync —
-  // these are lookups scoped to this one player/team, not a
-  // recalculation across the whole pool.
-  const [radarProfilesResult, fdrResult, windowStatsResult] = await Promise.all([
-    supabase.from("player_radar_profiles").select("profile, data").eq("season", season).eq("player_id", id),
-    supabase.from("team_fixture_difficulty").select("team, rank").eq("season", tableSeason).eq("position", playerRow.position),
-    supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", season).eq("stat_window", "season").eq("player_id", id).maybeSingle(),
-  ]);
 
   if (radarProfilesResult.error) {
     throw new Error(`Unable to load ${season} radar profile: ${radarProfilesResult.error.message}`);

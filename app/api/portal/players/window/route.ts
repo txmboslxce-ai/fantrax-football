@@ -1,4 +1,4 @@
-import { emptyWindowStatsRow, fetchPlayerWindowStatsByPlayerId, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
   let windowRowByPlayer;
   try {
-    windowRowByPlayer = await fetchPlayerWindowStatsByPlayerId(season, window, playerIds);
+    windowRowByPlayer = await fetchPlayerWindowStatsBySeason(season, window);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load player summaries.";
     return NextResponse.json({ message }, { status: 500 });

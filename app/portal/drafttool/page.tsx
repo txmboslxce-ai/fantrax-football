@@ -1,5 +1,5 @@
 import { mapPosition, type PlayerWindowStats } from "@/lib/portal/playerMetrics";
-import { emptyWindowStatsRow, fetchPlayerWindowStatsByPlayerId, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { DRAFT_POOL_SEASON, DRAFT_STATS_SEASON } from "@/lib/season/draft";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
@@ -49,10 +49,12 @@ function normalizeCustomRank(value: unknown): number | null {
 async function loadDraftPlayers(): Promise<DraftPlayer[]> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: poolRows, error: poolError } = await supabase
-    .from("season_player_pool")
-    .select("fantrax_id, adp")
-    .eq("season", DRAFT_POOL_SEASON);
+  // DRAFT_STATS_SEASON is a fixed constant, not derived from the pool
+  // query below, so the summary lookup can run alongside it.
+  const [{ data: poolRows, error: poolError }, windowRowByPlayer] = await Promise.all([
+    supabase.from("season_player_pool").select("fantrax_id, adp").eq("season", DRAFT_POOL_SEASON),
+    fetchPlayerWindowStatsBySeason(DRAFT_STATS_SEASON, "season"),
+  ]);
 
   if (poolError) {
     throw new Error(`Unable to load the ${DRAFT_POOL_SEASON} draft pool: ${poolError.message}`);
@@ -104,16 +106,6 @@ async function loadDraftPlayers(): Promise<DraftPlayer[]> {
         }>
       | null;
   }>;
-  const playerIds = playerRows.map((player) => player.id);
-  if (playerIds.length === 0) {
-    return [];
-  }
-
-  // Draft Tool always shows season-window stats from DRAFT_STATS_SEASON,
-  // precomputed by lib/portal/summaryRecompute.ts — this is a lookup, not
-  // a recalculation across the whole draft pool.
-  const windowRowByPlayer = await fetchPlayerWindowStatsByPlayerId(DRAFT_STATS_SEASON, "season", playerIds);
-
   const unrankedPlayers = playerRows.map((player) => {
     const fplData = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
     const position = mapPosition(player.position);

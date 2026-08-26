@@ -4,7 +4,7 @@ import { getGWOverviewData } from "@/app/portal/gw-overview/getGWOverviewData";
 import PlayersTableClient from "@/app/portal/players/PlayersTableClient";
 import WaiverWireClient from "@/app/portal/players/WaiverWireClient";
 import { mapPosition, type PlayerTableWindowKey, type PlayerWindowStats } from "@/lib/portal/playerMetrics";
-import { emptyWindowStatsRow, fetchPlayerWindowStatsByPlayerId, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason, toPlayerWindowStats } from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { getWatchlistData } from "@/lib/portal/watchlist";
@@ -74,10 +74,12 @@ function toTabKey(value: string | string[] | undefined): PlayersTabKey {
 async function getPlayersTableData(season: string): Promise<PlayersTableData> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: poolRows, error: poolError } = await supabase
-    .from("season_player_pool")
-    .select("fantrax_id")
-    .eq("season", season);
+  // The summary lookup only needs `season`, not the pool/player rows
+  // below, so it can run alongside them instead of waiting in line.
+  const [{ data: poolRows, error: poolError }, windowRowByPlayer] = await Promise.all([
+    supabase.from("season_player_pool").select("fantrax_id").eq("season", season),
+    fetchPlayerWindowStatsBySeason(season, "season"),
+  ]);
 
   if (poolError) {
     throw new Error(`Unable to load the ${season} player pool: ${poolError.message}`);
@@ -102,11 +104,6 @@ async function getPlayersTableData(season: string): Promise<PlayersTableData> {
   if (playerIds.length === 0) {
     return { players: [], latestGameweek: 0 };
   }
-
-  // Season totals, per-start averages, and points-source breakdowns are
-  // precomputed by lib/portal/summaryRecompute.ts whenever scores sync —
-  // this is a lookup, not a recalculation across the whole pool.
-  const windowRowByPlayer = await fetchPlayerWindowStatsByPlayerId(season, "season", playerIds);
 
   let latestGameweek = 0;
   for (const row of windowRowByPlayer.values()) {
@@ -163,11 +160,14 @@ export default async function PlayersPage({ searchParams }: PageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
-    : { data: null };
   const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
-  const { availableSeasons, season } = await resolvePortalSeason(supabase, requestedSeason);
+
+  // Neither of these depends on the other's result, so they don't need
+  // to wait in line — only the profile lookup itself needs `user`.
+  const [{ data: profile }, { availableSeasons, season }] = await Promise.all([
+    user ? supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    resolvePortalSeason(supabase, requestedSeason),
+  ]);
 
   const [playersTableData, formData, leagueRoster, watchlistData] = await Promise.all([
     activeTab === "players" ? getPlayersTableData(season) : Promise.resolve(null),

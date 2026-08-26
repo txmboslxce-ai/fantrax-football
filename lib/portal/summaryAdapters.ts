@@ -165,49 +165,34 @@ export function emptyWindowStatsRow(
 export const PLAYER_WINDOW_STATS_COLUMNS =
   "player_id, season, stat_window, gameweeks_played, games_played, games_started, games_started_total, total_minutes, current_gameweek, season_pts, avg_pts_per_gameweek, avg_pts_per_game, avg_pts_per_start, season_avg_pts_per_start, total_ghost_pts, avg_ghost_per_gameweek, avg_ghost_per_game, avg_ghost_per_start, season_avg_ghost_per_start, attack_pts, minutes_per_start, floor_per_start, ceiling_per_start, tenth_percentile_per_start, ninetieth_percentile_per_start, std_deviation, median_pts_per_start, coefficient_of_variation, home_avg, away_avg, home_pct, away_pct, home_pts_per_start, home_pts_pct, away_pts_per_start, away_pts_pct, ghost_pts_pct, goals_pts_pct, assist_pts_pct, clean_sheet_pts_pct, attacking_pts_pct, defensive_pts_pct, total_attacking_defensive_pct, goals, assists, clean_sheets, key_passes, shots_on_target, dribbles_succeeded, dispossessed, tackles_won, interceptions, clearances, blocked_shots, aerials_won, accurate_crosses, goals_against_outfield, saves, penalty_saves, goals_against, high_claims, smothers, yellow_cards, red_cards, own_goals, penalties_missed, penalties_drawn, corner_kicks, free_kick_shots";
 
-// A player_id list gets URL-encoded into the request (Supabase reads use
-// GET), so passing hundreds of ids in one .in() call can produce a query
-// string long enough for the server to reject as a bad request. Batching
-// keeps each request small — this mirrors how the old, pre-this-change
-// code always batched player_gameweeks reads for the same reason.
-const PLAYER_ID_QUERY_BATCH_SIZE = 100;
-
-export async function fetchPlayerWindowStatsByPlayerId(
+// lib/portal/summaryRecompute.ts only ever writes a row here for players
+// who were in that season's pool — so a page asking "give me this
+// season's summaries" never needs to also filter by a player_id list.
+// (An earlier version filtered by player_id anyway, which for a large
+// pool meant either one oversized request that got rejected as a bad
+// request, or several batched round-trips — multiple network round-trips
+// stack up in page-load time even when they run in parallel. One plain
+// query is both simpler and faster.)
+export async function fetchPlayerWindowStatsBySeason(
   season: string,
-  window: PlayerWindowStatsRow["stat_window"],
-  playerIds: string[]
+  window: PlayerWindowStatsRow["stat_window"]
 ): Promise<Map<string, PlayerWindowStatsRow>> {
   const rowByPlayerId = new Map<string, PlayerWindowStatsRow>();
-  if (playerIds.length === 0) {
-    return rowByPlayerId;
-  }
 
   const supabase = await createServerSupabaseClient();
-  const batches = Array.from(
-    { length: Math.ceil(playerIds.length / PLAYER_ID_QUERY_BATCH_SIZE) },
-    (_, index) => playerIds.slice(index * PLAYER_ID_QUERY_BATCH_SIZE, (index + 1) * PLAYER_ID_QUERY_BATCH_SIZE)
-  );
+  const { data, error } = await supabase
+    .from("player_window_stats")
+    .select(PLAYER_WINDOW_STATS_COLUMNS)
+    .eq("season", season)
+    .eq("stat_window", window)
+    .range(0, 5000);
 
-  const results = await Promise.all(
-    batches.map((batch) =>
-      supabase
-        .from("player_window_stats")
-        .select(PLAYER_WINDOW_STATS_COLUMNS)
-        .eq("season", season)
-        .eq("stat_window", window)
-        .in("player_id", batch)
-    )
-  );
-
-  const error = results.find((result) => result.error)?.error;
   if (error) {
     throw new Error(`Unable to load ${season} player summaries: ${error.message}`);
   }
 
-  for (const result of results) {
-    for (const row of (result.data ?? []) as PlayerWindowStatsRow[]) {
-      rowByPlayerId.set(row.player_id, row);
-    }
+  for (const row of (data ?? []) as PlayerWindowStatsRow[]) {
+    rowByPlayerId.set(row.player_id, row);
   }
 
   return rowByPlayerId;
