@@ -66,6 +66,8 @@ function formatSyncedAt(value: string | null): string | null {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
   });
 }
 
@@ -141,11 +143,11 @@ export default async function InjuryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Injury</h1>
+        <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Injuries</h1>
         <p className="mt-2 text-sm text-brand-dark/70">Every player carrying an injury, suspension, or availability doubt, sourced from the FPL API.</p>
       </div>
 
-      <p className="text-xs italic text-slate-500">{lastSyncedAt ? `FPL data last synced: ${lastSyncedAt}` : "FPL sync time unavailable."}</p>
+      <p className="text-xs italic text-slate-500">{lastSyncedAt ? `Injury information last updated: ${lastSyncedAt}` : "Injury information last updated: unavailable."}</p>
 
       <InjuryTableClient players={players} />
     </div>
