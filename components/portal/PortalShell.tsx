@@ -18,7 +18,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/portal", label: "Dashboard" },
   { href: "/portal/players", label: "Players" },
-  { href: "/portal/drafttool", label: "Draft Tool" },
+  { href: "/portal/injury", label: "Injury" },
   { href: "/portal/fixtures", label: "Fixtures" },
   { href: "/portal/teams", label: "Teams" },
   { href: "/portal/compare", label: "Compare" },

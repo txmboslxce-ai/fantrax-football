@@ -37,6 +37,7 @@ type FplElement = {
   id: number;
   status: string | null;
   chance_of_playing_next_round: number | null;
+  chance_of_playing_this_round: number | null;
   news: string | null;
   news_added: string | null;
   scout_news_link: string | null;
@@ -84,6 +85,7 @@ type FplPlayerDataUpsert = {
   season: string;
   status: string | null;
   chance_of_playing_next_round: number | null;
+  chance_of_playing_this_round: number | null;
   news: string | null;
   news_added: string | null;
   scout_news_link: string | null;
@@ -143,6 +145,7 @@ export async function syncFplPlayerData() {
     season: FPL_SEASON,
     status: toNullableText(element.status),
     chance_of_playing_next_round: element.chance_of_playing_next_round,
+    chance_of_playing_this_round: element.chance_of_playing_this_round,
     news: toNullableText(element.news),
     news_added: toNullableText(element.news_added),
     scout_news_link: toNullableText(element.scout_news_link),

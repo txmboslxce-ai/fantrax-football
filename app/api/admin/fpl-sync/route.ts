@@ -20,6 +20,7 @@ type FplElement = {
   team: number;
   status: string;
   chance_of_playing_next_round: number | null;
+  chance_of_playing_this_round: number | null;
   news: string;
   news_added: string;
   expected_goals_per_90: string | null;
@@ -48,6 +49,7 @@ type FplDataUpsert = {
   season: string;
   status: string | null;
   chance_of_playing_next_round: number | null;
+  chance_of_playing_this_round: number | null;
   news: string | null;
   news_added: string | null;
   expected_goals_per_90: number | null;
@@ -245,6 +247,7 @@ export async function POST() {
         season,
         status: toNullableText(element.status),
         chance_of_playing_next_round: element.chance_of_playing_next_round,
+        chance_of_playing_this_round: element.chance_of_playing_this_round,
         news: toNullableText(element.news),
         news_added: toNullableText(element.news_added),
         expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
