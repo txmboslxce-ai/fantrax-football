@@ -1,31 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-type ScheduleCell = {
-  content?: string;
-  teamId?: string;
-};
-
-type ScheduleRow = {
-  cells?: ScheduleCell[];
-};
-
-type ScheduleTable = {
-  periodNum?: number;
-  rows?: ScheduleRow[];
-};
-
 type FantraxErrorDetail = string | { code?: string; msg?: string };
-
-type ScheduleResponse = {
-  pageError?: FantraxErrorDetail;
-  responses?: Array<{
-    data?: {
-      tableList?: ScheduleTable[];
-    };
-    error?: FantraxErrorDetail;
-  }>;
-};
 
 function extractErrorMessage(detail: FantraxErrorDetail | undefined): string | undefined {
   if (!detail) return undefined;
@@ -43,87 +19,149 @@ export type MatchData = {
   played: boolean;
 };
 
-function parseScore(content: string | undefined): number {
-  if (!content) return 0;
-  const n = parseFloat(content);
+function parseScore(value: number | string | undefined): number {
+  if (value === undefined || value === null) return 0;
+  const n = typeof value === "number" ? value : parseFloat(value);
   return isFinite(n) ? n : 0;
 }
 
-export async function fetchSchedule(leagueId: string): Promise<MatchData[]> {
-  const body = JSON.stringify({
-    msgs: [{ method: "getStandings", data: { leagueId, view: "SCHEDULE" } }],
-  });
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
 
-  const res = await fetch(
-    `https://www.fantrax.com/fxpa/req?leagueId=${encodeURIComponent(leagueId)}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
-        Referer: `https://www.fantrax.com/fantasy/league/${leagueId}/schedule`,
-        Origin: "https://www.fantrax.com",
-      },
-      body,
-      cache: "no-store",
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await fn(items[currentIndex]);
     }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
+// ── Scoring periods (gameweeks) ──────────────────────────────────────────────
+
+type ScoringPeriod = { number?: number; startDate?: string; endDate?: string };
+
+type LeagueInfoResponse = {
+  scoringPeriods?: Record<string, ScoringPeriod> | ScoringPeriod[];
+  pageError?: FantraxErrorDetail;
+};
+
+async function fetchScoringPeriods(leagueId: string): Promise<number[]> {
+  const res = await fetch(
+    `https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=${encodeURIComponent(leagueId)}&excludePlayerInfo=true`,
+    { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" }
   );
 
-  if (!res.ok) throw new Error(`Fantrax schedule API returned ${res.status}`);
+  if (!res.ok) throw new Error(`Fantrax league info API returned ${res.status}`);
 
-  const json = (await res.json()) as ScheduleResponse;
-  const tableList = json?.responses?.[0]?.data?.tableList;
+  const json = (await res.json()) as LeagueInfoResponse;
+  const raw = json?.scoringPeriods;
+  const periods: ScoringPeriod[] = Array.isArray(raw) ? raw : raw ? Object.values(raw) : [];
 
-  if (!Array.isArray(tableList)) {
-    const detail =
-      extractErrorMessage(json?.pageError) ?? extractErrorMessage(json?.responses?.[0]?.error);
-
+  if (periods.length === 0) {
+    const detail = extractErrorMessage(json?.pageError);
     console.error(
-      `[league-analytics/schedule] Unexpected Fantrax response shape for league ${leagueId}:`,
+      `[league-analytics/schedule] Unexpected Fantrax league info shape for league ${leagueId}:`,
       JSON.stringify(json).slice(0, 1000)
     );
-
     throw new Error(
       detail
-        ? `Fantrax schedule API error: ${detail}`
-        : "Fantrax schedule API returned an unexpected response shape."
+        ? `Fantrax league info API error: ${detail}`
+        : "Fantrax league info API returned no scoring periods."
     );
   }
 
-  const matches: MatchData[] = [];
+  const now = Date.now();
 
-  for (let i = 0; i < tableList.length; i++) {
-    const table = tableList[i];
-    const gw = table.periodNum ?? i + 1;
+  return periods
+    .filter((p) => !p.startDate || new Date(p.startDate).getTime() <= now)
+    .map((p, i) => p.number ?? i + 1)
+    .sort((a, b) => a - b);
+}
 
-    for (const row of table.rows ?? []) {
-      const cells = row.cells ?? [];
-      if (cells.length < 4) continue;
+// ── Matchup scores (per gameweek) ────────────────────────────────────────────
 
-      const awayTeamId = cells[0].teamId ?? "";
-      const awayTeamName = cells[0].content ?? "";
-      const awayScore = parseScore(cells[1].content);
-      const homeTeamId = cells[2].teamId ?? "";
-      const homeTeamName = cells[2].content ?? "";
-      const homeScore = parseScore(cells[3].content);
+type MatchupEntry = {
+  awayTeamId?: string;
+  awayTeamName?: string;
+  awayScore?: number | string;
+  awayFantasyPoints?: number | string;
+  awayPoints?: number | string;
+  homeTeamId?: string;
+  homeTeamName?: string;
+  homeScore?: number | string;
+  homeFantasyPoints?: number | string;
+  homePoints?: number | string;
+};
 
-      if (!awayTeamId || !homeTeamId) continue;
+type MatchupScoresResponse = {
+  matchups?: MatchupEntry[];
+  pageError?: FantraxErrorDetail;
+};
 
-      matches.push({
-        gw,
-        awayTeamId,
-        awayTeamName,
-        awayScore,
-        homeTeamId,
-        homeTeamName,
-        homeScore,
-        played: awayScore > 0 && homeScore > 0,
-      });
-    }
+function pickScore(entry: MatchupEntry, side: "away" | "home"): number {
+  const raw =
+    side === "away"
+      ? entry.awayScore ?? entry.awayFantasyPoints ?? entry.awayPoints
+      : entry.homeScore ?? entry.homeFantasyPoints ?? entry.homePoints;
+  return parseScore(raw);
+}
+
+async function fetchMatchupsForPeriod(leagueId: string, period: number): Promise<MatchData[]> {
+  const res = await fetch(
+    `https://www.fantrax.com/fxea/general/getMatchupScores?leagueId=${encodeURIComponent(leagueId)}&period=${period}`,
+    { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" }
+  );
+
+  if (!res.ok) throw new Error(`Fantrax matchup scores API returned ${res.status} for period ${period}`);
+
+  const json = (await res.json()) as MatchupScoresResponse;
+  const matchups = json?.matchups;
+
+  if (!Array.isArray(matchups)) {
+    const detail = extractErrorMessage(json?.pageError);
+    console.error(
+      `[league-analytics/schedule] Unexpected Fantrax matchup scores shape for league ${leagueId} period ${period}:`,
+      JSON.stringify(json).slice(0, 1000)
+    );
+    throw new Error(
+      detail
+        ? `Fantrax matchup scores API error: ${detail}`
+        : "Fantrax matchup scores API returned an unexpected response shape."
+    );
   }
 
-  return matches;
+  return matchups
+    .filter((m): m is MatchupEntry & { awayTeamId: string; homeTeamId: string } =>
+      Boolean(m.awayTeamId && m.homeTeamId)
+    )
+    .map((m) => {
+      const awayScore = pickScore(m, "away");
+      const homeScore = pickScore(m, "home");
+
+      return {
+        gw: period,
+        awayTeamId: m.awayTeamId,
+        awayTeamName: m.awayTeamName ?? "",
+        awayScore,
+        homeTeamId: m.homeTeamId,
+        homeTeamName: m.homeTeamName ?? "",
+        homeScore,
+        played: awayScore > 0 && homeScore > 0,
+      };
+    });
+}
+
+export async function fetchSchedule(leagueId: string): Promise<MatchData[]> {
+  const periods = await fetchScoringPeriods(leagueId);
+  const matchesByPeriod = await mapWithConcurrency(periods, 5, (period) =>
+    fetchMatchupsForPeriod(leagueId, period)
+  );
+  return matchesByPeriod.flat();
 }
 
 export async function GET(request: Request) {
