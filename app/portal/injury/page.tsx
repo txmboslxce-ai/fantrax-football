@@ -4,7 +4,7 @@ import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason } from "@/lib/porta
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 
-const INJURY_STATUS_CODES = ["d", "i", "s", "u"] as const;
+const INJURY_STATUS_CODES = ["d", "i", "s"] as const;
 
 export type InjuryPlayerRow = {
   id: string;
@@ -14,8 +14,7 @@ export type InjuryPlayerRow = {
   ownershipPct: number;
   seasonPts: number;
   status: (typeof INJURY_STATUS_CODES)[number];
-  statusLabel: "Doubtful" | "Injured" | "Suspended" | "Unavailable";
-  chanceThisRound: number | null;
+  statusLabel: "Doubtful" | "Injured" | "Suspended";
   chanceNextRound: number | null;
   description: string | null;
   scoutLink: string | null;
@@ -24,7 +23,6 @@ export type InjuryPlayerRow = {
 type FplPlayerDataRow = {
   status: string | null;
   chance_of_playing_next_round: number | null;
-  chance_of_playing_this_round: number | null;
   news: string | null;
   scout_news_link: string | null;
   players:
@@ -45,7 +43,6 @@ function parseOwnership(value: string | null): number {
 function mapStatusLabel(status: string): InjuryPlayerRow["statusLabel"] {
   if (status === "i") return "Injured";
   if (status === "s") return "Suspended";
-  if (status === "u") return "Unavailable";
   return "Doubtful";
 }
 
@@ -92,7 +89,7 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
 
   const { data: fplRows, error: fplError } = await supabase
     .from("fpl_player_data")
-    .select("status, chance_of_playing_next_round, chance_of_playing_this_round, news, scout_news_link, players!inner(id, name, team, position, ownership_pct, fantrax_id)")
+    .select("status, chance_of_playing_next_round, news, scout_news_link, players!inner(id, name, team, position, ownership_pct, fantrax_id)")
     .eq("season", season)
     .in("status", INJURY_STATUS_CODES as unknown as string[]);
 
@@ -121,7 +118,6 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
         seasonPts: windowRow.season_pts,
         status: row.status,
         statusLabel: mapStatusLabel(row.status),
-        chanceThisRound: row.chance_of_playing_this_round,
         chanceNextRound: row.chance_of_playing_next_round,
         description: row.news?.trim() || null,
         scoutLink: row.scout_news_link?.trim() || null,
@@ -129,7 +125,7 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
       return record;
     })
     .filter((row): row is InjuryPlayerRow => row != null)
-    .sort((a, b) => b.seasonPts - a.seasonPts);
+    .sort((a, b) => b.ownershipPct - a.ownershipPct || b.seasonPts - a.seasonPts);
 
   return {
     players,

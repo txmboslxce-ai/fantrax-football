@@ -9,15 +9,15 @@ type InjuryTableClientProps = {
   players: InjuryPlayerRow[];
 };
 
-type SortKey = "name" | "seasonPts" | "ownershipPct" | "statusLabel" | "chanceThisRound" | "chanceNextRound";
+type SortKey = "name" | "seasonPts" | "ownershipPct" | "statusLabel" | "chanceNextRound";
 
 const positionFilters: Array<"All" | "GK" | "DEF" | "MID" | "FWD"> = ["All", "GK", "DEF", "MID", "FWD"];
-const statusFilters: InjuryPlayerRow["statusLabel"][] = ["Doubtful", "Injured", "Suspended", "Unavailable"];
+const statusFilters: InjuryPlayerRow["statusLabel"][] = ["Doubtful", "Injured", "Suspended"];
+const CHANCE_PILLS = [75, 50, 25] as const;
 
 function statusBadgeClass(status: InjuryPlayerRow["statusLabel"]): string {
   if (status === "Injured") return "bg-red-100 text-red-900";
   if (status === "Suspended") return "bg-fuchsia-100 text-fuchsia-900";
-  if (status === "Unavailable") return "bg-slate-200 text-slate-900";
   return "bg-amber-100 text-amber-900";
 }
 
@@ -31,10 +31,9 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
   const [teamFilter, setTeamFilter] = useState("All");
   const [ownershipMin, setOwnershipMin] = useState("0");
   const [ownershipMax, setOwnershipMax] = useState("100");
-  const [chanceMin, setChanceMin] = useState("0");
-  const [chanceMax, setChanceMax] = useState("100");
+  const [activeChancePills, setActiveChancePills] = useState<Set<(typeof CHANCE_PILLS)[number]>>(new Set(CHANCE_PILLS));
   const [activeStatuses, setActiveStatuses] = useState<Set<InjuryPlayerRow["statusLabel"]>>(new Set(statusFilters));
-  const [sortKey, setSortKey] = useState<SortKey>("seasonPts");
+  const [sortKey, setSortKey] = useState<SortKey>("ownershipPct");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const teams = useMemo(() => {
@@ -49,19 +48,12 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
     const lowerOwnershipBound = Math.max(0, Math.min(safeOwnershipMin, safeOwnershipMax));
     const upperOwnershipBound = Math.min(100, Math.max(safeOwnershipMin, safeOwnershipMax));
 
-    const parsedChanceMin = Number(chanceMin);
-    const parsedChanceMax = Number(chanceMax);
-    const safeChanceMin = Number.isFinite(parsedChanceMin) ? parsedChanceMin : 0;
-    const safeChanceMax = Number.isFinite(parsedChanceMax) ? parsedChanceMax : 100;
-    const lowerChanceBound = Math.max(0, Math.min(safeChanceMin, safeChanceMax));
-    const upperChanceBound = Math.min(100, Math.max(safeChanceMin, safeChanceMax));
-
     const filtered = players.filter((player) => {
       const matchesPosition = positionFilter === "All" || player.position === positionFilter;
       const matchesTeam = teamFilter === "All" || player.team === teamFilter;
       const matchesOwnership = player.ownershipPct >= lowerOwnershipBound && player.ownershipPct <= upperOwnershipBound;
-      const matchesChance =
-        player.chanceNextRound == null || (player.chanceNextRound >= lowerChanceBound && player.chanceNextRound <= upperChanceBound);
+      const isTieredChance = player.chanceNextRound != null && (CHANCE_PILLS as readonly number[]).includes(player.chanceNextRound);
+      const matchesChance = !isTieredChance || activeChancePills.has(player.chanceNextRound as (typeof CHANCE_PILLS)[number]);
       const matchesStatus = activeStatuses.has(player.statusLabel);
       return matchesPosition && matchesTeam && matchesOwnership && matchesChance && matchesStatus;
     });
@@ -75,12 +67,16 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
         const comparison = a.statusLabel.localeCompare(b.statusLabel);
         return sortDir === "asc" ? comparison : -comparison;
       }
+      if (sortKey === "ownershipPct") {
+        const diff = sortDir === "asc" ? a.ownershipPct - b.ownershipPct : b.ownershipPct - a.ownershipPct;
+        return diff !== 0 ? diff : b.seasonPts - a.seasonPts;
+      }
 
-      const aValue = sortKey === "chanceThisRound" || sortKey === "chanceNextRound" ? a[sortKey] ?? -1 : a[sortKey];
-      const bValue = sortKey === "chanceThisRound" || sortKey === "chanceNextRound" ? b[sortKey] ?? -1 : b[sortKey];
+      const aValue = sortKey === "chanceNextRound" ? a[sortKey] ?? -1 : a[sortKey];
+      const bValue = sortKey === "chanceNextRound" ? b[sortKey] ?? -1 : b[sortKey];
       return sortDir === "asc" ? aValue - bValue : bValue - aValue;
     });
-  }, [activeStatuses, chanceMax, chanceMin, ownershipMax, ownershipMin, players, positionFilter, sortDir, sortKey, teamFilter]);
+  }, [activeChancePills, activeStatuses, ownershipMax, ownershipMin, players, positionFilter, sortDir, sortKey, teamFilter]);
 
   function handleSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
@@ -99,6 +95,18 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
         next.delete(status);
       } else {
         next.add(status);
+      }
+      return next;
+    });
+  }
+
+  function toggleChancePill(value: (typeof CHANCE_PILLS)[number]) {
+    setActiveChancePills((current) => {
+      const next = new Set(current);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
       }
       return next;
     });
@@ -195,28 +203,23 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
           </div>
 
           <div className="space-y-1">
-            <span className="block font-semibold uppercase tracking-wide text-slate-500">Chance of Playing %</span>
-            <div className="grid grid-cols-2 gap-1 md:flex">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step="1"
-                value={chanceMin}
-                onChange={(event) => setChanceMin(event.target.value)}
-                placeholder="Min"
-                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark md:w-16"
-              />
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step="1"
-                value={chanceMax}
-                onChange={(event) => setChanceMax(event.target.value)}
-                placeholder="Max"
-                className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark md:w-16"
-              />
+            <span className="block font-semibold uppercase tracking-wide text-slate-500">Chance of Playing</span>
+            <div className="flex flex-nowrap gap-1">
+              {CHANCE_PILLS.map((value) => {
+                const active = activeChancePills.has(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleChancePill(value)}
+                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                      active ? "border-brand-green bg-brand-green text-brand-cream" : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
+                    }`}
+                  >
+                    {value}%
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -226,14 +229,14 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
         <table className="w-max border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                Pos
-              </th>
-              <th className="sticky left-10 top-0 z-30 w-48 min-w-48 max-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky left-0 top-0 z-30 w-48 min-w-48 max-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1">
                   <span>Player</span>
                   <span aria-hidden="true">{sortArrow("name")}</span>
                 </button>
+              </th>
+              <th className="sticky left-48 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                Pos
               </th>
               <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Team
@@ -256,15 +259,9 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                   <span aria-hidden="true">{sortArrow("statusLabel")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("chanceThisRound")} className="inline-flex w-full items-center justify-end gap-1">
-                  <span>This Rd %</span>
-                  <span aria-hidden="true">{sortArrow("chanceThisRound")}</span>
-                </button>
-              </th>
-              <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-32 min-w-32 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("chanceNextRound")} className="inline-flex w-full items-center justify-end gap-1">
-                  <span>Next Rd %</span>
+                  <span>% Chance Playing Next Rd</span>
                   <span aria-hidden="true">{sortArrow("chanceNextRound")}</span>
                 </button>
               </th>
@@ -272,7 +269,7 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                 Description
               </th>
               <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                Link
+                Source
               </th>
             </tr>
           </thead>
@@ -295,23 +292,22 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                   role="link"
                   tabIndex={0}
                 >
-                  <td className={`sticky left-0 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
+                  <td className={`sticky left-0 z-20 w-48 min-w-48 max-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
+                    <span className="block truncate">{player.name}</span>
+                  </td>
+                  <td className={`sticky left-48 z-20 w-10 min-w-10 border-b border-r border-slate-200 px-1 py-1.5 text-center ${rowShade} group-hover:bg-brand-green/10`}>
                     <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(player.position)}`}>
                       {player.position.charAt(0)}
                     </span>
-                  </td>
-                  <td className={`sticky left-10 z-20 w-48 min-w-48 max-w-48 border-b border-r border-slate-200 px-2 py-1.5 font-semibold text-brand-dark ${rowShade} group-hover:bg-brand-green/10`}>
-                    <span className="block truncate">{player.name}</span>
                   </td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
                     {player.ownershipPct.toFixed(1)}%
                   </td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{player.seasonPts.toFixed(0)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{player.seasonPts.toFixed(2)}</td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${statusBadgeClass(player.statusLabel)}`}>{player.statusLabel}</span>
                   </td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">{formatChance(player.chanceThisRound)}</td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">{formatChance(player.chanceNextRound)}</td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-slate-600">
                     <span className="block max-w-[16rem] truncate" title={player.description ?? undefined}>
@@ -327,7 +323,7 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                         onClick={(event) => event.stopPropagation()}
                         className="font-semibold text-brand-green underline underline-offset-2 hover:opacity-80"
                       >
-                        Link
+                        Source
                       </a>
                     ) : (
                       <span className="text-slate-400">-</span>
@@ -338,7 +334,7 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
             })}
             {filteredAndSorted.length === 0 ? (
               <tr>
-                <td colSpan={10} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
+                <td colSpan={9} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
                   No injuries or suspensions match the current filters.
                 </td>
               </tr>
