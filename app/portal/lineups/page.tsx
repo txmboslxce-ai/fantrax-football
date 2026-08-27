@@ -26,13 +26,14 @@ type TeamRow = {
 type LineupRow = {
   status: "predicted" | "confirmed";
   fetched_at: string;
-  players: { id: string; name: string; team: string; position: string } | Array<{ id: string; name: string; team: string; position: string }> | null;
+  position: string | null;
+  players: { id: string; name: string; team: string } | Array<{ id: string; name: string; team: string }> | null;
 };
 
 type LineupPlayer = {
   id: string;
   name: string;
-  position: string;
+  position: string | null;
 };
 
 type FixtureLineup = {
@@ -45,7 +46,22 @@ type FixtureLineup = {
   fetchedAt: string | null;
 };
 
-const POSITION_ORDER: Record<string, number> = { G: 0, D: 1, M: 2, F: 3 };
+// Groups the app's translated position codes (see ROTOWIRE_POSITION_MAP in
+// lib/rotowire/sync.ts) for display ordering -- GK first, then back to front.
+const POSITION_ORDER: Record<string, number> = {
+  GK: 0,
+  CB: 1,
+  LB: 1,
+  RB: 1,
+  DM: 2,
+  CM: 2,
+  LM: 2,
+  RM: 2,
+  CAM: 2,
+  LW: 3,
+  RW: 3,
+  FW: 3,
+};
 
 function parseRequestedGameweek(value: string | string[] | undefined): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -54,7 +70,9 @@ function parseRequestedGameweek(value: string | string[] | undefined): number | 
 }
 
 function sortByPosition(players: LineupPlayer[]): LineupPlayer[] {
-  return [...players].sort((a, b) => (POSITION_ORDER[a.position] ?? 9) - (POSITION_ORDER[b.position] ?? 9));
+  return [...players].sort(
+    (a, b) => (POSITION_ORDER[a.position ?? ""] ?? 9) - (POSITION_ORDER[b.position ?? ""] ?? 9)
+  );
 }
 
 export default async function LineupsPage({ searchParams }: PageProps) {
@@ -99,7 +117,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
 
   const { data: lineupData, error: lineupError } = await supabase
     .from("player_lineups")
-    .select("status, fetched_at, is_starter, players!inner(id, name, team, position)")
+    .select("status, fetched_at, position, is_starter, players!inner(id, name, team)")
     .eq("season", season)
     .eq("gameweek", gameweek)
     .eq("is_starter", true);
@@ -132,7 +150,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
       const isAway = fixtureLineup.fixture.away_team === player.team;
       if (!isHome && !isAway) continue;
 
-      const lineupPlayer: LineupPlayer = { id: player.id, name: player.name, position: player.position };
+      const lineupPlayer: LineupPlayer = { id: player.id, name: player.name, position: row.position };
       if (isHome) {
         fixtureLineup.homePlayers.push(lineupPlayer);
       } else {
@@ -223,6 +241,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
                   <ul className="space-y-0.5">
                     {sortByPosition(fixtureLineup.homePlayers).map((player) => (
                       <li key={player.id} className="text-brand-dark">
+                        {player.position ? <span className="font-semibold">{player.position}: </span> : null}
                         {player.name}
                       </li>
                     ))}
@@ -236,6 +255,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
                   <ul className="space-y-0.5">
                     {sortByPosition(fixtureLineup.awayPlayers).map((player) => (
                       <li key={player.id} className="text-brand-dark">
+                        {player.position ? <span className="font-semibold">{player.position}: </span> : null}
                         {player.name}
                       </li>
                     ))}

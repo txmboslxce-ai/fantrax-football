@@ -35,6 +35,29 @@ function normalize(value: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// RotoWire's own position codes, translated to the codes the rest of the
+// app uses. Any code not listed here (GK, MC, and the generic D/M/F/F-M
+// codes RotoWire uses in its Injuries footnote) is left as-is -- those
+// footnote entries are filtered out below before they ever reach this map,
+// and GK/MC don't need translating.
+const ROTOWIRE_POSITION_MAP: Record<string, string> = {
+  DC: "CB",
+  DL: "LB",
+  DR: "RB",
+  ML: "LM",
+  MR: "RM",
+  DMC: "DM",
+  AML: "LW",
+  AMR: "RW",
+  AMC: "CAM",
+  FW: "FW",
+};
+
+function translateRotowirePosition(position: string | null): string | null {
+  if (!position) return null;
+  return ROTOWIRE_POSITION_MAP[position] ?? position;
+}
+
 // Exported separately from the fetch so it can be run against a saved copy
 // of the page -- this app's own network can't reach rotowire.com to verify
 // these selectors live, so treat the first real cron run's output as the
@@ -64,11 +87,17 @@ export function parseRotowireLineups(html: string): ParsedMatch[] {
     const collectPlayers = (side: "is-home" | "is-visit"): ParsedLineupPlayer[] =>
       $match
         .find(`.lineup__list.${side} .lineup__player`)
+        // RotoWire tags each team's list with an "Injuries" divider followed
+        // by more `.lineup__player` <li>s for players who are OUT/doubtful,
+        // marked with a `.lineup__inj` status span. Those aren't part of the
+        // predicted/confirmed starting XI, so exclude anything carrying that
+        // span rather than trusting list order relative to the divider.
+        .filter((__, playerEl) => $(playerEl).find(".lineup__inj").length === 0)
         .map((__, playerEl) => {
           const $player = $(playerEl);
           const name = $player.find("a").first().text().trim() || $player.text().trim();
           const positionText = $player.find(".lineup__pos").first().text().trim();
-          return { name, position: positionText || null };
+          return { name, position: translateRotowirePosition(positionText || null) };
         })
         .get()
         .filter((player) => player.name.length > 0);
@@ -195,6 +224,7 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
     source_event_id: string;
     status: "predicted" | "confirmed";
     is_starter: boolean;
+    position: string | null;
     fetched_at: string;
   }[] = [];
 
@@ -237,19 +267,22 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
           source_event_id: sourceEventId,
           status: match.status,
           is_starter: true,
+          position: lineupPlayer.position,
           fetched_at: fetchedAt,
         });
       }
     }
   }
 
-  // RotoWire's page can list the same fixture's lineup block more than once
-  // (e.g. a duplicated widget), which would otherwise submit two rows for
-  // the same (player_id, season, gameweek) in a single upsert call --
-  // Postgres rejects that ("ON CONFLICT DO UPDATE command cannot affect row
-  // a second time") even though the two rows are identical. Collapse to one
-  // row per conflict key before writing; last one wins, which is harmless
-  // since duplicates carry the same status/is_starter anyway.
+  // Before the Injuries-footnote filter above, a player who was both named
+  // in the predicted XI and flagged questionable in that team's Injuries
+  // footnote could be collected twice, submitting two rows for the same
+  // (player_id, season, gameweek) in one upsert call -- Postgres rejects
+  // that outright ("ON CONFLICT DO UPDATE command cannot affect row a
+  // second time"), even though the rows were identical. The footnote filter
+  // should prevent that at the source now, but this collapse is left in
+  // place as a cheap safety net: last one wins, which is harmless since any
+  // remaining duplicates would carry the same status/is_starter anyway.
   const dedupedRows = Array.from(
     new Map(rows.map((row) => [`${row.player_id}|${row.season}|${row.gameweek}`, row])).values()
   );
