@@ -387,7 +387,11 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
 
   return (
       <div className="space-y-6">
-        <div className="grid gap-4 xl:grid-cols-2">
+        {/* items-start: without it, CSS Grid stretches both panels to match
+            the taller one - an injured player's longer availability alert
+            would otherwise force the Season Trend panel to grow and leave
+            blank space at its bottom instead of keeping its own height. */}
+        <div className="grid items-start gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -411,11 +415,15 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
               <p className="text-sm font-bold">⚠ Availability Update</p>
               <p className="mt-2 text-sm">
                 Status: <strong>{availabilityStatus}</strong>
+                {fplData.chance_of_playing_next_round != null
+                  ? ` · ${fplData.chance_of_playing_next_round}% chance of playing next round`
+                  : null}
               </p>
-              {fplData.chance_of_playing_next_round != null ? (
-                <p className="mt-1 text-sm">Chance of playing next round: {fplData.chance_of_playing_next_round}%</p>
+              {fplData.news && fplData.news.trim() ? (
+                <p className="mt-2 line-clamp-2 text-sm" title={fplData.news.trim()}>
+                  &quot;{fplData.news.trim()}&quot;
+                </p>
               ) : null}
-              {fplData.news && fplData.news.trim() ? <p className="mt-3 text-sm">&quot;{fplData.news.trim()}&quot;</p> : null}
               {fplData.scout_news_link && fplData.scout_news_link.trim() ? (
                 <a
                   href={fplData.scout_news_link.trim()}
