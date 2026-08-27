@@ -501,7 +501,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
         </div>
 
         {radarAvailableSeasons.length > 1 ? (
-          <div className="flex justify-end">
+          <div className="flex justify-start">
             <RadarSeasonSelect season={radarSeason} availableSeasons={radarAvailableSeasons} paramName="radarSeason" />
           </div>
         ) : null}
