@@ -243,11 +243,22 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
     }
   }
 
-  if (rows.length > 0) {
+  // RotoWire's page can list the same fixture's lineup block more than once
+  // (e.g. a duplicated widget), which would otherwise submit two rows for
+  // the same (player_id, season, gameweek) in a single upsert call --
+  // Postgres rejects that ("ON CONFLICT DO UPDATE command cannot affect row
+  // a second time") even though the two rows are identical. Collapse to one
+  // row per conflict key before writing; last one wins, which is harmless
+  // since duplicates carry the same status/is_starter anyway.
+  const dedupedRows = Array.from(
+    new Map(rows.map((row) => [`${row.player_id}|${row.season}|${row.gameweek}`, row])).values()
+  );
+
+  if (dedupedRows.length > 0) {
     // Idempotent via the table's existing unique(player_id, season,
     // gameweek) constraint -- re-running throughout the week (predicted ->
     // confirmed as kickoff approaches) upserts the same rows in place.
-    const { error: upsertError } = await supabase.from("player_lineups").upsert(rows, {
+    const { error: upsertError } = await supabase.from("player_lineups").upsert(dedupedRows, {
       onConflict: "player_id,season,gameweek",
     });
 
@@ -258,7 +269,7 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
 
   return {
     matchesFound: parsedMatches.length,
-    playersUpserted: rows.length,
+    playersUpserted: dedupedRows.length,
     unmatchedTeams: Array.from(unmatchedTeams),
     unmatchedPlayers: Array.from(unmatchedPlayers),
     skippedFixtures,
