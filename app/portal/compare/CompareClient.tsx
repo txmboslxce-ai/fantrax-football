@@ -256,36 +256,38 @@ export default function CompareClient({ players, leagueRoster, season, available
             />
           ))}
         </div>
-        {slots.length < 4 ? (
-          <button
-            type="button"
-            onClick={addSlot}
-            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50"
-          >
-            Add player
-          </button>
-        ) : null}
-      </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {slots.length < 4 ? (
+            <button
+              type="button"
+              onClick={addSlot}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50"
+            >
+              Add player
+            </button>
+          ) : null}
 
-      {availableSeasons.length > 1 ? (
-        <div className="flex items-center gap-2">
-          <label htmlFor="compare-season" className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-            Season
-          </label>
-          <select
-            id="compare-season"
-            value={season}
-            onChange={(event) => selectSeason(event.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
-          >
-            {availableSeasons.map((availableSeason) => (
-              <option key={availableSeason} value={availableSeason}>
-                {availableSeason}
-              </option>
-            ))}
-          </select>
+          {availableSeasons.length > 1 ? (
+            <div className="flex items-center gap-2">
+              <label htmlFor="compare-season" className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Season
+              </label>
+              <select
+                id="compare-season"
+                value={season}
+                onChange={(event) => selectSeason(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
+              >
+                {availableSeasons.map((availableSeason) => (
+                  <option key={availableSeason} value={availableSeason}>
+                    {availableSeason}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
 
       {missingPlayers.length > 0 ? (
         <p className="text-sm text-slate-500">
