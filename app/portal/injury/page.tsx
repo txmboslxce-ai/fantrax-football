@@ -1,10 +1,16 @@
 import InjuryTableClient from "@/app/portal/injury/InjuryTableClient";
 import { mapPosition } from "@/lib/portal/playerMetrics";
 import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason } from "@/lib/portal/summaryAdapters";
+import {
+  INJURY_TABLE_STATUS_CODES,
+  formatInjurySyncedAt,
+  isInjuryTableStatusCode,
+  mapInjuryTableStatusLabel,
+  type InjuryTableStatusCode,
+  type InjuryTableStatusLabel,
+} from "@/lib/portal/injuryStatus";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
-
-const INJURY_STATUS_CODES = ["d", "i", "s"] as const;
 
 export type InjuryPlayerRow = {
   id: string;
@@ -13,8 +19,8 @@ export type InjuryPlayerRow = {
   position: "GK" | "DEF" | "MID" | "FWD";
   ownershipPct: number;
   seasonPts: number;
-  status: (typeof INJURY_STATUS_CODES)[number];
-  statusLabel: "Doubtful" | "Injured" | "Suspended";
+  status: InjuryTableStatusCode;
+  statusLabel: InjuryTableStatusLabel;
   chanceNextRound: number | null;
   description: string | null;
   scoutLink: string | null;
@@ -40,37 +46,6 @@ function parseOwnership(value: string | null): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function mapStatusLabel(status: string): InjuryPlayerRow["statusLabel"] {
-  if (status === "i") return "Injured";
-  if (status === "s") return "Suspended";
-  return "Doubtful";
-}
-
-function isInjuryStatusCode(value: string | null): value is (typeof INJURY_STATUS_CODES)[number] {
-  return value != null && (INJURY_STATUS_CODES as readonly string[]).includes(value);
-}
-
-function formatSyncedAt(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
-
 async function getInjuryTableData(season: string): Promise<{ players: InjuryPlayerRow[]; lastSyncedAt: string | null }> {
   const supabase = await createServerSupabaseClient();
 
@@ -93,7 +68,7 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
     .from("fpl_player_data")
     .select("status, chance_of_playing_next_round, news, scout_news_link, players!inner(id, name, team, position, ownership_pct, fantrax_id)")
     .eq("season", season)
-    .in("status", INJURY_STATUS_CODES as unknown as string[]);
+    .in("status", INJURY_TABLE_STATUS_CODES as unknown as string[]);
 
   if (fplError) {
     throw new Error(`Unable to load injury data: ${fplError.message}`);
@@ -102,7 +77,7 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
   const players: InjuryPlayerRow[] = ((fplRows ?? []) as unknown as FplPlayerDataRow[])
     .map((row) => {
       const player = Array.isArray(row.players) ? row.players[0] : row.players;
-      if (!player || !isInjuryStatusCode(row.status)) {
+      if (!player || !isInjuryTableStatusCode(row.status)) {
         return null;
       }
       if (poolFantraxIds.size > 0 && !poolFantraxIds.has(player.fantrax_id ?? "")) {
@@ -119,7 +94,7 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
         ownershipPct: parseOwnership(player.ownership_pct),
         seasonPts: windowRow.season_pts,
         status: row.status,
-        statusLabel: mapStatusLabel(row.status),
+        statusLabel: mapInjuryTableStatusLabel(row.status),
         chanceNextRound: row.chance_of_playing_next_round,
         description: row.news?.trim() || null,
         scoutLink: row.scout_news_link?.trim() || null,
@@ -131,7 +106,7 @@ async function getInjuryTableData(season: string): Promise<{ players: InjuryPlay
 
   return {
     players,
-    lastSyncedAt: formatSyncedAt((latestSyncRow?.synced_at as string | undefined) ?? null),
+    lastSyncedAt: formatInjurySyncedAt((latestSyncRow?.synced_at as string | undefined) ?? null),
   };
 }
 

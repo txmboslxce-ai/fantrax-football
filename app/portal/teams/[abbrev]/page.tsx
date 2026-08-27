@@ -1,3 +1,5 @@
+import InjuryTableClient from "@/app/portal/injury/InjuryTableClient";
+import type { InjuryPlayerRow } from "@/app/portal/injury/page";
 import TeamSquadClient from "@/components/portal/TeamSquadClient";
 import {
   decorateGameweeks,
@@ -9,6 +11,13 @@ import {
   type PlayerGameweekRow,
   type TeamRow,
 } from "@/lib/portal/playerMetrics";
+import { emptyWindowStatsRow, fetchPlayerWindowStatsBySeason } from "@/lib/portal/summaryAdapters";
+import {
+  formatInjurySyncedAt,
+  isInjuryTableStatusCode,
+  mapInjuryTableStatusLabel,
+  type InjuryTableStatusCode,
+} from "@/lib/portal/injuryStatus";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
@@ -74,6 +83,7 @@ type TeamPlayerWithFplRow = {
         chance_of_playing_next_round: number | null;
         news: string | null;
         news_added: string | null;
+        scout_news_link: string | null;
         penalties_order: number | null;
         corners_order: number | null;
         direct_freekicks_order: number | null;
@@ -83,6 +93,7 @@ type TeamPlayerWithFplRow = {
         chance_of_playing_next_round: number | null;
         news: string | null;
         news_added: string | null;
+        scout_news_link: string | null;
         penalties_order: number | null;
         corners_order: number | null;
         direct_freekicks_order: number | null;
@@ -95,10 +106,12 @@ type TeamFplPlayer = {
   fantraxId: string | null;
   name: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  ownershipPct: number;
   status: string | null;
   chanceOfPlaying: number | null;
   news: string | null;
   newsAdded: string | null;
+  scoutLink: string | null;
   penaltiesOrder: number | null;
   cornersOrder: number | null;
   directFksOrder: number | null;
@@ -133,49 +146,6 @@ function fdrBadgeClass(rank: number): string {
   if (rank <= 12) return "bg-yellow-600/60 text-yellow-100";
   if (rank <= 16) return "bg-lime-700/60 text-lime-100";
   return "bg-green-700/60 text-green-100";
-}
-
-function mapInjuryStatus(status: string | null, chance: number | null): "Injured" | "Suspended" | "Unavailable" | "Doubtful" {
-  if (status === "s") {
-    return "Suspended";
-  }
-  if (status === "u") {
-    return "Unavailable";
-  }
-  if (status === "i") {
-    return "Injured";
-  }
-  if (status === "d" || (status === "a" && chance != null && chance < 100)) {
-    return "Doubtful";
-  }
-  return "Doubtful";
-}
-
-function severityRank(chance: number | null): number {
-  if (chance === 0) {
-    return 0;
-  }
-  if (chance === 25) {
-    return 1;
-  }
-  if (chance === 50) {
-    return 2;
-  }
-  if (chance === 75) {
-    return 3;
-  }
-  return 4;
-}
-
-function truncateNews(news: string | null, maxLength = 60): string {
-  const text = (news ?? "").trim();
-  if (!text) {
-    return "—";
-  }
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return `${text.slice(0, maxLength - 1)}…`;
 }
 
 export default async function TeamDetailPage({ params, searchParams }: TeamDetailPageProps) {
@@ -221,7 +191,7 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
   const { data: teamPlayersWithFplData, error: teamPlayersWithFplError } = await supabase
     .from("players")
     .select(
-      "id, fantrax_id, name, position, ownership_pct, fpl_player_data(status, chance_of_playing_next_round, news, news_added, penalties_order, corners_order, direct_freekicks_order)"
+      "id, fantrax_id, name, position, ownership_pct, fpl_player_data(status, chance_of_playing_next_round, news, news_added, scout_news_link, penalties_order, corners_order, direct_freekicks_order)"
     )
     .eq("team", teamAbbrev)
     .order("position", { ascending: true })
@@ -238,10 +208,12 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       fantraxId: row.fantrax_id,
       name: row.name,
       position: mapPosition(row.position),
+      ownershipPct: parseOwnership(row.ownership_pct),
       status: fplRaw?.status ?? null,
       chanceOfPlaying: fplRaw?.chance_of_playing_next_round ?? null,
       news: fplRaw?.news ?? null,
       newsAdded: fplRaw?.news_added ?? null,
+      scoutLink: fplRaw?.scout_news_link ?? null,
       penaltiesOrder: fplRaw?.penalties_order ?? null,
       cornersOrder: fplRaw?.corners_order ?? null,
       directFksOrder: fplRaw?.direct_freekicks_order ?? null,
@@ -265,20 +237,12 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       )
     : false;
 
-  const injuriesRows = hasAnyFplData
-    ? teamFplPlayers
-        .filter((player) => player.fantraxId != null && poolFantraxIdSet.has(player.fantraxId))
-        .filter((player) => player.status !== "a" || (player.chanceOfPlaying != null && player.chanceOfPlaying < 100))
-        .sort((a, b) => {
-          const severity = severityRank(a.chanceOfPlaying) - severityRank(b.chanceOfPlaying);
-          if (severity !== 0) {
-            return severity;
-          }
-          return a.name.localeCompare(b.name);
-        })
-    : [];
+  const injuryPlayerRowsBase = teamFplPlayers.filter(
+    (player): player is TeamFplPlayer & { status: InjuryTableStatusCode } =>
+      player.fantraxId != null && poolFantraxIdSet.has(player.fantraxId) && isInjuryTableStatusCode(player.status)
+  );
 
-  const showInjuriesTab = injuriesRows.length > 0;
+  const showInjuriesTab = injuryPlayerRowsBase.length > 0;
   const TEAM_TABS = showInjuriesTab ? [...BASE_TEAM_TABS, { key: "injuries", label: "Injuries" as const }] : [...BASE_TEAM_TABS];
   const activeTab: TeamTabKey = requestedTab === "injuries" && !showInjuriesTab ? "overview" : requestedTab;
 
@@ -309,6 +273,36 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
       }>
     | undefined;
   let fixturesRows: FixtureTabRow[] | undefined;
+  let injuryTableRows: InjuryPlayerRow[] | undefined;
+  let injuryLastSyncedAt: string | null | undefined;
+
+  if (activeTab === "injuries") {
+    const [windowRowByPlayer, { data: latestSyncRow, error: latestSyncError }] = await Promise.all([
+      fetchPlayerWindowStatsBySeason(SEASON, "season"),
+      supabase.from("fpl_player_data").select("synced_at").eq("season", SEASON).order("synced_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (latestSyncError) {
+      throw new Error(`Unable to load the last FPL sync time: ${latestSyncError.message}`);
+    }
+
+    injuryTableRows = injuryPlayerRowsBase.map((player) => {
+      const windowRow = windowRowByPlayer.get(player.id) ?? emptyWindowStatsRow(player.id, SEASON, "season");
+      return {
+        id: player.id,
+        name: player.name,
+        team: teamAbbrev,
+        position: player.position,
+        ownershipPct: player.ownershipPct,
+        seasonPts: windowRow.season_pts,
+        status: player.status,
+        statusLabel: mapInjuryTableStatusLabel(player.status),
+        chanceNextRound: player.chanceOfPlaying,
+        description: player.news?.trim() || null,
+        scoutLink: player.scoutLink?.trim() || null,
+      };
+    });
+    injuryLastSyncedAt = formatInjurySyncedAt((latestSyncRow?.synced_at as string | undefined) ?? null);
+  }
 
   if (activeTab === "overview") {
     const { data: teamPlayers, error: playersError } = await supabase
@@ -941,55 +935,15 @@ export default async function TeamDetailPage({ params, searchParams }: TeamDetai
           ) : activeTab === "injuries" ? (
             <div className="space-y-3">
               <h2 className="text-2xl font-black">Injuries</h2>
-              {injuriesRows.length === 0 ? (
-                <p className="text-sm text-slate-500">No injury concerns for this team.</p>
+              {injuryTableRows && injuryTableRows.length > 0 ? (
+                <>
+                  <p className="text-xs italic text-slate-500">
+                    {injuryLastSyncedAt ? `Injury information last updated: ${injuryLastSyncedAt}` : "Injury information last updated: unavailable."}
+                  </p>
+                  <InjuryTableClient players={injuryTableRows} />
+                </>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="min-w-full text-left text-sm text-brand-dark">
-                    <thead className="bg-brand-green text-brand-cream">
-                      <tr>
-                        <th className="px-4 py-3">Player</th>
-                        <th className="px-4 py-3">Position</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Chance of Playing</th>
-                        <th className="px-4 py-3">News</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {injuriesRows.map((row, index) => {
-                        const statusLabel = mapInjuryStatus(row.status, row.chanceOfPlaying);
-                        const statusPillClass =
-                          statusLabel === "Doubtful"
-                            ? "border-amber-300 bg-amber-50 text-amber-900"
-                            : "border-red-300 bg-red-50 text-red-900";
-
-                        return (
-                          <tr key={row.id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                            <td className="px-4 py-3 font-semibold">
-                              {row.id ? (
-                                <Link href={`/portal/players/${row.id}`} prefetch={false} className="hover:text-brand-green">
-                                  {row.name}
-                                </Link>
-                              ) : (
-                                row.name
-                              )}
-                            </td>
-                            <td className="px-4 py-3">{row.position}</td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPillClass}`}>
-                                {statusLabel}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">{row.chanceOfPlaying == null ? "—" : `${row.chanceOfPlaying}%`}</td>
-                            <td className="px-4 py-3" title={(row.news ?? "").trim() || undefined}>
-                              {truncateNews(row.news)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <p className="text-sm text-slate-500">No injury concerns for this team.</p>
               )}
             </div>
           ) : null}
