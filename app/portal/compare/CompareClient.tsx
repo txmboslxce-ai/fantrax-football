@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import RosterPill from "@/app/components/ui/RosterPill";
 import PercentileRadarChart, { type RadarPlayerSeries, type RadarStatPoint } from "@/components/portal/charts/PercentileRadarChart";
 import PercentileStatsTable, { type StatTableRow } from "@/components/portal/charts/PercentileStatsTable";
@@ -11,6 +12,8 @@ import type { ComparePlayerSnapshot } from "@/app/portal/compare/page";
 type CompareClientProps = {
   players: ComparePlayerSnapshot[];
   leagueRoster: LeagueRosterData | null;
+  season: string;
+  availableSeasons: string[];
 };
 
 type CompareSlot = {
@@ -156,7 +159,10 @@ function SearchablePlayerPicker({
   );
 }
 
-export default function CompareClient({ players, leagueRoster }: CompareClientProps) {
+export default function CompareClient({ players, leagueRoster, season, availableSeasons }: CompareClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const initialSelections: CompareSlot[] = [
     { id: "", label: "" },
     { id: "", label: "" },
@@ -168,6 +174,18 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
     () => slots.map((slot) => players.find((player) => player.id === slot.id) ?? null).filter((player): player is ComparePlayerSnapshot => player != null),
     [players, slots]
   );
+
+  // A selected player can drop out of the pool for a different season (e.g.
+  // they weren't in the league yet) - slot.label keeps their name around so
+  // we can still say who's missing, rather than the comparison just silently
+  // showing one fewer player with no explanation.
+  const missingPlayers = slots.filter((slot) => slot.id && !players.some((player) => player.id === slot.id));
+
+  function selectSeason(nextSeason: string) {
+    const params = new URLSearchParams(window.location.search);
+    params.set("season", nextSeason);
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   const colorByPlayerId = useMemo(
     () => new Map(selectedPlayers.map((player, index) => [player.id, PLAYER_COLORS[index % PLAYER_COLORS.length]])),
@@ -238,16 +256,45 @@ export default function CompareClient({ players, leagueRoster }: CompareClientPr
             />
           ))}
         </div>
-        {slots.length < 4 ? (
-          <button
-            type="button"
-            onClick={addSlot}
-            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50"
-          >
-            Add player
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {slots.length < 4 ? (
+            <button
+              type="button"
+              onClick={addSlot}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:bg-slate-50"
+            >
+              Add player
+            </button>
+          ) : null}
+
+          {availableSeasons.length > 1 ? (
+            <div className="flex items-center gap-2">
+              <label htmlFor="compare-season" className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Season
+              </label>
+              <select
+                id="compare-season"
+                value={season}
+                onChange={(event) => selectSeason(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-brand-dark focus:border-brand-green focus:outline-none"
+              >
+                {availableSeasons.map((availableSeason) => (
+                  <option key={availableSeason} value={availableSeason}>
+                    {availableSeason}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {missingPlayers.length > 0 ? (
+        <p className="text-sm text-slate-500">
+          {missingPlayers.map((slot) => slot.label).join(" and ")} {missingPlayers.length === 1 ? "wasn't" : "weren't"} in the player pool for{" "}
+          {season}.
+        </p>
+      ) : null}
 
       {selectedPlayers.length >= 2 && (
         <div className="space-y-4">

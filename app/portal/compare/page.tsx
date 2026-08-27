@@ -8,7 +8,7 @@ import {
   type RadarProfileKey,
 } from "@/lib/portal/summaryAdapters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentSeason } from "@/lib/season/current";
+import { resolvePortalSeason } from "@/lib/season/portal-season";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 
 export type ComparePlayerSnapshot = {
@@ -41,15 +41,23 @@ export type ComparePlayerSnapshot = {
   radarProfiles: Partial<Record<RadarProfileKey, RadarDatum[]>>;
 };
 
-export default async function ComparePage() {
+type ComparePageProps = {
+  searchParams?: Promise<{ season?: string | string[] }> | { season?: string | string[] };
+};
+
+export default async function ComparePage({ searchParams }: ComparePageProps) {
   const supabase = await createServerSupabaseClient();
+  const resolvedSearchParams =
+    searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
+  const requestedSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle()
-    : { data: null };
-  const SEASON = await getCurrentSeason(supabase);
+  const [{ data: profile }, { availableSeasons, season: SEASON }] = await Promise.all([
+    user ? supabase.from("profiles").select("fantrax_league_id").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    resolvePortalSeason(supabase, requestedSeason),
+  ]);
 
   // None of these four depend on each other's result.
   const [
@@ -165,7 +173,7 @@ export default async function ComparePage() {
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Compare Players</h1>
         <p className="mt-2 text-sm text-brand-dark/70">Side-by-side comparison for season {SEASON}.</p>
       </div>
-      <CompareClient players={snapshots} leagueRoster={leagueRoster} />
+      <CompareClient players={snapshots} leagueRoster={leagueRoster} season={SEASON} availableSeasons={availableSeasons} />
     </div>
   );
 }
