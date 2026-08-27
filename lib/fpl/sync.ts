@@ -39,6 +39,7 @@ type FplElement = {
   chance_of_playing_next_round: number | null;
   news: string | null;
   news_added: string | null;
+  scout_news_link: string | null;
   expected_goals_per_90: string | null;
   expected_assists_per_90: string | null;
   clean_sheets_per_90: string | null;
@@ -85,6 +86,7 @@ type FplPlayerDataUpsert = {
   chance_of_playing_next_round: number | null;
   news: string | null;
   news_added: string | null;
+  scout_news_link: string | null;
   expected_goals_per_90: number | null;
   expected_assists_per_90: number | null;
   clean_sheets_per_90: number | null;
@@ -143,6 +145,7 @@ export async function syncFplPlayerData() {
     chance_of_playing_next_round: element.chance_of_playing_next_round,
     news: toNullableText(element.news),
     news_added: toNullableText(element.news_added),
+    scout_news_link: toNullableText(element.scout_news_link),
     expected_goals_per_90: parseNullableNumber(element.expected_goals_per_90),
     expected_assists_per_90: parseNullableNumber(element.expected_assists_per_90),
     clean_sheets_per_90: parseNullableNumber(element.clean_sheets_per_90),
