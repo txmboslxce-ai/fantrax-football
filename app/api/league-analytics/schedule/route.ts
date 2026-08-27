@@ -75,11 +75,6 @@ async function fetchScoringPeriods(leagueId: string): Promise<number[]> {
     );
   }
 
-  console.log(
-    `[league-analytics/schedule] DEBUG raw scoringPeriods sample for league ${leagueId}:`,
-    JSON.stringify(periods.slice(0, 2))
-  );
-
   const now = Date.now();
 
   return periods
@@ -90,31 +85,21 @@ async function fetchScoringPeriods(leagueId: string): Promise<number[]> {
 
 // ── Matchup scores (per gameweek) ────────────────────────────────────────────
 
+type MatchupTeam = {
+  teamId?: string;
+  teamName?: string;
+  score?: number | string;
+};
+
 type MatchupEntry = {
-  awayTeamId?: string;
-  awayTeamName?: string;
-  awayScore?: number | string;
-  awayFantasyPoints?: number | string;
-  awayPoints?: number | string;
-  homeTeamId?: string;
-  homeTeamName?: string;
-  homeScore?: number | string;
-  homeFantasyPoints?: number | string;
-  homePoints?: number | string;
+  away?: MatchupTeam;
+  home?: MatchupTeam;
 };
 
 type MatchupScoresResponse = {
   matchups?: MatchupEntry[];
   pageError?: FantraxErrorDetail;
 };
-
-function pickScore(entry: MatchupEntry, side: "away" | "home"): number {
-  const raw =
-    side === "away"
-      ? entry.awayScore ?? entry.awayFantasyPoints ?? entry.awayPoints
-      : entry.homeScore ?? entry.homeFantasyPoints ?? entry.homePoints;
-  return parseScore(raw);
-}
 
 async function fetchMatchupsForPeriod(leagueId: string, period: number): Promise<MatchData[]> {
   const res = await fetch(
@@ -140,28 +125,21 @@ async function fetchMatchupsForPeriod(leagueId: string, period: number): Promise
     );
   }
 
-  if (matchups.length > 0) {
-    console.log(
-      `[league-analytics/schedule] DEBUG raw matchup sample for league ${leagueId} period ${period}:`,
-      JSON.stringify(matchups[0])
-    );
-  }
-
   return matchups
-    .filter((m): m is MatchupEntry & { awayTeamId: string; homeTeamId: string } =>
-      Boolean(m.awayTeamId && m.homeTeamId)
+    .filter((m): m is MatchupEntry & { away: { teamId: string }; home: { teamId: string } } =>
+      Boolean(m.away?.teamId && m.home?.teamId)
     )
     .map((m) => {
-      const awayScore = pickScore(m, "away");
-      const homeScore = pickScore(m, "home");
+      const awayScore = parseScore(m.away.score);
+      const homeScore = parseScore(m.home.score);
 
       return {
         gw: period,
-        awayTeamId: m.awayTeamId,
-        awayTeamName: m.awayTeamName ?? "",
+        awayTeamId: m.away.teamId,
+        awayTeamName: m.away.teamName ?? "",
         awayScore,
-        homeTeamId: m.homeTeamId,
-        homeTeamName: m.homeTeamName ?? "",
+        homeTeamId: m.home.teamId,
+        homeTeamName: m.home.teamName ?? "",
         homeScore,
         played: awayScore > 0 && homeScore > 0,
       };
