@@ -13,7 +13,7 @@ type SortKey = "name" | "seasonPts" | "ownershipPct" | "statusLabel" | "chanceNe
 
 const positionFilters: Array<"All" | "GK" | "DEF" | "MID" | "FWD"> = ["All", "GK", "DEF", "MID", "FWD"];
 const statusFilters: InjuryPlayerRow["statusLabel"][] = ["Doubtful", "Injured", "Suspended"];
-const CHANCE_PILLS = [75, 50, 25] as const;
+const CHANCE_PILLS = [75, 50, 25, 0] as const;
 
 function statusBadgeClass(status: InjuryPlayerRow["statusLabel"]): string {
   if (status === "Injured") return "bg-red-100 text-red-900";
@@ -226,7 +226,7 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
       </div>
 
       <div className="relative max-h-[75vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200 bg-white [scrollbar-gutter:stable]">
-        <table className="w-max border-separate border-spacing-0 text-left text-xs">
+        <table className="w-full border-separate border-spacing-0 text-left text-xs">
           <thead>
             <tr>
               <th className="sticky left-0 top-0 z-30 w-48 min-w-48 max-w-48 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
@@ -253,14 +253,14 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                   <span aria-hidden="true">{sortArrow("seasonPts")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-24 min-w-24 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 <button type="button" onClick={() => handleSort("statusLabel")} className="inline-flex items-center gap-1">
                   <span>Status</span>
                   <span aria-hidden="true">{sortArrow("statusLabel")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 w-32 min-w-32 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("chanceNextRound")} className="inline-flex w-full items-center justify-end gap-1">
+              <th className="sticky top-0 z-20 w-32 min-w-32 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("chanceNextRound")} className="inline-flex w-full items-center justify-center gap-1">
                   <span>% Chance Playing Next Rd</span>
                   <span aria-hidden="true">{sortArrow("chanceNextRound")}</span>
                 </button>
@@ -305,10 +305,10 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                     {player.ownershipPct.toFixed(1)}%
                   </td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{player.seasonPts.toFixed(2)}</td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${statusBadgeClass(player.statusLabel)}`}>{player.statusLabel}</span>
                   </td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">{formatChance(player.chanceNextRound)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center font-medium tabular-nums text-slate-600">{formatChance(player.chanceNextRound)}</td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-slate-600">
                     <span className="block max-w-[16rem] truncate" title={player.description ?? undefined}>
                       {player.description ?? "-"}
