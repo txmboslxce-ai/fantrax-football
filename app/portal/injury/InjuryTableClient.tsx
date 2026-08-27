@@ -238,17 +238,17 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
               <th className="sticky left-48 top-0 z-30 w-10 min-w-10 border-b border-r border-brand-cream/25 bg-brand-green px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Pos
               </th>
-              <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+              <th className="sticky top-0 z-20 w-14 min-w-14 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
                 Team
               </th>
-              <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("ownershipPct")} className="inline-flex w-full items-center justify-end gap-1">
+              <th className="sticky top-0 z-20 w-16 min-w-16 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("ownershipPct")} className="inline-flex w-full items-center justify-center gap-1">
                   <span>Own%</span>
                   <span aria-hidden="true">{sortArrow("ownershipPct")}</span>
                 </button>
               </th>
-              <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">
-                <button type="button" onClick={() => handleSort("seasonPts")} className="inline-flex w-full items-center justify-end gap-1">
+              <th className="sticky top-0 z-20 w-20 min-w-20 border-b border-r border-brand-cream/25 bg-brand-green px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">
+                <button type="button" onClick={() => handleSort("seasonPts")} className="inline-flex w-full items-center justify-center gap-1">
                   <span>Season Pts</span>
                   <span aria-hidden="true">{sortArrow("seasonPts")}</span>
                 </button>
@@ -300,11 +300,11 @@ export default function InjuryTableClient({ players }: InjuryTableClientProps) {
                       {player.position.charAt(0)}
                     </span>
                   </td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 font-medium text-slate-600">{player.team}</td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-medium tabular-nums text-slate-600">
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center font-medium text-slate-600">{player.team}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center font-medium tabular-nums text-slate-600">
                     {player.ownershipPct.toFixed(1)}%
                   </td>
-                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums text-brand-dark">{player.seasonPts.toFixed(2)}</td>
+                  <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center font-semibold tabular-nums text-brand-dark">{player.seasonPts.toFixed(2)}</td>
                   <td className="border-b border-r border-slate-200 px-2 py-1.5 text-center">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${statusBadgeClass(player.statusLabel)}`}>{player.statusLabel}</span>
                   </td>
