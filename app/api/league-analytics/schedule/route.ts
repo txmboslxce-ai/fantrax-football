@@ -15,13 +15,22 @@ type ScheduleTable = {
   rows?: ScheduleRow[];
 };
 
+type FantraxErrorDetail = string | { code?: string; msg?: string };
+
 type ScheduleResponse = {
+  pageError?: FantraxErrorDetail;
   responses?: Array<{
     data?: {
       tableList?: ScheduleTable[];
     };
+    error?: FantraxErrorDetail;
   }>;
 };
+
+function extractErrorMessage(detail: FantraxErrorDetail | undefined): string | undefined {
+  if (!detail) return undefined;
+  return typeof detail === "string" ? detail : detail.msg ?? detail.code;
+}
 
 export type MatchData = {
   gw: number;
@@ -67,11 +76,19 @@ export async function fetchSchedule(leagueId: string): Promise<MatchData[]> {
   const tableList = json?.responses?.[0]?.data?.tableList;
 
   if (!Array.isArray(tableList)) {
+    const detail =
+      extractErrorMessage(json?.pageError) ?? extractErrorMessage(json?.responses?.[0]?.error);
+
     console.error(
       `[league-analytics/schedule] Unexpected Fantrax response shape for league ${leagueId}:`,
-      JSON.stringify(json).slice(0, 500)
+      JSON.stringify(json).slice(0, 1000)
     );
-    throw new Error("Fantrax schedule API returned an unexpected response shape.");
+
+    throw new Error(
+      detail
+        ? `Fantrax schedule API error: ${detail}`
+        : "Fantrax schedule API returned an unexpected response shape."
+    );
   }
 
   const matches: MatchData[] = [];
