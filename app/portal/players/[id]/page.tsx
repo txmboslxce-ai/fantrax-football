@@ -51,6 +51,7 @@ type FplPlayerData = {
   chance_of_playing_next_round: number | null;
   news: string | null;
   news_added: string | null;
+  scout_news_link: string | null;
   last_synced_at: string | null;
   synced_at: string | null;
 };
@@ -154,7 +155,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
     supabase
       .from("players")
       .select(
-        "id, name, team, position, ownership_pct, fpl_player_data(expected_goals_per_90, expected_assists_per_90, penalties_order, corners_order, direct_freekicks_order, status, chance_of_playing_next_round, news, news_added, last_synced_at, synced_at)"
+        "id, name, team, position, ownership_pct, fpl_player_data(expected_goals_per_90, expected_assists_per_90, penalties_order, corners_order, direct_freekicks_order, status, chance_of_playing_next_round, news, news_added, scout_news_link, last_synced_at, synced_at)"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -404,6 +405,30 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
                 <p className="mt-1 text-sm">Chance of playing next round: {fplData.chance_of_playing_next_round}%</p>
               ) : null}
               {fplData.news && fplData.news.trim() ? <p className="mt-3 text-sm">&quot;{fplData.news.trim()}&quot;</p> : null}
+              {fplData.scout_news_link && fplData.scout_news_link.trim() ? (
+                <a
+                  href={fplData.scout_news_link.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-2 hover:opacity-80"
+                >
+                  More Info
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <path d="M15 3h6v6" />
+                    <path d="M10 14 21 3" />
+                  </svg>
+                </a>
+              ) : null}
               <p className="mt-3 text-xs text-brand-creamDark">
                 {availabilityDate ? `Last updated: ${availabilityDate}` : `Data as of: ${syncedDate ?? "Unknown"}`}
               </p>
