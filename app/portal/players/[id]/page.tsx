@@ -387,11 +387,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
 
   return (
       <div className="space-y-6">
-        {/* items-start: without it, CSS Grid stretches both panels to match
-            the taller one - an injured player's longer availability alert
-            would otherwise force the Season Trend panel to grow and leave
-            blank space at its bottom instead of keeping its own height. */}
-        <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-brand-cream/20 bg-brand-dark p-5 text-brand-cream sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -408,49 +404,55 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
 
           {fplData && showAvailabilityCard ? (
             <article
-              className={`mt-4 rounded-xl border p-4 ${
+              className={`mt-4 rounded-xl border p-3 ${
                 availabilityIsRed ? "border-red-500/50 bg-red-500/10 text-red-100" : "border-amber-500/50 bg-amber-500/10 text-amber-100"
               }`}
             >
-              <p className="text-sm font-bold">⚠ Availability Update</p>
-              <p className="mt-2 text-sm">
-                Status: <strong>{availabilityStatus}</strong>
-                {fplData.chance_of_playing_next_round != null
-                  ? ` · ${fplData.chance_of_playing_next_round}% chance of playing next round`
-                  : null}
-              </p>
-              {fplData.news && fplData.news.trim() ? (
-                <p className="mt-2 line-clamp-2 text-sm" title={fplData.news.trim()}>
-                  &quot;{fplData.news.trim()}&quot;
+              {/* The colored border/background already reads as an
+                  availability alert, so the icon + status line doubles as
+                  the heading - no separate "Availability Update" label. */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <p className="text-sm">
+                  ⚠ Status: <strong>{availabilityStatus}</strong>
+                  {fplData.chance_of_playing_next_round != null
+                    ? ` · ${fplData.chance_of_playing_next_round}% chance of playing next round`
+                    : null}
                 </p>
-              ) : null}
-              {fplData.scout_news_link && fplData.scout_news_link.trim() ? (
-                <a
-                  href={fplData.scout_news_link.trim()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-2 hover:opacity-80"
-                >
-                  More Info
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                {fplData.scout_news_link && fplData.scout_news_link.trim() ? (
+                  <a
+                    href={fplData.scout_news_link.trim()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold underline underline-offset-2 hover:opacity-80"
                   >
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                    <path d="M15 3h6v6" />
-                    <path d="M10 14 21 3" />
-                  </svg>
-                </a>
+                    More Info
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <path d="M15 3h6v6" />
+                      <path d="M10 14 21 3" />
+                    </svg>
+                  </a>
+                ) : null}
+              </div>
+              {fplData.news && fplData.news.trim() ? (
+                <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3">
+                  <p className="line-clamp-2 text-sm" title={fplData.news.trim()}>
+                    &quot;{fplData.news.trim()}&quot;
+                  </p>
+                  <p className="shrink-0 text-xs text-brand-creamDark">
+                    {availabilityDate ? `Last updated: ${availabilityDate}` : `Data as of: ${syncedDate ?? "Unknown"}`}
+                  </p>
+                </div>
               ) : null}
-              <p className="mt-3 text-xs text-brand-creamDark">
-                {availabilityDate ? `Last updated: ${availabilityDate}` : `Data as of: ${syncedDate ?? "Unknown"}`}
-              </p>
             </article>
           ) : null}
 
