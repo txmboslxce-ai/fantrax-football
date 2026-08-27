@@ -75,6 +75,11 @@ async function fetchScoringPeriods(leagueId: string): Promise<number[]> {
     );
   }
 
+  console.log(
+    `[league-analytics/schedule] DEBUG raw scoringPeriods sample for league ${leagueId}:`,
+    JSON.stringify(periods.slice(0, 2))
+  );
+
   const now = Date.now();
 
   return periods
@@ -132,6 +137,13 @@ async function fetchMatchupsForPeriod(leagueId: string, period: number): Promise
       detail
         ? `Fantrax matchup scores API error: ${detail}`
         : "Fantrax matchup scores API returned an unexpected response shape."
+    );
+  }
+
+  if (matchups.length > 0) {
+    console.log(
+      `[league-analytics/schedule] DEBUG raw matchup sample for league ${leagueId} period ${period}:`,
+      JSON.stringify(matchups[0])
     );
   }
 
