@@ -84,6 +84,16 @@ type RecomputeSummariesResponse = {
   message?: string;
 };
 
+type RotowireSyncResponse = {
+  success: boolean;
+  matchesFound?: number;
+  playersUpserted?: number;
+  unmatchedTeams?: string[];
+  unmatchedPlayers?: string[];
+  skippedFixtures?: string[];
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -739,6 +749,72 @@ function RecomputeSummariesPanel({ defaultSeason, seasons }: { defaultSeason: st
   );
 }
 
+function RotowireSyncPanel() {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [result, setResult] = useState<RotowireSyncResponse | null>(null);
+
+  async function handleSyncLineups() {
+    setIsSyncing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/rotowire-sync-now", { method: "POST" });
+      setResult((await response.json()) as RotowireSyncResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "RotoWire lineup sync failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Sync Predicted Lineups (RotoWire)</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Run the same RotoWire predicted-lineups scrape as the hourly scheduled job. Shows up on the portal&apos;s Lineups page
+        once matched.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <button
+          type="button"
+          onClick={handleSyncLineups}
+          disabled={isSyncing}
+          className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isSyncing ? "Syncing Lineups..." : "Sync Predicted Lineups"}
+        </button>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <>
+                <p className="font-semibold">
+                  {result.matchesFound ?? 0} matches found on RotoWire, {result.playersUpserted ?? 0} players saved.
+                </p>
+                <p className="mt-1 text-brand-creamDark">
+                  Unmatched teams: {(result.unmatchedTeams ?? []).join(", ") || "None"}
+                </p>
+                <p className="mt-1 text-brand-creamDark">
+                  Unmatched players: {(result.unmatchedPlayers ?? []).join(", ") || "None"}
+                </p>
+                {(result.skippedFixtures?.length ?? 0) > 0 ? (
+                  <p className="mt-1 text-brand-creamDark">
+                    No matching fixture in our schedule for: {result.skippedFixtures?.join(", ")}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p>{result.message ?? "RotoWire lineup sync failed."}</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function UploadClient({ defaultSeason, seasons }: { defaultSeason: string; seasons: string[] }) {
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
@@ -754,6 +830,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
         <AdpRefreshPanel />
         <RecomputeSummariesPanel defaultSeason={defaultSeason} seasons={seasons} />
         <FplSyncNowPanel />
+        <RotowireSyncPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>
