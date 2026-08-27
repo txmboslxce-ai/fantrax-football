@@ -25,6 +25,7 @@ import { getCurrentSeason } from "@/lib/season/current";
 import { resolvePortalSeason } from "@/lib/season/portal-season";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import RosterPill from "@/app/components/ui/RosterPill";
+import RadarSeasonSelect from "@/components/portal/RadarSeasonSelect";
 import { notFound } from "next/navigation";
 import PlayerGameweekTableClient from "./PlayerGameweekTableClient";
 
@@ -35,9 +36,11 @@ type PlayerDetailPageProps = {
   searchParams?:
     | {
         season?: string | string[];
+        radarSeason?: string | string[];
       }
     | Promise<{
         season?: string | string[];
+        radarSeason?: string | string[];
       }>;
 };
 
@@ -135,11 +138,19 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const resolvedSearchParams =
     searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
   const requestedTableSeason = Array.isArray(resolvedSearchParams?.season) ? resolvedSearchParams.season[0] : resolvedSearchParams?.season;
+  const requestedRadarSeason = Array.isArray(resolvedSearchParams?.radarSeason)
+    ? resolvedSearchParams.radarSeason[0]
+    : resolvedSearchParams?.radarSeason;
 
-  // Neither depends on the other's result.
-  const [season, { availableSeasons, season: tableSeason }] = await Promise.all([
+  // Three independent season selections on this page, none depending on the
+  // others: `season` (the header stats/trend panel, always current), the
+  // gameweek table's own selector, and the radar profiles' own selector -
+  // each stored under its own URL param so switching one never affects
+  // another.
+  const [season, { availableSeasons, season: tableSeason }, { availableSeasons: radarAvailableSeasons, season: radarSeason }] = await Promise.all([
     getCurrentSeason(supabase),
     resolvePortalSeason(supabase, requestedTableSeason),
+    resolvePortalSeason(supabase, requestedRadarSeason),
   ]);
 
   const [
@@ -225,7 +236,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
             .eq("season", tableSeason)
             .order("gameweek"),
         ]),
-    supabase.from("player_radar_profiles").select("profile, data").eq("season", season).eq("player_id", id),
+    supabase.from("player_radar_profiles").select("profile, data").eq("season", radarSeason).eq("player_id", id),
     supabase.from("team_fixture_difficulty").select("team, rank").eq("season", tableSeason).eq("position", playerRow.position),
     supabase.from("player_window_stats").select(PLAYER_WINDOW_STATS_COLUMNS).eq("season", season).eq("stat_window", "season").eq("player_id", id).maybeSingle(),
   ]);
@@ -247,7 +258,7 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
   const tableFixtures = tableFixturesResult?.data ?? teamFixtures ?? [];
 
   if (radarProfilesResult.error) {
-    throw new Error(`Unable to load ${season} radar profile: ${radarProfilesResult.error.message}`);
+    throw new Error(`Unable to load ${radarSeason} radar profile: ${radarProfilesResult.error.message}`);
   }
   if (fdrResult.error) {
     throw new Error(`Unable to load ${tableSeason} fixture difficulty: ${fdrResult.error.message}`);
@@ -513,6 +524,12 @@ export default async function PlayerDetailPage({ params, searchParams }: PlayerD
         </section>
         <div className="hidden xl:block">{trendPanel}</div>
         </div>
+
+        {radarAvailableSeasons.length > 1 ? (
+          <div className="flex justify-start">
+            <RadarSeasonSelect season={radarSeason} availableSeasons={radarAvailableSeasons} paramName="radarSeason" />
+          </div>
+        ) : null}
 
         <div className={isGoalkeeper ? "grid gap-4 sm:grid-cols-2" : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"}>
           {fantasyCard}
