@@ -36,16 +36,17 @@ function normalize(value: string): string {
 }
 
 // RotoWire's own position codes, translated to the codes the rest of the
-// app uses. Any code not listed here (GK, MC, and the generic D/M/F/F-M
-// codes RotoWire uses in its Injuries footnote) is left as-is -- those
-// footnote entries are filtered out below before they ever reach this map,
-// and GK/MC don't need translating.
+// app uses. Any code not listed here (GK, and the generic D/M/F/F-M codes
+// RotoWire uses in its Injuries footnote) is left as-is -- those footnote
+// entries are filtered out below before they ever reach this map, and GK
+// doesn't need translating.
 const ROTOWIRE_POSITION_MAP: Record<string, string> = {
   DC: "CB",
   DL: "LB",
   DR: "RB",
   ML: "LM",
   MR: "RM",
+  MC: "CM",
   DMC: "DM",
   AML: "LW",
   AMR: "RW",
