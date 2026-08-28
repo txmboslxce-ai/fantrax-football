@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { FANTRAX_POSITIONS, getCurrentGameweek, syncFantraxScores } from "@/lib/fantrax/sync-scores";
 import { getCurrentSeason } from "@/lib/season/current";
+import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { recomputePlayerSummaries } from "@/lib/portal/summaryRecompute";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 
@@ -10,6 +12,10 @@ import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 // the hosting plan allows, so it's safe to ask for more than needed.
 export const maxDuration = 300;
 
+// A match is treated as "live" from kickoff through this long after —
+// covers 90 minutes plus stoppage time and halftime with some buffer.
+const LIVE_WINDOW_MS = (2 * 60 + 15) * 60 * 1000;
+
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
@@ -17,6 +23,30 @@ function isAuthorized(request: Request) {
   }
 
   return request.headers.get("authorization") === `Bearer ${cronSecret}`;
+}
+
+// Only the tight `?mode=poll` cron tick (every 2 minutes) needs this check —
+// the baseline 6-hourly cron always runs regardless. Fails open (treats it
+// as live) if the fixtures lookup errors, so a Supabase hiccup can't silently
+// starve the sync of a real match window.
+async function isMatchLikelyLive(supabase: SupabaseClient, gameweek: number): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select("kickoff_at")
+    .eq("season", FIXTURES_SEASON)
+    .eq("gameweek", gameweek)
+    .not("kickoff_at", "is", null);
+
+  if (error) {
+    console.error(`[cron/sync-scores] Failed to load fixtures for live-match check: ${error.message}`);
+    return true;
+  }
+
+  const now = Date.now();
+  return (data ?? []).some((row) => {
+    const kickoff = row.kickoff_at ? new Date(row.kickoff_at as string).getTime() : NaN;
+    return Number.isFinite(kickoff) && now >= kickoff && now <= kickoff + LIVE_WINDOW_MS;
+  });
 }
 
 export async function GET(request: Request) {
@@ -41,12 +71,18 @@ export async function GET(request: Request) {
     );
   }
 
+  const isPollTick = new URL(request.url).searchParams.get("mode") === "poll";
+
   let season: string | null = null;
   let gameweek: number | null = null;
   let positionsSynced = 0;
 
   try {
     [season, gameweek] = await Promise.all([getCurrentSeason(supabase), getCurrentGameweek()]);
+
+    if (isPollTick && !(await isMatchLikelyLive(supabase, gameweek))) {
+      return NextResponse.json({ ok: true, season, gameweek, positionsSynced: 0, error: null, skipped: "no-live-match" });
+    }
 
     for (const positionGroup of FANTRAX_POSITIONS) {
       await syncFantraxScores(gameweek, positionGroup, season);
