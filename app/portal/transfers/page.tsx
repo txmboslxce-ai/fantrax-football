@@ -33,6 +33,16 @@ function transferBadge(transfer: Transfer): { label: string; className: string }
   return { label: "Transfer", className: "bg-brand-greenLight/20 text-brand-greenDark" };
 }
 
+function feeDisplay(transfer: Transfer): string {
+  if (transfer.feeEur > 0) {
+    return transfer.feeDescription;
+  }
+  if (transfer.feeDescription === "Free") {
+    return "Free";
+  }
+  return "";
+}
+
 export default async function TransfersPage({ searchParams }: TransfersPageProps) {
   const resolvedSearchParams = searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
   const offset = parseOffset(resolvedSearchParams?.offset);
@@ -57,13 +67,12 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
 
       <div className="overflow-hidden rounded-2xl border border-brand-creamDark bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-brand-dark text-brand-cream">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Player</th>
-              <th className="px-4 py-3 font-semibold">Move</th>
-              <th className="px-4 py-3 font-semibold">Type</th>
-              <th className="px-4 py-3 text-right font-semibold">Fee</th>
-              <th className="px-4 py-3 text-right font-semibold">Date</th>
+          <thead>
+            <tr className="border-b border-brand-creamDark">
+              <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Player</th>
+              <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Move</th>
+              <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Fee</th>
+              <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-creamDark">
@@ -71,23 +80,25 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
               const badge = transferBadge(transfer);
               return (
                 <tr key={transfer.id} className="hover:bg-brand-cream/40">
-                  <td className="px-4 py-3 font-semibold text-brand-dark">{transfer.playerName}</td>
-                  <td className="px-4 py-3 text-brand-dark/80">
+                  <td className="px-4 py-2">
+                    <span className="font-semibold text-brand-dark">{transfer.playerName}</span>{" "}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${badge.className}`}>{badge.label}</span>
+                  </td>
+                  <td className="px-4 py-2 text-sm text-brand-dark/70">
                     {transfer.fromTeamName ?? "Unattached"}
                     <span className="mx-2 text-brand-dark/40">&rarr;</span>
                     {transfer.toTeamName ?? "No team"}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase tracking-wide ${badge.className}`}>{badge.label}</span>
+                  <td className={`px-4 py-2 text-right text-sm ${transfer.feeEur > 0 ? "font-semibold text-brand-greenLight" : "text-brand-dark/60"}`}>
+                    {feeDisplay(transfer)}
                   </td>
-                  <td className="px-4 py-3 text-right text-brand-dark/80">{transfer.feeDescription}</td>
-                  <td className="px-4 py-3 text-right text-brand-dark/60">{formatDate(transfer.transferDate)}</td>
+                  <td className="px-4 py-2 text-right text-sm text-brand-dark/60">{formatDate(transfer.transferDate)}</td>
                 </tr>
               );
             })}
             {transfers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-brand-dark/60">
+                <td colSpan={4} className="px-4 py-6 text-center text-brand-dark/60">
                   No transfers found in this window.
                 </td>
               </tr>
