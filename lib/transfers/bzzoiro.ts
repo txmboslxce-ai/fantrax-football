@@ -1,5 +1,4 @@
-const BZZOIRO_API_BASE = "https://sports.bzzoiro.com/api/v2";
-const PREMIER_LEAGUE_ID = 1;
+import { bzzoiroGet, getCurrentPremierLeagueTeamIds } from "@/lib/bsd/client";
 
 export type TransferType = 1 | 2 | 3;
 
@@ -41,84 +40,7 @@ type BzzoiroTransferListResponse = {
   results: BzzoiroTransferRow[];
 };
 
-type BzzoiroStandingsResponse = {
-  grouped: boolean;
-  standings?: Array<{ team_id: number }>;
-};
-
-// The transfers endpoint's own `league_id` filter tags the whole English
-// football pyramid historically linked to this league (51 teams, including
-// lower-division and youth sides), not this season's 20-team top flight.
-// The site's own Premier League transfers page instead only shows a move
-// where at least one side is a *current* Premier League club, so we fetch
-// the real roster and query per team (team_id matches both incoming and
-// outgoing moves) rather than trusting transfers' league_id filter.
-async function getCurrentPremierLeagueTeamIds(): Promise<number[]> {
-  const url = `${BZZOIRO_API_BASE}/leagues/${PREMIER_LEAGUE_ID}/standings/`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Token ${getBzzoiroApiKey()}`,
-      Accept: "application/json",
-    },
-    next: { revalidate: 3600 },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Bzzoiro standings request failed: ${response.status} ${await response.text()}`);
-  }
-
-  const data = (await response.json()) as BzzoiroStandingsResponse;
-  if (data.grouped || !data.standings) {
-    throw new Error("Bzzoiro Premier League standings came back grouped or empty; expected a flat 20-team table.");
-  }
-
-  return data.standings.map((row) => row.team_id);
-}
-
 const MAX_TRANSFERS_PER_TEAM = 500;
-
-async function fetchTeamTransfersSince(teamId: number, dateFrom: string): Promise<Transfer[]> {
-  const rows: BzzoiroTransferRow[] = [];
-  let offset = 0;
-  const limit = 100;
-
-  while (rows.length < MAX_TRANSFERS_PER_TEAM) {
-    const url = new URL(`${BZZOIRO_API_BASE}/transfers/`);
-    url.searchParams.set("team_id", String(teamId));
-    url.searchParams.set("date_from", dateFrom);
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("offset", String(offset));
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Token ${getBzzoiroApiKey()}`,
-        Accept: "application/json",
-      },
-      next: { revalidate: 300 },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Bzzoiro transfers request failed: ${response.status} ${await response.text()}`);
-    }
-
-    const data = (await response.json()) as BzzoiroTransferListResponse;
-    rows.push(...data.results);
-    if (!data.next) {
-      break;
-    }
-    offset += limit;
-  }
-
-  return rows.map(toTransfer);
-}
-
-function getBzzoiroApiKey(): string {
-  const key = process.env.BZZOIRO_API_KEY?.trim();
-  if (!key) {
-    throw new Error("BZZOIRO_API_KEY is required. Set it in .env.local for local dev or in your Vercel project's environment variables.");
-  }
-  return key;
-}
 
 function toTransfer(row: BzzoiroTransferRow): Transfer {
   return {
@@ -134,6 +56,27 @@ function toTransfer(row: BzzoiroTransferRow): Transfer {
     feeDescription: row.fee_description,
     transferType: row.transfer_type,
   };
+}
+
+async function fetchTeamTransfersSince(teamId: number, dateFrom: string): Promise<Transfer[]> {
+  const rows: BzzoiroTransferRow[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  while (rows.length < MAX_TRANSFERS_PER_TEAM) {
+    const data = await bzzoiroGet<BzzoiroTransferListResponse>(
+      "/transfers/",
+      { team_id: String(teamId), date_from: dateFrom, limit: String(limit), offset: String(offset) },
+      300
+    );
+    rows.push(...data.results);
+    if (!data.next) {
+      break;
+    }
+    offset += limit;
+  }
+
+  return rows.map(toTransfer);
 }
 
 export async function fetchPremierLeagueTransfers({

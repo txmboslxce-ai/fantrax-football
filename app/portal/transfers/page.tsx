@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchPremierLeagueTransfers, type Transfer } from "@/lib/transfers/bzzoiro";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const TRANSFER_WINDOW_START = "2026-06-01";
 const PAGE_SIZE = 25;
@@ -53,6 +54,16 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
     offset,
   });
 
+  // BSD player ids not yet in this map either aren't in our Fantrax player
+  // pool at all, or haven't been matched yet via /admin/bsd-player-mapping
+  // -- either way the name renders as plain text until that's resolved.
+  const bsdPlayerIds = transfers.map((transfer) => transfer.playerId);
+  const supabase = await createServerSupabaseClient();
+  const { data: mappedPlayers } = bsdPlayerIds.length
+    ? await supabase.from("players").select("id, bsd_id").in("bsd_id", bsdPlayerIds)
+    : { data: [] };
+  const fantraxIdByBsdId = new Map((mappedPlayers ?? []).map((player) => [player.bsd_id as number, player.id as string]));
+
   const hasPrevious = offset > 0;
   const hasNext = offset + transfers.length < total;
 
@@ -78,10 +89,17 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
           <tbody className="divide-y divide-brand-creamDark">
             {transfers.map((transfer) => {
               const badge = transferBadge(transfer);
+              const fantraxId = fantraxIdByBsdId.get(transfer.playerId);
               return (
                 <tr key={transfer.id} className="hover:bg-brand-cream/40">
                   <td className="px-4 py-2">
-                    <span className="font-semibold text-brand-dark">{transfer.playerName}</span>{" "}
+                    {fantraxId ? (
+                      <Link href={`/portal/players/${fantraxId}`} className="font-semibold text-brand-dark hover:underline">
+                        {transfer.playerName}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold text-brand-dark">{transfer.playerName}</span>
+                    )}{" "}
                     <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${badge.className}`}>{badge.label}</span>
                   </td>
                   <td className="px-4 py-2 text-sm text-brand-dark/70">
