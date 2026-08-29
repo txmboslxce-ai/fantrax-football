@@ -59,3 +59,34 @@ export async function fetchCurrentPremierLeaguePlayers(): Promise<BsdPlayer[]> {
   const perTeam = await Promise.all(knownTeamIds.map((teamId) => fetchTeamPlayers(teamId, BSD_TEAM_ID_TO_ABBREV[teamId])));
   return perTeam.flat();
 }
+
+type BsdPlayerDetail = {
+  position: string | null;
+  specific_position: string | null;
+};
+
+// The transfers endpoint only gives {id, name} for the player, so their
+// specific position (e.g. "CB", "ST") needs a separate per-player lookup.
+export async function fetchBsdPlayerPositions(playerIds: number[]): Promise<Map<number, string>> {
+  const uniqueIds = Array.from(new Set(playerIds));
+
+  const entries = await Promise.all(
+    uniqueIds.map(async (id): Promise<[number, string | null]> => {
+      try {
+        const data = await bzzoiroGet<BsdPlayerDetail>(`/players/${id}/`, {}, 3600);
+        const position = data.specific_position?.trim() || data.position?.trim() || null;
+        return [id, position];
+      } catch {
+        return [id, null];
+      }
+    })
+  );
+
+  const positionById = new Map<number, string>();
+  for (const [id, position] of entries) {
+    if (position) {
+      positionById.set(id, position);
+    }
+  }
+  return positionById;
+}

@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { fetchPremierLeagueTransfers, type Transfer } from "@/lib/transfers/bzzoiro";
+import { fetchBsdPlayerPositions } from "@/lib/bsd/players";
+import { BSD_TEAM_ID_TO_ABBREV } from "@/lib/bsd/teams";
+import { positionBadgeClass } from "@/lib/portal/positionBadge";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const TRANSFER_WINDOW_START = "2026-06-01";
@@ -7,6 +10,11 @@ const PAGE_SIZE = 25;
 
 type TransfersPageProps = {
   searchParams?: { offset?: string | string[] } | Promise<{ offset?: string | string[] }>;
+};
+
+type FantraxPlayerMatch = {
+  id: string;
+  position: string;
 };
 
 function parseOffset(value: string | string[] | undefined): number {
@@ -24,24 +32,32 @@ function formatDate(value: string): string {
   });
 }
 
-function transferBadge(transfer: Transfer): { label: string; className: string } {
+function feeCell(transfer: Transfer): { text: string; className: string } {
   if (transfer.transferType === 1) {
-    return { label: "Loan", className: "bg-amber-200 text-amber-950" };
+    return { text: "Loan", className: "font-semibold text-amber-600" };
   }
-  if (transfer.feeEur === 0) {
-    return { label: "Free", className: "bg-brand-cream/60 text-brand-dark" };
-  }
-  return { label: "Transfer", className: "bg-brand-greenLight/20 text-brand-greenDark" };
-}
-
-function feeDisplay(transfer: Transfer): string {
   if (transfer.feeEur > 0) {
-    return transfer.feeDescription;
+    return { text: transfer.feeDescription, className: "font-semibold text-brand-green" };
   }
   if (transfer.feeDescription === "Free") {
-    return "Free";
+    return { text: "Free", className: "text-slate-600" };
   }
-  return "";
+  return { text: "-", className: "text-slate-400" };
+}
+
+function TeamCell({ teamId, teamName, fallback }: { teamId: number | null; teamName: string | null; fallback: string }) {
+  const abbrev = teamId != null ? BSD_TEAM_ID_TO_ABBREV[teamId] : undefined;
+  const label = teamName ?? fallback;
+
+  if (abbrev) {
+    return (
+      <Link href={`/portal/teams/${abbrev}`} className="font-medium text-brand-green hover:underline">
+        {label}
+      </Link>
+    );
+  }
+
+  return <span className="text-slate-600">{label}</span>;
 }
 
 export default async function TransfersPage({ searchParams }: TransfersPageProps) {
@@ -54,15 +70,21 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
     offset,
   });
 
-  // BSD player ids not yet in this map either aren't in our Fantrax player
-  // pool at all, or haven't been matched yet via /admin/bsd-player-mapping
-  // -- either way the name renders as plain text until that's resolved.
   const bsdPlayerIds = transfers.map((transfer) => transfer.playerId);
+
+  // BSD player ids not present in fantraxByBsdId either aren't in our
+  // Fantrax player pool at all, or haven't been matched yet via
+  // /admin/bsd-player-mapping -- either way the name renders as plain text
+  // until that's resolved, per the same reasoning below.
   const supabase = await createServerSupabaseClient();
-  const { data: mappedPlayers } = bsdPlayerIds.length
-    ? await supabase.from("players").select("id, bsd_id").in("bsd_id", bsdPlayerIds)
-    : { data: [] };
-  const fantraxIdByBsdId = new Map((mappedPlayers ?? []).map((player) => [player.bsd_id as number, player.id as string]));
+  const [{ data: mappedPlayers }, bsdPositionByPlayerId] = await Promise.all([
+    bsdPlayerIds.length ? supabase.from("players").select("id, bsd_id, position").in("bsd_id", bsdPlayerIds) : Promise.resolve({ data: [] }),
+    fetchBsdPlayerPositions(bsdPlayerIds),
+  ]);
+
+  const fantraxByBsdId = new Map<number, FantraxPlayerMatch>(
+    (mappedPlayers ?? []).map((player) => [player.bsd_id as number, { id: player.id as string, position: player.position as string }])
+  );
 
   const hasPrevious = offset > 0;
   const hasNext = offset + transfers.length < total;
@@ -76,47 +98,61 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-brand-creamDark bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-brand-creamDark">
-              <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Player</th>
-              <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Move</th>
-              <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Fee</th>
-              <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-brand-dark/60">Date</th>
+            <tr>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">From</th>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">To</th>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-brand-cream">Player</th>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">Fantrax Pos</th>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-brand-cream">BSD Pos</th>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Fee</th>
+              <th className="border-b border-brand-cream/25 bg-brand-green px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wide text-brand-cream">Date</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-creamDark">
-            {transfers.map((transfer) => {
-              const badge = transferBadge(transfer);
-              const fantraxId = fantraxIdByBsdId.get(transfer.playerId);
+          <tbody>
+            {transfers.map((transfer, index) => {
+              const fantraxMatch = fantraxByBsdId.get(transfer.playerId);
+              const bsdPosition = bsdPositionByPlayerId.get(transfer.playerId);
+              const fee = feeCell(transfer);
+              const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
+
               return (
-                <tr key={transfer.id} className="hover:bg-brand-cream/40">
-                  <td className="px-4 py-2">
-                    {fantraxId ? (
-                      <Link href={`/portal/players/${fantraxId}`} className="font-semibold text-brand-dark hover:underline">
+                <tr key={transfer.id} className={`${rowShade} text-brand-dark`}>
+                  <td className="border-b border-slate-200 px-3 py-2">
+                    <TeamCell teamId={transfer.fromTeamId} teamName={transfer.fromTeamName} fallback="Unattached" />
+                  </td>
+                  <td className="border-b border-slate-200 px-3 py-2">
+                    <TeamCell teamId={transfer.toTeamId} teamName={transfer.toTeamName} fallback="No team" />
+                  </td>
+                  <td className="border-b border-slate-200 px-3 py-2 font-semibold">
+                    {fantraxMatch ? (
+                      <Link href={`/portal/players/${fantraxMatch.id}`} className="text-brand-dark hover:underline">
                         {transfer.playerName}
                       </Link>
                     ) : (
-                      <span className="font-semibold text-brand-dark">{transfer.playerName}</span>
-                    )}{" "}
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${badge.className}`}>{badge.label}</span>
+                      transfer.playerName
+                    )}
                   </td>
-                  <td className="px-4 py-2 text-sm text-brand-dark/70">
-                    {transfer.fromTeamName ?? "Unattached"}
-                    <span className="mx-2 text-brand-dark/40">&rarr;</span>
-                    {transfer.toTeamName ?? "No team"}
+                  <td className="border-b border-slate-200 px-3 py-2 text-center">
+                    {fantraxMatch ? (
+                      <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${positionBadgeClass(fantraxMatch.position)}`}>
+                        {fantraxMatch.position.charAt(0).toUpperCase()}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
                   </td>
-                  <td className={`px-4 py-2 text-right text-sm ${transfer.feeEur > 0 ? "font-semibold text-brand-greenLight" : "text-brand-dark/60"}`}>
-                    {feeDisplay(transfer)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-sm text-brand-dark/60">{formatDate(transfer.transferDate)}</td>
+                  <td className="border-b border-slate-200 px-3 py-2 text-center text-slate-600">{bsdPosition ?? "-"}</td>
+                  <td className={`border-b border-slate-200 px-3 py-2 text-right ${fee.className}`}>{fee.text}</td>
+                  <td className="border-b border-slate-200 px-3 py-2 text-right text-slate-600">{formatDate(transfer.transferDate)}</td>
                 </tr>
               );
             })}
             {transfers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-brand-dark/60">
+                <td colSpan={7} className="border-b border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
                   No transfers found in this window.
                 </td>
               </tr>
