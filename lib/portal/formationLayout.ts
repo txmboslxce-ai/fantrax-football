@@ -7,10 +7,10 @@ export type PositionedPlayer = {
 };
 
 const OWN_GOAL_PCT = 8;
-// Kept well short of the halfway line (50) so the frontmost line -- often a
-// lone striker -- clears the (enlarged) center circle instead of sitting
-// inside it.
-const HALFWAY_APPROACH_PCT = 38;
+// Close enough to the halfway line (50) that the frontmost line -- often a
+// lone striker -- sits inside their own half of the center circle, the way
+// broadcast lineup graphics place the two front players flanking it.
+const HALFWAY_APPROACH_PCT = 44;
 const ACROSS_MIN_PCT = 14;
 const ACROSS_MAX_PCT = 86;
 

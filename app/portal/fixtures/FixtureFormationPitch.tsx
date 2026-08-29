@@ -94,7 +94,7 @@ function PitchMarkings({ axis }: { axis: Axis }) {
       <div className={`absolute bg-white/40 ${axis === "horizontal" ? "left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2" : "left-[3%] top-1/2 h-px w-[94%] -translate-y-1/2"}`} />
       <div
         className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40 ${
-          axis === "horizontal" ? "h-40 w-40" : "h-24 w-24"
+          axis === "horizontal" ? "h-32 w-32" : "h-24 w-24"
         }`}
       />
       <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40" />
@@ -125,7 +125,7 @@ function Pitch({
   return (
     <div
       className={`relative mx-auto w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800 ${
-        axis === "horizontal" ? "max-w-6xl aspect-[16/10]" : "max-w-sm aspect-[10/16]"
+        axis === "horizontal" ? "max-w-4xl aspect-[16/10]" : "max-w-sm aspect-[10/16]"
       }`}
     >
       <PitchMarkings axis={axis} />
@@ -146,25 +146,27 @@ function SubsList({ team, fantraxByBsdId }: { team: FormationTeamProps; fantraxB
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <h3 className="text-sm font-bold text-brand-dark">{team.teamName} substitutes</h3>
-      <ul className="mt-2 space-y-1.5 text-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <h3 className="text-xs font-bold text-brand-dark">{team.teamName} substitutes</h3>
+      <ul className="mt-1.5 space-y-1">
         {team.substitutions.map((sub) => {
           const incoming = team.substitutesBench.find((player) => player.id === sub.playerInId);
           const match = incoming ? fantraxByBsdId.get(incoming.id) : undefined;
           const minuteLabel = sub.addedTime ? `${sub.minute}+${sub.addedTime}'` : `${sub.minute}'`;
 
           return (
-            <li key={`${sub.playerInId}-${sub.minute}`} className="flex flex-wrap items-baseline gap-x-1.5 text-brand-dark">
-              {incoming ? (
-                <PlayerName player={incoming} fantraxByBsdId={fantraxByBsdId} />
-              ) : (
-                <span className="font-semibold">{sub.playerInName}</span>
-              )}
-              <span className="text-slate-600">
+            <li key={`${sub.playerInId}-${sub.minute}`} className="flex items-baseline gap-1 text-[11px] text-brand-dark">
+              <span className="shrink-0 whitespace-nowrap">
+                {incoming ? (
+                  <PlayerName player={incoming} fantraxByBsdId={fantraxByBsdId} />
+                ) : (
+                  <span className="font-semibold">{sub.playerInName}</span>
+                )}
+              </span>
+              <span className="shrink-0 whitespace-nowrap text-slate-600">
                 {match ? `${formatScore(match.score)} (${formatScore(match.ghost)})` : "-"}
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="min-w-0 truncate text-slate-500">
                 ({minuteLabel} for {sub.playerOutName}
                 {incoming ? `, ${incoming.position}` : ""})
               </span>
@@ -199,7 +201,7 @@ export default function FixtureFormationPitch({ home, away, fantraxByBsdId }: Fi
       </div>
 
       {/* xl+: enough room for the subs to sit beside the pitch instead of below it */}
-      <div className="hidden xl:grid xl:grid-cols-[minmax(0,1fr)_260px] xl:items-start xl:gap-4">
+      <div className="hidden xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start xl:gap-4">
         <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
         {hasSubs ? (
           <div className="flex flex-col gap-4">
