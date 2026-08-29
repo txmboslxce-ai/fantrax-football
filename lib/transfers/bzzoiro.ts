@@ -42,6 +42,18 @@ type BzzoiroTransferListResponse = {
 
 const MAX_TRANSFERS_PER_TEAM = 500;
 
+// Same-day ordering: fee-bearing transfers first (largest fee first), then
+// free transfers, then loans last.
+function feeRank(transfer: Transfer): number {
+  if (transfer.transferType === 1) {
+    return 2;
+  }
+  if (transfer.feeEur > 0) {
+    return 0;
+  }
+  return 1;
+}
+
 function toTransfer(row: BzzoiroTransferRow): Transfer {
   return {
     id: row.id,
@@ -101,6 +113,13 @@ export async function fetchPremierLeagueTransfers({
   const sorted = Array.from(byId.values()).sort((a, b) => {
     if (a.transferDate !== b.transferDate) {
       return a.transferDate < b.transferDate ? 1 : -1;
+    }
+    const rankDiff = feeRank(a) - feeRank(b);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+    if (a.feeEur !== b.feeEur) {
+      return b.feeEur - a.feeEur;
     }
     return b.id - a.id;
   });

@@ -51,7 +51,7 @@ function TeamCell({ teamId, teamName, fallback }: { teamId: number | null; teamN
 
   if (abbrev) {
     return (
-      <Link href={`/portal/teams/${abbrev}`} className="font-medium text-brand-green hover:underline">
+      <Link href={`/portal/teams/${abbrev}`} className="font-semibold text-brand-green hover:underline">
         {label}
       </Link>
     );
@@ -93,9 +93,6 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Premier League Transfers</h1>
-        <p className="mt-2 text-sm text-brand-dark/70">
-          Every Premier League move since 1 June 2026 &mdash; {total.toLocaleString("en-GB")} total.
-        </p>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
@@ -126,13 +123,13 @@ export default async function TransfersPage({ searchParams }: TransfersPageProps
                   <td className="border-b border-slate-200 px-3 py-2">
                     <TeamCell teamId={transfer.toTeamId} teamName={transfer.toTeamName} fallback="No team" />
                   </td>
-                  <td className="border-b border-slate-200 px-3 py-2 font-semibold">
+                  <td className="border-b border-slate-200 px-3 py-2">
                     {fantraxMatch ? (
-                      <Link href={`/portal/players/${fantraxMatch.id}`} className="text-brand-dark hover:underline">
+                      <Link href={`/portal/players/${fantraxMatch.id}`} className="font-semibold text-brand-dark hover:underline">
                         {transfer.playerName}
                       </Link>
                     ) : (
-                      transfer.playerName
+                      <span className="font-normal text-brand-dark">{transfer.playerName}</span>
                     )}
                   </td>
                   <td className="border-b border-slate-200 px-3 py-2 text-center">
