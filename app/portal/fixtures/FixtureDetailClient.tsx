@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import RosterPill from "@/app/components/ui/RosterPill";
@@ -37,6 +38,7 @@ type FixtureDetailClientProps = {
   homePlayers: FixturePlayerRow[];
   awayPlayers: FixturePlayerRow[];
   leagueRoster: LeagueRosterData | null;
+  formation?: ReactNode;
 };
 
 const viewLabels: Record<FixtureDetailView, string> = {
@@ -183,6 +185,7 @@ export default function FixtureDetailClient({
   homePlayers,
   awayPlayers,
   leagueRoster,
+  formation,
 }: FixtureDetailClientProps) {
   const [activeView, setActiveView] = useState<FixtureDetailView>("fantasy");
 
@@ -195,6 +198,8 @@ export default function FixtureDetailClient({
         </h1>
         <p className="mt-2 text-sm text-slate-500">{kickoffLabel ?? "Kickoff TBD"}</p>
       </div>
+
+      {formation}
 
       <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
         {(["fantasy", "stats"] as const).map((view) => (

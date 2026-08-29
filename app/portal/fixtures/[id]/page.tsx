@@ -348,10 +348,6 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         Back to Fixtures
       </Link>
 
-      {formationView ? (
-        <FixtureFormationPitch home={formationView.home} away={formationView.away} fantraxByBsdId={formationView.fantraxByBsdId} />
-      ) : null}
-
       <FixtureDetailClient
         gameweek={fixture.gameweek}
         kickoffLabel={formatKickoff(fixture.kickoff_at)}
@@ -360,6 +356,11 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         homePlayers={homePlayers}
         awayPlayers={awayPlayers}
         leagueRoster={leagueRoster}
+        formation={
+          formationView ? (
+            <FixtureFormationPitch home={formationView.home} away={formationView.away} fantraxByBsdId={formationView.fantraxByBsdId} />
+          ) : null
+        }
       />
     </div>
   );

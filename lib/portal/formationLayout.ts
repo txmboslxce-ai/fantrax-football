@@ -40,17 +40,25 @@ export function groupByFormation(starters: BsdLineupPlayer[], formation: string)
 // team attacks; acrossPct is the spread within a line, perpendicular to
 // that. Rendering maps these onto real x/y for horizontal vs vertical pitch
 // orientations -- see FixtureFormationPitch.
+//
+// A line's spread scales with its own size relative to the team's widest
+// line (usually the back line), so e.g. a 2-man double pivot sits clustered
+// near the middle rather than flung out to the same edges as a back four.
 export function layoutTeam(lines: BsdLineupPlayer[][], attackingTowardHigherPct: boolean): PositionedPlayer[] {
   const lineCount = lines.length;
+  const widestLine = Math.max(...lines.map((line) => line.length));
+  const fullSpread = ACROSS_MAX_PCT - ACROSS_MIN_PCT;
 
   return lines.flatMap((line, lineIndex) => {
     const along =
       lineCount === 1 ? OWN_GOAL_PCT : OWN_GOAL_PCT + (lineIndex * (HALFWAY_APPROACH_PCT - OWN_GOAL_PCT)) / (lineCount - 1);
     const alongPct = attackingTowardHigherPct ? along : 100 - along;
 
+    const lineSpread = fullSpread * (line.length / widestLine);
+    const acrossStart = 50 - lineSpread / 2;
+
     return line.map((player, playerIndex) => {
-      const acrossPct =
-        line.length === 1 ? 50 : ACROSS_MIN_PCT + (playerIndex * (ACROSS_MAX_PCT - ACROSS_MIN_PCT)) / (line.length - 1);
+      const acrossPct = line.length === 1 ? 50 : acrossStart + (playerIndex * lineSpread) / (line.length - 1);
       return { player, alongPct, acrossPct };
     });
   });

@@ -53,13 +53,13 @@ function PlayerChip({
 
   return (
     <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center" style={style}>
-      <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold shadow ${positionBadgeClass(player.position)}`}>
+      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold shadow ${positionBadgeClass(player.position)}`}>
         {player.jerseyNumber}
       </span>
-      <span className="max-w-20 truncate text-[11px] leading-tight text-white drop-shadow">
+      <span className="max-w-14 truncate text-[9px] leading-tight text-white drop-shadow">
         <PlayerName player={player} fantraxByBsdId={fantraxByBsdId} />
       </span>
-      <span className="text-[10px] font-semibold leading-tight text-white/90 drop-shadow">
+      <span className="text-[8px] font-semibold leading-tight text-white/90 drop-shadow">
         {match ? `${formatScore(match.score)} (${formatScore(match.ghost)})` : "-"}
       </span>
     </div>
@@ -82,8 +82,8 @@ function Pitch({
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-xl border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800 ${
-        axis === "horizontal" ? "aspect-[16/10]" : "aspect-[10/16]"
+      className={`relative mx-auto w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800 ${
+        axis === "horizontal" ? "max-w-xl aspect-[16/10]" : "max-w-xs aspect-[10/16]"
       }`}
     >
       {axis === "horizontal" ? (
@@ -147,11 +147,13 @@ function SubsList({ team, fantraxByBsdId }: { team: FormationTeamProps; fantraxB
 export default function FixtureFormationPitch({ home, away, fantraxByBsdId }: FixtureFormationPitchProps) {
   return (
     <div className="space-y-4">
-      <div className="hidden md:block">
-        <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
-      </div>
-      <div className="md:hidden">
-        <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="vertical" />
+      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="hidden md:block">
+          <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
+        </div>
+        <div className="md:hidden">
+          <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="vertical" />
+        </div>
       </div>
 
       {home.substitutions.length > 0 || away.substitutions.length > 0 ? (
