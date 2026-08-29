@@ -42,6 +42,11 @@ type BzzoiroTransferListResponse = {
 
 const MAX_TRANSFERS_PER_TEAM = 500;
 
+// BSD's own transfer feed only refreshes about once a day, so polling more
+// often than this just re-fetches identical data. Four hours keeps us far
+// ahead of that cadence while cutting daily request volume drastically.
+const TRANSFERS_REVALIDATE_SECONDS = 4 * 60 * 60;
+
 // Same-day ordering: fee-bearing transfers first (largest fee first), then
 // free transfers, then loans last.
 function feeRank(transfer: Transfer): number {
@@ -79,7 +84,7 @@ async function fetchTeamTransfersSince(teamId: number, dateFrom: string): Promis
     const data = await bzzoiroGet<BzzoiroTransferListResponse>(
       "/transfers/",
       { team_id: String(teamId), date_from: dateFrom, limit: String(limit), offset: String(offset) },
-      300
+      TRANSFERS_REVALIDATE_SECONDS
     );
     rows.push(...data.results);
     if (!data.next) {
