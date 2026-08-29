@@ -40,6 +40,8 @@ type FixtureDetailClientProps = {
   awayPlayers: FixturePlayerRow[];
   leagueRoster: LeagueRosterData | null;
   formation?: ReactNode;
+  shotMap?: ReactNode;
+  analytics?: ReactNode;
 };
 
 // The header card and the Lineups tab (which contains the pitch graphic)
@@ -221,6 +223,8 @@ export default function FixtureDetailClient({
   awayPlayers,
   leagueRoster,
   formation,
+  shotMap,
+  analytics,
 }: FixtureDetailClientProps) {
   const [activeTab, setActiveTab] = useState<TopLevelView>("lineups");
   const [statsView, setStatsView] = useState<StatsSubView>("fantasy");
@@ -262,8 +266,8 @@ export default function FixtureDetailClient({
         </div>
       ) : null}
 
-      {activeTab === "shotMap" ? <PlaceholderPanel text="Shot map coming soon." /> : null}
-      {activeTab === "analytics" ? <PlaceholderPanel text="Analytics coming soon." /> : null}
+      {activeTab === "shotMap" ? shotMap ?? <PlaceholderPanel text="Shot map isn't available for this fixture yet." /> : null}
+      {activeTab === "analytics" ? analytics ?? <PlaceholderPanel text="Analytics aren't available for this fixture yet." /> : null}
     </div>
   );
 }
