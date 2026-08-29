@@ -82,11 +82,13 @@ export async function matchCurrentPremierLeaguePlayers(supabase: SupabaseClient)
     }
   }
 
-  const unmatchedFantraxPlayers: FantraxPlayerCandidate[] = Array.from(unmatchedFantraxByKey.values()).map((player) => ({
-    id: player.id,
-    name: player.name,
-    team: player.team as string,
-  }));
+  const unmatchedFantraxPlayers: FantraxPlayerCandidate[] = Array.from(unmatchedFantraxByKey.values())
+    .map((player) => ({
+      id: player.id,
+      name: player.name,
+      team: player.team as string,
+    }))
+    .sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
 
   return { matches, unmatchedBsdPlayers, unmatchedFantraxPlayers };
 }
