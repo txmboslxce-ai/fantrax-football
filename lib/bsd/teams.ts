@@ -25,3 +25,7 @@ export const BSD_TEAM_ID_TO_ABBREV: Record<number, string> = {
   9: "TOT",
   7: "SUN",
 };
+
+export const BSD_ABBREV_TO_TEAM_ID: Record<string, number> = Object.fromEntries(
+  Object.entries(BSD_TEAM_ID_TO_ABBREV).map(([teamId, abbrev]) => [abbrev, Number(teamId)])
+);

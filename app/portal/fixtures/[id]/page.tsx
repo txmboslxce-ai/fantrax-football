@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import FixtureDetailClient from "@/app/portal/fixtures/FixtureDetailClient";
+import FixtureFormationPitch, { type FantraxLookupEntry, type FormationTeamProps } from "@/app/portal/fixtures/FixtureFormationPitch";
+import { findBsdEventId } from "@/lib/bsd/events";
+import { fetchBsdMatchLineup, type BsdTeamLineup } from "@/lib/bsd/lineups";
+import { groupByFormation } from "@/lib/portal/formationLayout";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+const LINEUPS_GATE_MS = 60 * 60 * 1000;
 
 type PageProps = {
   params:
@@ -154,6 +160,22 @@ function positionOrder(position: "GK" | "DEF" | "MID" | "FWD"): number {
   return 3;
 }
 
+function isWithinLineupsWindow(kickoffAt: string | null): boolean {
+  if (!kickoffAt) {
+    return false;
+  }
+  return Date.now() >= new Date(kickoffAt).getTime() - LINEUPS_GATE_MS;
+}
+
+function buildFormationTeam(lineup: BsdTeamLineup, substitutions: FormationTeamProps["substitutions"], isHome: boolean): FormationTeamProps {
+  return {
+    teamName: lineup.teamName,
+    lines: groupByFormation(lineup.starters, lineup.formation) ?? [lineup.starters],
+    substitutions: substitutions.filter((sub) => sub.isHome === isHome),
+    substitutesBench: lineup.substitutes,
+  };
+}
+
 export default async function FixtureDetailPage({ params }: PageProps) {
   const resolvedParams = params && typeof params === "object" && "then" in params ? await params : params;
 
@@ -263,6 +285,60 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const homePlayers = rows.filter((row) => row.team === fixture.home_team);
   const awayPlayers = rows.filter((row) => row.team === fixture.away_team);
 
+  // Starting lineups only show up once BSD has confirmed them, which
+  // typically happens close to kickoff -- checking our own kickoff time
+  // first avoids an API round-trip for every fixture that's still days out.
+  let formationView: { home: FormationTeamProps; away: FormationTeamProps; fantraxByBsdId: Map<number, FantraxLookupEntry> } | null = null;
+
+  const lineupsWindowOpen = isWithinLineupsWindow(fixture.kickoff_at);
+
+  if (lineupsWindowOpen) {
+    const bsdEventId = await findBsdEventId({
+      homeAbbrev: fixture.home_team,
+      awayAbbrev: fixture.away_team,
+      kickoffAt: fixture.kickoff_at as string,
+    });
+
+    if (bsdEventId) {
+      const lineup = await fetchBsdMatchLineup(bsdEventId);
+
+      if (lineup.status === "confirmed" && lineup.home && lineup.away) {
+        const bsdPlayerIds = [
+          ...lineup.home.starters,
+          ...lineup.home.substitutes,
+          ...lineup.away.starters,
+          ...lineup.away.substitutes,
+        ].map((player) => player.id);
+
+        const { data: bsdMappedPlayers, error: bsdMappedError } = await supabase
+          .from("players")
+          .select("id, bsd_id")
+          .in("bsd_id", bsdPlayerIds);
+
+        if (bsdMappedError) {
+          throw new Error(`Unable to load BSD player mappings: ${bsdMappedError.message}`);
+        }
+
+        const rowsByPlayerId = new Map(rows.map((row) => [row.id, row]));
+        const fantraxByBsdId = new Map<number, FantraxLookupEntry>();
+        for (const mapped of (bsdMappedPlayers ?? []) as Array<{ id: string; bsd_id: number }>) {
+          const scoreRow = rowsByPlayerId.get(mapped.id);
+          fantraxByBsdId.set(mapped.bsd_id, {
+            fantraxId: mapped.id,
+            score: scoreRow?.rawFantraxPts ?? null,
+            ghost: scoreRow?.ghostPts ?? null,
+          });
+        }
+
+        formationView = {
+          home: buildFormationTeam(lineup.home, lineup.substitutions, true),
+          away: buildFormationTeam(lineup.away, lineup.substitutions, false),
+          fantraxByBsdId,
+        };
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Link
@@ -271,6 +347,10 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       >
         Back to Fixtures
       </Link>
+
+      {formationView ? (
+        <FixtureFormationPitch home={formationView.home} away={formationView.away} fantraxByBsdId={formationView.fantraxByBsdId} />
+      ) : null}
 
       <FixtureDetailClient
         gameweek={fixture.gameweek}
