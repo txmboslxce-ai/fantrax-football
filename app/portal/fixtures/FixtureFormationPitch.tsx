@@ -92,7 +92,11 @@ function PitchMarkings({ axis }: { axis: Axis }) {
     <>
       <div className={`${lineClass} inset-[3%]`} />
       <div className={`absolute bg-white/40 ${axis === "horizontal" ? "left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2" : "left-[3%] top-1/2 h-px w-[94%] -translate-y-1/2"}`} />
-      <div className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+      <div
+        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40 ${
+          axis === "horizontal" ? "h-40 w-40" : "h-24 w-24"
+        }`}
+      />
       <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40" />
 
       {/* Penalty + six-yard boxes at both ends */}
@@ -173,23 +177,37 @@ function SubsList({ team, fantraxByBsdId }: { team: FormationTeamProps; fantraxB
 }
 
 export default function FixtureFormationPitch({ home, away, fantraxByBsdId }: FixtureFormationPitchProps) {
+  const hasSubs = home.substitutions.length > 0 || away.substitutions.length > 0;
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+      {/* Below xl: pitch full width (orientation swaps at md), subs stacked below */}
+      <div className="space-y-4 xl:hidden">
         <div className="hidden md:block">
           <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
         </div>
         <div className="md:hidden">
           <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="vertical" />
         </div>
+
+        {hasSubs ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SubsList team={home} fantraxByBsdId={fantraxByBsdId} />
+            <SubsList team={away} fantraxByBsdId={fantraxByBsdId} />
+          </div>
+        ) : null}
       </div>
 
-      {home.substitutions.length > 0 || away.substitutions.length > 0 ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SubsList team={home} fantraxByBsdId={fantraxByBsdId} />
-          <SubsList team={away} fantraxByBsdId={fantraxByBsdId} />
-        </div>
-      ) : null}
+      {/* xl+: enough room for the subs to sit beside the pitch instead of below it */}
+      <div className="hidden xl:grid xl:grid-cols-[minmax(0,1fr)_260px] xl:items-start xl:gap-4">
+        <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
+        {hasSubs ? (
+          <div className="flex flex-col gap-4">
+            <SubsList team={home} fantraxByBsdId={fantraxByBsdId} />
+            <SubsList team={away} fantraxByBsdId={fantraxByBsdId} />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
