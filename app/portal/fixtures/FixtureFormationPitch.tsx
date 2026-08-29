@@ -50,19 +50,57 @@ function PlayerChip({
   const { player, alongPct, acrossPct } = positioned;
   const match = fantraxByBsdId.get(player.id);
   const style = axis === "horizontal" ? { left: `${alongPct}%`, top: `${acrossPct}%` } : { left: `${acrossPct}%`, top: `${100 - alongPct}%` };
+  const badgeSize = axis === "horizontal" ? "h-8 w-8 text-xs" : "h-5 w-5 text-[9px]";
+  const nameSize = axis === "horizontal" ? "max-w-20 text-xs" : "max-w-14 text-[9px]";
+  const scoreSize = axis === "horizontal" ? "text-[11px]" : "text-[8px]";
 
   return (
     <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center" style={style}>
-      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold shadow ${positionBadgeClass(player.position)}`}>
+      <span className={`flex items-center justify-center rounded-full font-bold shadow ${badgeSize} ${positionBadgeClass(player.position)}`}>
         {player.jerseyNumber}
       </span>
-      <span className="max-w-14 truncate text-[9px] leading-tight text-white drop-shadow">
+      <span className={`truncate leading-tight text-white drop-shadow ${nameSize}`}>
         <PlayerName player={player} fantraxByBsdId={fantraxByBsdId} />
       </span>
-      <span className="text-[8px] font-semibold leading-tight text-white/90 drop-shadow">
+      <span className={`font-semibold leading-tight text-white/90 drop-shadow ${scoreSize}`}>
         {match ? `${formatScore(match.score)} (${formatScore(match.ghost)})` : "-"}
       </span>
     </div>
+  );
+}
+
+type Axis = "horizontal" | "vertical";
+
+// Converts a rectangle defined in along/across percentages (goal-to-goal,
+// touchline-to-touchline) into real left/top/width/height for whichever
+// orientation is rendering -- the same along/across coordinate space
+// PositionedPlayer uses, just for a box instead of a point.
+function rectStyle(alongRange: [number, number], acrossRange: [number, number], axis: Axis) {
+  const [alongMin, alongMax] = alongRange;
+  const [acrossMin, acrossMax] = acrossRange;
+
+  if (axis === "horizontal") {
+    return { left: `${alongMin}%`, width: `${alongMax - alongMin}%`, top: `${acrossMin}%`, height: `${acrossMax - acrossMin}%` };
+  }
+  return { left: `${acrossMin}%`, width: `${acrossMax - acrossMin}%`, top: `${100 - alongMax}%`, height: `${alongMax - alongMin}%` };
+}
+
+function PitchMarkings({ axis }: { axis: Axis }) {
+  const lineClass = "absolute border border-white/40";
+
+  return (
+    <>
+      <div className={`${lineClass} inset-[3%]`} />
+      <div className={`absolute bg-white/40 ${axis === "horizontal" ? "left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2" : "left-[3%] top-1/2 h-px w-[94%] -translate-y-1/2"}`} />
+      <div className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+      <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40" />
+
+      {/* Penalty + six-yard boxes at both ends */}
+      <div className={lineClass} style={rectStyle([3, 19], [21, 79], axis)} />
+      <div className={lineClass} style={rectStyle([81, 97], [21, 79], axis)} />
+      <div className={lineClass} style={rectStyle([3, 9], [38, 62], axis)} />
+      <div className={lineClass} style={rectStyle([91, 97], [38, 62], axis)} />
+    </>
   );
 }
 
@@ -75,7 +113,7 @@ function Pitch({
   home: FormationTeamProps;
   away: FormationTeamProps;
   fantraxByBsdId: Map<number, FantraxLookupEntry>;
-  axis: "horizontal" | "vertical";
+  axis: Axis;
 }) {
   const homePositions = layoutTeam(home.lines, true);
   const awayPositions = layoutTeam(away.lines, false);
@@ -83,20 +121,10 @@ function Pitch({
   return (
     <div
       className={`relative mx-auto w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800 ${
-        axis === "horizontal" ? "max-w-xl aspect-[16/10]" : "max-w-xs aspect-[10/16]"
+        axis === "horizontal" ? "max-w-6xl aspect-[16/10]" : "max-w-sm aspect-[10/16]"
       }`}
     >
-      {axis === "horizontal" ? (
-        <>
-          <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/30" />
-          <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30" />
-        </>
-      ) : (
-        <>
-          <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/30" />
-          <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30" />
-        </>
-      )}
+      <PitchMarkings axis={axis} />
 
       {homePositions.map((positioned) => (
         <PlayerChip key={`home-${positioned.player.id}`} positioned={positioned} fantraxByBsdId={fantraxByBsdId} axis={axis} />
