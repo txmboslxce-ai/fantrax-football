@@ -22,8 +22,19 @@ type FixtureFormationPitchProps = {
   fantraxByBsdId: Map<number, FantraxLookupEntry>;
 };
 
+// The header card above this component shares the same width -- see
+// FixtureDetailClient -- so the two line up instead of the header
+// stretching full-bleed over a much narrower pitch.
+const CONTENT_WIDTH_CLASS = "max-w-[850px]";
+
+const BENCH_POSITION_ORDER: Record<string, number> = { G: 0, D: 1, M: 2, F: 3 };
+
 function formatScore(value: number | null): string {
   return value == null ? "-" : value.toFixed(2);
+}
+
+function formatMinute(minute: number, addedTime: number | null): string {
+  return addedTime ? `${minute}+${addedTime}'` : `${minute}'`;
 }
 
 function PlayerName({ player, fantraxByBsdId }: { player: BsdLineupPlayer; fantraxByBsdId: Map<number, FantraxLookupEntry> }) {
@@ -41,10 +52,12 @@ function PlayerName({ player, fantraxByBsdId }: { player: BsdLineupPlayer; fantr
 function PlayerChip({
   positioned,
   fantraxByBsdId,
+  offInfo,
   axis,
 }: {
   positioned: PositionedPlayer;
   fantraxByBsdId: Map<number, FantraxLookupEntry>;
+  offInfo: { minute: number; addedTime: number | null } | undefined;
   axis: "horizontal" | "vertical";
 }) {
   const { player, alongPct, acrossPct } = positioned;
@@ -53,6 +66,7 @@ function PlayerChip({
   const badgeSize = axis === "horizontal" ? "h-8 w-8 text-xs" : "h-5 w-5 text-[9px]";
   const nameSize = axis === "horizontal" ? "max-w-20 text-xs" : "max-w-14 text-[9px]";
   const scoreSize = axis === "horizontal" ? "text-[11px]" : "text-[8px]";
+  const offSize = axis === "horizontal" ? "text-[10px]" : "text-[7px]";
 
   return (
     <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center" style={style}>
@@ -65,6 +79,9 @@ function PlayerChip({
       <span className={`font-semibold leading-tight text-white/90 drop-shadow ${scoreSize}`}>
         {match ? `${formatScore(match.score)} (${formatScore(match.ghost)})` : "-"}
       </span>
+      {offInfo ? (
+        <span className={`font-bold leading-tight text-red-300 drop-shadow ${offSize}`}>&#8595; {formatMinute(offInfo.minute, offInfo.addedTime)}</span>
+      ) : null}
     </div>
   );
 }
@@ -94,7 +111,7 @@ function PitchMarkings({ axis }: { axis: Axis }) {
       <div className={`absolute bg-white/40 ${axis === "horizontal" ? "left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2" : "left-[3%] top-1/2 h-px w-[94%] -translate-y-1/2"}`} />
       <div
         className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40 ${
-          axis === "horizontal" ? "h-32 w-32" : "h-24 w-24"
+          axis === "horizontal" ? "h-28 w-28" : "h-24 w-24"
         }`}
       />
       <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40" />
@@ -106,6 +123,14 @@ function PitchMarkings({ axis }: { axis: Axis }) {
       <div className={lineClass} style={rectStyle([91, 97], [38, 62], axis)} />
     </>
   );
+}
+
+function buildOffMinuteMap(substitutions: BsdSubstitution[]): Map<number, { minute: number; addedTime: number | null }> {
+  const map = new Map<number, { minute: number; addedTime: number | null }>();
+  for (const sub of substitutions) {
+    map.set(sub.playerOutId, { minute: sub.minute, addedTime: sub.addedTime });
+  }
+  return map;
 }
 
 function Pitch({
@@ -121,55 +146,68 @@ function Pitch({
 }) {
   const homePositions = layoutTeam(home.lines, true);
   const awayPositions = layoutTeam(away.lines, false);
+  const homeOffMap = buildOffMinuteMap(home.substitutions);
+  const awayOffMap = buildOffMinuteMap(away.substitutions);
 
   return (
     <div
       className={`relative mx-auto w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800 ${
-        axis === "horizontal" ? "max-w-4xl aspect-[16/10]" : "max-w-sm aspect-[10/16]"
+        axis === "horizontal" ? "max-w-[810px] aspect-[16/10]" : "max-w-sm aspect-[10/16]"
       }`}
     >
       <PitchMarkings axis={axis} />
 
       {homePositions.map((positioned) => (
-        <PlayerChip key={`home-${positioned.player.id}`} positioned={positioned} fantraxByBsdId={fantraxByBsdId} axis={axis} />
+        <PlayerChip
+          key={`home-${positioned.player.id}`}
+          positioned={positioned}
+          fantraxByBsdId={fantraxByBsdId}
+          offInfo={homeOffMap.get(positioned.player.id)}
+          axis={axis}
+        />
       ))}
       {awayPositions.map((positioned) => (
-        <PlayerChip key={`away-${positioned.player.id}`} positioned={positioned} fantraxByBsdId={fantraxByBsdId} axis={axis} />
+        <PlayerChip
+          key={`away-${positioned.player.id}`}
+          positioned={positioned}
+          fantraxByBsdId={fantraxByBsdId}
+          offInfo={awayOffMap.get(positioned.player.id)}
+          axis={axis}
+        />
       ))}
     </div>
   );
 }
 
 function SubsList({ team, fantraxByBsdId }: { team: FormationTeamProps; fantraxByBsdId: Map<number, FantraxLookupEntry> }) {
-  if (team.substitutions.length === 0) {
+  if (team.substitutesBench.length === 0) {
     return null;
   }
 
+  const bench = [...team.substitutesBench].sort((a, b) => (BENCH_POSITION_ORDER[a.position] ?? 9) - (BENCH_POSITION_ORDER[b.position] ?? 9));
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <h3 className="text-xs font-bold text-brand-dark">{team.teamName} substitutes</h3>
+      <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{team.teamName} substitutes</h3>
       <ul className="mt-1.5 space-y-1">
-        {team.substitutions.map((sub) => {
-          const incoming = team.substitutesBench.find((player) => player.id === sub.playerInId);
-          const match = incoming ? fantraxByBsdId.get(incoming.id) : undefined;
-          const minuteLabel = sub.addedTime ? `${sub.minute}+${sub.addedTime}'` : `${sub.minute}'`;
+        {bench.map((player) => {
+          const cameOn = team.substitutions.find((sub) => sub.playerInId === player.id);
+          const match = fantraxByBsdId.get(player.id);
 
           return (
-            <li key={`${sub.playerInId}-${sub.minute}`} className="flex items-baseline gap-1 text-[11px] text-brand-dark">
-              <span className="shrink-0 whitespace-nowrap">
-                {incoming ? (
-                  <PlayerName player={incoming} fantraxByBsdId={fantraxByBsdId} />
-                ) : (
-                  <span className="font-semibold">{sub.playerInName}</span>
-                )}
+            <li key={player.id} className="flex items-center gap-1.5 text-[11px] text-brand-dark">
+              <span className="w-4 shrink-0 text-right text-[9px] font-bold text-slate-400">{player.position}</span>
+              <span className={`min-w-0 flex-1 truncate ${cameOn ? "" : "text-slate-400"}`}>
+                <PlayerName player={player} fantraxByBsdId={fantraxByBsdId} />
               </span>
-              <span className="shrink-0 whitespace-nowrap text-slate-600">
-                {match ? `${formatScore(match.score)} (${formatScore(match.ghost)})` : "-"}
-              </span>
-              <span className="min-w-0 truncate text-slate-500">
-                ({minuteLabel} for {sub.playerOutName}
-                {incoming ? `, ${incoming.position}` : ""})
-              </span>
+              {cameOn ? (
+                <>
+                  <span className="shrink-0 whitespace-nowrap font-bold text-emerald-600">&#8593; {formatMinute(cameOn.minute, cameOn.addedTime)}</span>
+                  <span className="shrink-0 whitespace-nowrap text-slate-600">{match ? `${formatScore(match.score)} (${formatScore(match.ghost)})` : "-"}</span>
+                </>
+              ) : (
+                <span className="shrink-0 text-slate-300">-</span>
+              )}
             </li>
           );
         })}
@@ -179,37 +217,23 @@ function SubsList({ team, fantraxByBsdId }: { team: FormationTeamProps; fantraxB
 }
 
 export default function FixtureFormationPitch({ home, away, fantraxByBsdId }: FixtureFormationPitchProps) {
-  const hasSubs = home.substitutions.length > 0 || away.substitutions.length > 0;
+  const hasBench = home.substitutesBench.length > 0 || away.substitutesBench.length > 0;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-      {/* Below xl: pitch full width (orientation swaps at md), subs stacked below */}
-      <div className="space-y-4 xl:hidden">
-        <div className="hidden md:block">
-          <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
-        </div>
-        <div className="md:hidden">
-          <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="vertical" />
-        </div>
-
-        {hasSubs ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <SubsList team={home} fantraxByBsdId={fantraxByBsdId} />
-            <SubsList team={away} fantraxByBsdId={fantraxByBsdId} />
-          </div>
-        ) : null}
-      </div>
-
-      {/* xl+: enough room for the subs to sit beside the pitch instead of below it */}
-      <div className="hidden xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start xl:gap-4">
+    <div className={`space-y-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 ${CONTENT_WIDTH_CLASS}`}>
+      <div className="hidden md:block">
         <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="horizontal" />
-        {hasSubs ? (
-          <div className="flex flex-col gap-4">
-            <SubsList team={home} fantraxByBsdId={fantraxByBsdId} />
-            <SubsList team={away} fantraxByBsdId={fantraxByBsdId} />
-          </div>
-        ) : null}
       </div>
+      <div className="md:hidden">
+        <Pitch home={home} away={away} fantraxByBsdId={fantraxByBsdId} axis="vertical" />
+      </div>
+
+      {hasBench ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SubsList team={home} fantraxByBsdId={fantraxByBsdId} />
+          <SubsList team={away} fantraxByBsdId={fantraxByBsdId} />
+        </div>
+      ) : null}
     </div>
   );
 }

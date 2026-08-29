@@ -8,7 +8,8 @@ import RosterPill from "@/app/components/ui/RosterPill";
 import type { LeagueRosterData } from "@/lib/portal/leagueRoster";
 import { positionBadgeClass } from "@/lib/portal/positionBadge";
 
-type FixtureDetailView = "fantasy" | "stats";
+type TopLevelView = "lineups" | "statsTable" | "shotMap" | "analytics";
+type StatsSubView = "fantasy" | "stats";
 
 type FixturePlayerRow = {
   id: string;
@@ -41,13 +42,47 @@ type FixtureDetailClientProps = {
   formation?: ReactNode;
 };
 
-const viewLabels: Record<FixtureDetailView, string> = {
+// The header card and the Lineups tab (which contains the pitch graphic)
+// share this width rather than stretching full-bleed; Stats Table keeps the
+// full width below it since those tables benefit from the extra room.
+const HEADER_WIDTH_CLASS = "max-w-[850px]";
+
+const TOP_LEVEL_TABS: Array<{ key: TopLevelView; label: string }> = [
+  { key: "lineups", label: "Lineups" },
+  { key: "statsTable", label: "Stats Table" },
+  { key: "shotMap", label: "Shot Map" },
+  { key: "analytics", label: "Analytics" },
+];
+
+const statsSubViewLabels: Record<StatsSubView, string> = {
   fantasy: "Fantasy",
   stats: "Stats",
 };
 
 function formatNumber(value: number): string {
   return value.toFixed(2);
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+        active ? "border-brand-green bg-brand-green text-brand-cream" : "border-slate-300 bg-white text-brand-dark hover:bg-brand-green/10"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PlaceholderPanel({ text }: { text: string }) {
+  return (
+    <div className={`rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500 ${HEADER_WIDTH_CLASS}`}>
+      {text}
+    </div>
+  );
 }
 
 function SectionDivider({ label, colSpan }: { label: string; colSpan: number }) {
@@ -63,7 +98,7 @@ function SectionDivider({ label, colSpan }: { label: string; colSpan: number }) 
   );
 }
 
-function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: FixturePlayerRow; index: number; activeView: FixtureDetailView; leagueRoster: LeagueRosterData | null }) {
+function PlayerTableRow({ row, index, activeView, leagueRoster }: { row: FixturePlayerRow; index: number; activeView: StatsSubView; leagueRoster: LeagueRosterData | null }) {
   const rowShade = index % 2 === 0 ? "bg-white" : "bg-slate-50";
 
   return (
@@ -113,7 +148,7 @@ function TeamTable({
 }: {
   title: string;
   rows: FixturePlayerRow[];
-  activeView: FixtureDetailView;
+  activeView: StatsSubView;
   leagueRoster: LeagueRosterData | null;
 }) {
   const starters = rows.filter((r) => r.gamesStarted === 1);
@@ -187,11 +222,12 @@ export default function FixtureDetailClient({
   leagueRoster,
   formation,
 }: FixtureDetailClientProps) {
-  const [activeView, setActiveView] = useState<FixtureDetailView>("fantasy");
+  const [activeTab, setActiveTab] = useState<TopLevelView>("lineups");
+  const [statsView, setStatsView] = useState<StatsSubView>("fantasy");
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+      <div className={`rounded-xl border border-slate-200 bg-white px-4 py-4 ${HEADER_WIDTH_CLASS}`}>
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">GW {gameweek}</p>
         <h1 className="mt-2 text-3xl font-black text-brand-dark sm:text-4xl">
           {homeTeam} vs {awayTeam}
@@ -199,29 +235,35 @@ export default function FixtureDetailClient({
         <p className="mt-2 text-sm text-slate-500">{kickoffLabel ?? "Kickoff TBD"}</p>
       </div>
 
-      {formation}
-
       <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
-        {(["fantasy", "stats"] as const).map((view) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => setActiveView(view)}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-              activeView === view
-                ? "border-brand-green bg-brand-green text-brand-cream"
-                : "border-slate-300 bg-white text-brand-dark hover:bg-brand-green/10"
-            }`}
-          >
-            {viewLabels[view]}
-          </button>
+        {TOP_LEVEL_TABS.map((tab) => (
+          <TabButton key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)}>
+            {tab.label}
+          </TabButton>
         ))}
       </nav>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <TeamTable title={homeTeam} rows={homePlayers} activeView={activeView} leagueRoster={leagueRoster} />
-        <TeamTable title={awayTeam} rows={awayPlayers} activeView={activeView} leagueRoster={leagueRoster} />
-      </div>
+      {activeTab === "lineups" ? formation ?? <PlaceholderPanel text="Lineups aren't confirmed yet -- check back closer to kickoff." /> : null}
+
+      {activeTab === "statsTable" ? (
+        <div className="space-y-4">
+          <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
+            {(["fantasy", "stats"] as const).map((view) => (
+              <TabButton key={view} active={statsView === view} onClick={() => setStatsView(view)}>
+                {statsSubViewLabels[view]}
+              </TabButton>
+            ))}
+          </nav>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TeamTable title={homeTeam} rows={homePlayers} activeView={statsView} leagueRoster={leagueRoster} />
+            <TeamTable title={awayTeam} rows={awayPlayers} activeView={statsView} leagueRoster={leagueRoster} />
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "shotMap" ? <PlaceholderPanel text="Shot map coming soon." /> : null}
+      {activeTab === "analytics" ? <PlaceholderPanel text="Analytics coming soon." /> : null}
     </div>
   );
 }
