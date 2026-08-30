@@ -20,6 +20,15 @@ const SHOT_STYLE: Record<BsdShotType, { dot: string; label: string }> = {
   block: { dot: "bg-slate-300", label: "Blocked" },
 };
 
+// BsdShotType only lists the outcomes we've seen so far -- if BSD ever
+// returns something else, fall back to a neutral style instead of crashing
+// the whole page on an unrecognized key.
+const FALLBACK_SHOT_STYLE = { dot: "bg-slate-400", label: "Shot" };
+
+function shotStyleFor(type: BsdShotType): { dot: string; label: string } {
+  return SHOT_STYLE[type] ?? FALLBACK_SHOT_STYLE;
+}
+
 const BODY_LABEL: Record<string, string> = {
   head: "Header",
   "left-foot": "Left foot",
@@ -121,9 +130,9 @@ export default function ShotMap({ shots, homeAbbrev, awayAbbrev, playerInfoById 
               <a
                 key={index}
                 href={`#${shotDomId(index)}`}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-transform hover:scale-125 ${SHOT_STYLE[shot.type].dot}`}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-transform hover:scale-125 ${shotStyleFor(shot.type).dot}`}
                 style={{ left: `${left}%`, top: `${top}%`, width: size, height: size }}
-                title={`${shot.minute}' -- ${SHOT_STYLE[shot.type].label} (${shot.xg.toFixed(2)} xG)`}
+                title={`${shot.minute}' -- ${shotStyleFor(shot.type).label} (${shot.xg.toFixed(2)} xG)`}
               />
             );
           })}
@@ -144,7 +153,7 @@ export default function ShotMap({ shots, homeAbbrev, awayAbbrev, playerInfoById 
                 className="scroll-mt-4 flex items-center gap-3 px-3 py-2.5 text-sm target:bg-emerald-50 target:ring-1 target:ring-inset target:ring-emerald-400"
               >
                 <span className="w-8 shrink-0 text-xs font-semibold text-slate-500">{shot.minute}&apos;</span>
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${SHOT_STYLE[shot.type].dot}`} />
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${shotStyleFor(shot.type).dot}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-1.5">
                     <PlayerLabel playerId={shot.playerId} playerInfoById={playerInfoById} />
