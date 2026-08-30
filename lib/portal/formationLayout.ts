@@ -39,6 +39,24 @@ export function groupByFormation(starters: BsdLineupPlayer[], formation: string)
   return lines;
 }
 
+// BSD's starters array order within a formation line doesn't necessarily
+// reflect which side of the pitch each player actually occupied that match
+// (a fullback and winger can swap flanks from their nominal role) -- the
+// average-positions data does capture that, so reorder each line by it
+// before laying players out left-to-right, rather than trusting array
+// order. Players missing a value (e.g. average positions not populated
+// yet) sort after everyone with one, keeping their relative order.
+export function reorderLineByAcrossValue(line: BsdLineupPlayer[], acrossValueById: Map<number, number>): BsdLineupPlayer[] {
+  return [...line].sort((a, b) => {
+    const aValue = acrossValueById.get(a.id);
+    const bValue = acrossValueById.get(b.id);
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+    return aValue - bValue;
+  });
+}
+
 // alongPct runs 0 (own goal line) -> 50 (halfway) along whichever axis the
 // team attacks; acrossPct is the spread within a line, perpendicular to
 // that. Rendering maps these onto real x/y for horizontal vs vertical pitch

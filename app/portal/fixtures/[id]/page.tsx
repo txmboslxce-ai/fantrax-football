@@ -7,7 +7,7 @@ import ShotMap, { type ShotPlayerInfo } from "@/app/portal/fixtures/ShotMap";
 import { findBsdEventId } from "@/lib/bsd/events";
 import { fetchBsdEventStats } from "@/lib/bsd/eventStats";
 import { fetchBsdMatchLineup, type BsdLineupPlayer, type BsdTeamLineup } from "@/lib/bsd/lineups";
-import { groupByFormation } from "@/lib/portal/formationLayout";
+import { groupByFormation, reorderLineByAcrossValue } from "@/lib/portal/formationLayout";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -170,10 +170,22 @@ function isWithinLineupsWindow(kickoffAt: string | null): boolean {
   return Date.now() >= new Date(kickoffAt).getTime() - LINEUPS_GATE_MS;
 }
 
-function buildFormationTeam(lineup: BsdTeamLineup, substitutions: FormationTeamProps["substitutions"], isHome: boolean): FormationTeamProps {
+function buildFormationTeam(
+  lineup: BsdTeamLineup,
+  substitutions: FormationTeamProps["substitutions"],
+  isHome: boolean,
+  acrossValueByBsdId: Map<number, number>
+): FormationTeamProps {
+  const lines = groupByFormation(lineup.starters, lineup.formation) ?? [lineup.starters];
   return {
     teamName: lineup.teamName,
-    lines: groupByFormation(lineup.starters, lineup.formation) ?? [lineup.starters],
+    // BSD's starters array order doesn't reliably reflect which side of the
+    // pitch a player actually occupied (a winger and fullback can swap
+    // flanks from their nominal roles) -- the real average-position data
+    // does, so each line gets reordered by it instead of trusting array
+    // order. See reorderLineByAcrossValue for the fallback when that data
+    // isn't available yet.
+    lines: lines.map((line) => reorderLineByAcrossValue(line, acrossValueByBsdId)),
     substitutions: substitutions.filter((sub) => sub.isHome === isHome),
     substitutesBench: lineup.substitutes,
   };
@@ -346,9 +358,19 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     );
 
     if (isWithinLineupsWindow(fixture.kickoff_at) && lineup.status === "confirmed" && lineup.home && lineup.away) {
+      // Same transform as the Average Positions chart: home's raw y needs
+      // flipping to read correctly left-to-right, away's mirrored rotation
+      // cancels that same flip back out. See MatchAnalytics for the
+      // reasoning -- both places have to agree, or Lineups and Analytics
+      // would show a player on opposite sides of the same match.
+      const acrossValueByBsdId = new Map<number, number>([
+        ...eventStats.averagePositions.home.map((p): [number, number] => [p.playerId, 100 - p.y]),
+        ...eventStats.averagePositions.away.map((p): [number, number] => [p.playerId, p.y]),
+      ]);
+
       formationView = {
-        home: buildFormationTeam(lineup.home, lineup.substitutions, true),
-        away: buildFormationTeam(lineup.away, lineup.substitutions, false),
+        home: buildFormationTeam(lineup.home, lineup.substitutions, true, acrossValueByBsdId),
+        away: buildFormationTeam(lineup.away, lineup.substitutions, false, acrossValueByBsdId),
         fantraxByBsdId,
       };
     }
