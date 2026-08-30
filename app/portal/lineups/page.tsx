@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LineupPitch from "@/components/portal/LineupPitch";
 import { getCurrentGameweek } from "@/lib/fantrax/sync-scores";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -46,33 +47,10 @@ type FixtureLineup = {
   fetchedAt: string | null;
 };
 
-// Groups the app's translated position codes (see ROTOWIRE_POSITION_MAP in
-// lib/rotowire/sync.ts) for display ordering -- GK first, then back to front.
-const POSITION_ORDER: Record<string, number> = {
-  GK: 0,
-  CB: 1,
-  LB: 1,
-  RB: 1,
-  DM: 2,
-  CM: 2,
-  LM: 2,
-  RM: 2,
-  CAM: 2,
-  LW: 3,
-  RW: 3,
-  FW: 3,
-};
-
 function parseRequestedGameweek(value: string | string[] | undefined): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function sortByPosition(players: LineupPlayer[]): LineupPlayer[] {
-  return [...players].sort(
-    (a, b) => (POSITION_ORDER[a.position ?? ""] ?? 9) - (POSITION_ORDER[b.position ?? ""] ?? 9)
-  );
 }
 
 export default async function LineupsPage({ searchParams }: PageProps) {
@@ -199,7 +177,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
           No fixtures found for gameweek {gameweek}.
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           {fixtureLineups.map((fixtureLineup) => (
             <div key={fixtureLineup.fixture.id} className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
@@ -233,35 +211,9 @@ export default async function LineupsPage({ searchParams }: PageProps) {
                 </p>
               ) : null}
 
-              <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {fixtureLineup.homeTeamLabel}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {sortByPosition(fixtureLineup.homePlayers).map((player) => (
-                      <li key={player.id} className="text-brand-dark">
-                        {player.position ? <span className="font-semibold">{player.position}: </span> : null}
-                        {player.name}
-                      </li>
-                    ))}
-                    {fixtureLineup.homePlayers.length === 0 ? <li className="text-slate-400">-</li> : null}
-                  </ul>
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {fixtureLineup.awayTeamLabel}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {sortByPosition(fixtureLineup.awayPlayers).map((player) => (
-                      <li key={player.id} className="text-brand-dark">
-                        {player.position ? <span className="font-semibold">{player.position}: </span> : null}
-                        {player.name}
-                      </li>
-                    ))}
-                    {fixtureLineup.awayPlayers.length === 0 ? <li className="text-slate-400">-</li> : null}
-                  </ul>
-                </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <LineupPitch teamLabel={fixtureLineup.homeTeamLabel} players={fixtureLineup.homePlayers} />
+                <LineupPitch teamLabel={fixtureLineup.awayTeamLabel} players={fixtureLineup.awayPlayers} />
               </div>
 
               {fixtureLineup.fetchedAt ? (
