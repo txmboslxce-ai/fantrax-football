@@ -39,8 +39,23 @@ const SITUATION_LABEL: Record<string, string> = {
 // (roughly meters), used only to label a shot inside/outside the box.
 const BOX_DEPTH = 16.5;
 
+// The pitch's playing surface is drawn inset from the card edge (see the
+// boundary rect below), but shot.x/shot.y come from the API on a plain
+// 0-100 pitch scale. Plotting them directly as raw left/top percentages
+// put shots right on the goal line outside the drawn boundary instead of
+// on it -- this squeezes the 0-100 data range into the visible 3-97 inset
+// so a shot on the line renders on the line.
+const PITCH_INSET_PCT = 3;
+function toPitchPct(rawPct: number): number {
+  return PITCH_INSET_PCT + (rawPct / 100) * (100 - 2 * PITCH_INSET_PCT);
+}
+
 function shotSizePx(xg: number): number {
   return Math.min(30, Math.max(10, 10 + xg * 55));
+}
+
+function shotDomId(index: number): string {
+  return `shot-${index}`;
 }
 
 function PlayerLabel({ playerId, playerInfoById }: { playerId: number; playerInfoById: Map<number, ShotPlayerInfo> }) {
@@ -87,18 +102,27 @@ export default function ShotMap({ shots, homeAbbrev, awayAbbrev, playerInfoById 
           <div className="absolute left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2 bg-white/40" />
           <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
 
+          {/* Penalty + six-yard boxes at both ends */}
+          <div className="absolute left-[3%] top-[21%] h-[58%] w-[16%] border border-white/40" />
+          <div className="absolute right-[3%] top-[21%] h-[58%] w-[16%] border border-white/40" />
+          <div className="absolute left-[3%] top-[38%] h-[24%] w-[6%] border border-white/40" />
+          <div className="absolute right-[3%] top-[38%] h-[24%] w-[6%] border border-white/40" />
+
           {sortedShots.map((shot, index) => {
             // Home attacks the right edge of this shared pitch, away the
             // left -- shot.x is "distance from the goal being shot at", so
             // only home's needs mirroring to land near the right edge.
-            const left = shot.isHome ? 100 - shot.x : shot.x;
+            const rawLeft = shot.isHome ? 100 - shot.x : shot.x;
+            const left = toPitchPct(rawLeft);
+            const top = toPitchPct(shot.y);
             const size = shotSizePx(shot.xg);
 
             return (
-              <div
+              <a
                 key={index}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 ${SHOT_STYLE[shot.type].dot}`}
-                style={{ left: `${left}%`, top: `${shot.y}%`, width: size, height: size }}
+                href={`#${shotDomId(index)}`}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-transform hover:scale-125 ${SHOT_STYLE[shot.type].dot}`}
+                style={{ left: `${left}%`, top: `${top}%`, width: size, height: size }}
                 title={`${shot.minute}' -- ${SHOT_STYLE[shot.type].label} (${shot.xg.toFixed(2)} xG)`}
               />
             );
@@ -114,7 +138,11 @@ export default function ShotMap({ shots, homeAbbrev, awayAbbrev, playerInfoById 
             const situationLabel = SITUATION_LABEL[shot.situation] ?? shot.situation;
 
             return (
-              <li key={index} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+              <li
+                key={index}
+                id={shotDomId(index)}
+                className="scroll-mt-4 flex items-center gap-3 px-3 py-2.5 text-sm target:bg-emerald-50 target:ring-1 target:ring-inset target:ring-emerald-400"
+              >
                 <span className="w-8 shrink-0 text-xs font-semibold text-slate-500">{shot.minute}&apos;</span>
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${SHOT_STYLE[shot.type].dot}`} />
                 <div className="min-w-0 flex-1">

@@ -18,6 +18,15 @@ type MatchAnalyticsProps = {
 const HOME_COLOR = "#005B3A";
 const AWAY_COLOR = "#334155";
 
+// Same fix as ShotMap: the pitch's playing surface is drawn inset from the
+// card edge, but average-position x/y come from the API on a plain 0-100
+// pitch scale, so it needs squeezing into that visible inset or a player
+// who spent the match hugging their own line renders past the boundary.
+const PITCH_INSET_PCT = 3;
+function toPitchPct(rawPct: number): number {
+  return PITCH_INSET_PCT + (rawPct / 100) * (100 - 2 * PITCH_INSET_PCT);
+}
+
 function PlayerLabel({ playerId, fallback, playerInfoById }: { playerId: number; fallback: string; playerInfoById: Map<number, ShotPlayerInfo> }) {
   const info = playerInfoById.get(playerId);
   if (info?.fantraxId) {
@@ -146,6 +155,10 @@ function AveragePositionsCard({
         <div className="absolute inset-[3%] border border-white/40" />
         <div className="absolute left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2 bg-white/40" />
         <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+        <div className="absolute left-[3%] top-[21%] h-[58%] w-[16%] border border-white/40" />
+        <div className="absolute right-[3%] top-[21%] h-[58%] w-[16%] border border-white/40" />
+        <div className="absolute left-[3%] top-[38%] h-[24%] w-[6%] border border-white/40" />
+        <div className="absolute right-[3%] top-[38%] h-[24%] w-[6%] border border-white/40" />
 
         {/* Home's x already runs low (own goal) -> high (attacking), so it
             renders directly; away's needs mirroring so its own goal lands on
@@ -154,7 +167,7 @@ function AveragePositionsCard({
           <div
             key={`home-${player.playerId}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
-            style={{ left: `${player.x}%`, top: `${player.y}%` }}
+            style={{ left: `${toPitchPct(player.x)}%`, top: `${toPitchPct(player.y)}%` }}
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow" style={{ backgroundColor: HOME_COLOR }}>
               {player.jerseyNumber}
@@ -168,7 +181,7 @@ function AveragePositionsCard({
           <div
             key={`away-${player.playerId}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
-            style={{ left: `${100 - player.x}%`, top: `${player.y}%` }}
+            style={{ left: `${toPitchPct(100 - player.x)}%`, top: `${toPitchPct(player.y)}%` }}
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow" style={{ backgroundColor: AWAY_COLOR }}>
               {player.jerseyNumber}
