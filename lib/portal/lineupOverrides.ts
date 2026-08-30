@@ -12,6 +12,13 @@ type OverrideRow = {
   starter_bsd_ids: number[];
 };
 
+const NO_OVERRIDES = { home: null, away: null } as const;
+
+// This is a manual-correction feature layered on top of the normal
+// auto-derived pitch -- a failure to read it (the table missing a
+// not-yet-applied migration, a transient DB error) must never take the
+// whole fixture page down for every viewer the way an unhandled throw in a
+// server component does. Degrade to "no overrides" and log instead.
 export async function getFixtureLineupOverrides(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any, any, any>,
@@ -20,7 +27,8 @@ export async function getFixtureLineupOverrides(
   const { data, error } = await supabase.from("fixture_lineup_overrides").select("is_home, formation, starter_bsd_ids").eq("fixture_id", fixtureId);
 
   if (error) {
-    throw new Error(`Unable to load fixture lineup overrides: ${error.message}`);
+    console.error(`Unable to load fixture lineup overrides for fixture ${fixtureId}: ${error.message}`);
+    return NO_OVERRIDES;
   }
 
   const rows = (data ?? []) as OverrideRow[];
