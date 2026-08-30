@@ -7,7 +7,9 @@ import ShotMap, { type ShotPlayerInfo } from "@/app/portal/fixtures/ShotMap";
 import { findBsdEventId } from "@/lib/bsd/events";
 import { fetchBsdEventStats } from "@/lib/bsd/eventStats";
 import { fetchBsdMatchLineup, type BsdLineupPlayer, type BsdTeamLineup } from "@/lib/bsd/lineups";
+import { isAdminEmail } from "@/lib/admin";
 import { groupByFormation, reorderLineByAcrossValue } from "@/lib/portal/formationLayout";
+import { applyLineupOverride, getFixtureLineupOverrides } from "@/lib/portal/lineupOverrides";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -174,18 +176,22 @@ function buildFormationTeam(
   lineup: BsdTeamLineup,
   substitutions: FormationTeamProps["substitutions"],
   isHome: boolean,
-  acrossValueByBsdId: Map<number, number>
+  acrossValueByBsdId: Map<number, number>,
+  isManuallyOverridden: boolean
 ): FormationTeamProps {
   const lines = groupByFormation(lineup.starters, lineup.formation) ?? [lineup.starters];
   return {
     teamName: lineup.teamName,
-    // BSD's starters array order doesn't reliably reflect which side of the
-    // pitch a player actually occupied (a winger and fullback can swap
-    // flanks from their nominal roles) -- the real average-position data
-    // does, so each line gets reordered by it instead of trusting array
-    // order. See reorderLineByAcrossValue for the fallback when that data
-    // isn't available yet.
-    lines: lines.map((line) => reorderLineByAcrossValue(line, acrossValueByBsdId)),
+    // A manual override (see lib/portal/lineupOverrides.ts) has already put
+    // `lineup.starters` in the exact intended line-by-line, left-to-right
+    // order, so it's left as-is. Otherwise BSD's starters array order
+    // doesn't reliably reflect which side of the pitch a player actually
+    // occupied (a winger and fullback can swap flanks from their nominal
+    // roles) -- the real average-position data does, so each line gets
+    // reordered by it instead of trusting array order. See
+    // reorderLineByAcrossValue for the fallback when that data isn't
+    // available yet.
+    lines: isManuallyOverridden ? lines : lines.map((line) => reorderLineByAcrossValue(line, acrossValueByBsdId)),
     substitutions: substitutions.filter((sub) => sub.isHome === isHome),
     substitutesBench: lineup.substitutes,
   };
@@ -203,10 +209,13 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     : { data: null };
   const SEASON = FIXTURES_SEASON;
 
-  const [fixture, { data: teamsData, error: teamsError }, leagueRoster] = await Promise.all([
+  const isAdmin = isAdminEmail(user?.email);
+
+  const [fixture, { data: teamsData, error: teamsError }, leagueRoster, lineupOverrides] = await Promise.all([
     loadFixture(supabase, resolvedParams.id, SEASON),
     supabase.from("teams").select("abbrev, full_name, name"),
     user ? getUserLeagueRoster(user.id, profile?.fantrax_league_id ?? null) : Promise.resolve(null),
+    getFixtureLineupOverrides(supabase, resolvedParams.id),
   ]);
 
   if (teamsError) {
@@ -368,9 +377,17 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         ...eventStats.averagePositions.away.map((p): [number, number] => [p.playerId, p.y]),
       ]);
 
+      // A manual override (set at /admin/fixture-lineup-override when BSD's
+      // own formation/ordering is wrong) fully replaces the auto-derived
+      // layout for that side -- it isn't reconciled with BSD's data even
+      // once average positions arrive, since there's no guarantee that data
+      // is right either. See lib/portal/lineupOverrides.ts.
+      const homeLineup = lineupOverrides.home ? applyLineupOverride(lineup.home, lineupOverrides.home) : lineup.home;
+      const awayLineup = lineupOverrides.away ? applyLineupOverride(lineup.away, lineupOverrides.away) : lineup.away;
+
       formationView = {
-        home: buildFormationTeam(lineup.home, lineup.substitutions, true, acrossValueByBsdId),
-        away: buildFormationTeam(lineup.away, lineup.substitutions, false, acrossValueByBsdId),
+        home: buildFormationTeam(homeLineup, lineup.substitutions, true, acrossValueByBsdId, lineupOverrides.home !== null),
+        away: buildFormationTeam(awayLineup, lineup.substitutions, false, acrossValueByBsdId, lineupOverrides.away !== null),
         fantraxByBsdId,
       };
     }
@@ -402,6 +419,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         homePlayers={homePlayers}
         awayPlayers={awayPlayers}
         leagueRoster={leagueRoster}
+        adminOverrideHref={isAdmin && bsdEventId ? `/admin/fixture-lineup-override/${fixture.id}` : null}
         formation={
           formationView ? (
             <FixtureFormationPitch home={formationView.home} away={formationView.away} fantraxByBsdId={formationView.fantraxByBsdId} />
