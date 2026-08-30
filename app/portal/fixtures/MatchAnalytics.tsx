@@ -15,8 +15,11 @@ type MatchAnalyticsProps = {
   playerInfoById: Map<number, ShotPlayerInfo>;
 };
 
-const HOME_COLOR = "#005B3A";
-const AWAY_COLOR = "#334155";
+// Chosen for contrast against each other and against the dark green pitch
+// background, not for brand matching -- the previous brand-green/slate pair
+// were both dark, similarly-valued colors that were hard to tell apart.
+const HOME_COLOR = "#F59E0B";
+const AWAY_COLOR = "#3B82F6";
 
 // Same fix as ShotMap: the pitch's playing surface is drawn inset from the
 // card edge, but average-position x/y come from the API on a plain 0-100
@@ -162,12 +165,22 @@ function AveragePositionsCard({
 
         {/* Home's x already runs low (own goal) -> high (attacking), so it
             renders directly; away's needs mirroring so its own goal lands on
-            the opposite edge instead of overlapping home's. */}
+            the opposite edge instead of overlapping home's.
+
+            y is the empirical part: cross-checking real wingers (e.g. a
+            known right winger's raw y sat low, which put them on the
+            wrong/left side once plotted with y taken as-is) shows the raw
+            y needs flipping to read correctly on screen. Because away is
+            also mirrored 180 degrees on top of that (not just reflected on
+            x) the two flips cancel out for them, so only home's y gets
+            flipped here. There's no documented field confirming this --
+            it's inferred from a couple of known examples, see the beta
+            note above this chart. */}
         {averagePositions.home.map((player) => (
           <div
             key={`home-${player.playerId}`}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
-            style={{ left: `${toPitchPct(player.x)}%`, top: `${toPitchPct(player.y)}%` }}
+            style={{ left: `${toPitchPct(player.x)}%`, top: `${toPitchPct(100 - player.y)}%` }}
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow" style={{ backgroundColor: HOME_COLOR }}>
               {player.jerseyNumber}
@@ -196,22 +209,32 @@ function AveragePositionsCard({
   );
 }
 
+function BetaNotice() {
+  return <p className="max-w-[850px] text-xs italic text-slate-400">Beta -- analytics are in early development and may not always be fully accurate.</p>;
+}
+
 export default function MatchAnalytics({ homeTeam, awayTeam, momentum, xgFlow, totalXg, averagePositions, playerInfoById }: MatchAnalyticsProps) {
   const hasAnything = momentum.length > 0 || xgFlow.length > 0 || averagePositions.home.length > 0 || averagePositions.away.length > 0;
 
   if (!hasAnything) {
     return (
-      <div className="max-w-[850px] rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-        No analytics yet -- check back once the match is underway.
+      <div className="max-w-[850px] space-y-3">
+        <BetaNotice />
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
+          No analytics yet -- check back once the match is underway.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[850px] space-y-4">
-      <XgFlowCard homeTeam={homeTeam} awayTeam={awayTeam} xgFlow={xgFlow} totalXg={totalXg} />
-      <MomentumCard homeTeam={homeTeam} awayTeam={awayTeam} momentum={momentum} />
-      <AveragePositionsCard homeTeam={homeTeam} awayTeam={awayTeam} averagePositions={averagePositions} playerInfoById={playerInfoById} />
+    <div className="max-w-[850px] space-y-3">
+      <BetaNotice />
+      <div className="space-y-4">
+        <XgFlowCard homeTeam={homeTeam} awayTeam={awayTeam} xgFlow={xgFlow} totalXg={totalXg} />
+        <MomentumCard homeTeam={homeTeam} awayTeam={awayTeam} momentum={momentum} />
+        <AveragePositionsCard homeTeam={homeTeam} awayTeam={awayTeam} averagePositions={averagePositions} playerInfoById={playerInfoById} />
+      </div>
     </div>
   );
 }
