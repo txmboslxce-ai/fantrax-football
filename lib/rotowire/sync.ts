@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
+import { coarsePositionGroup, translateRotowirePosition } from "@/lib/rotowire/position";
 
 const ROTOWIRE_LINEUPS_URL = "https://www.rotowire.com/soccer/lineups.php";
 
@@ -33,30 +34,6 @@ function normalize(value: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
-}
-
-// RotoWire's own position codes, translated to the codes the rest of the
-// app uses. Any code not listed here (GK, and the generic D/M/F/F-M codes
-// RotoWire uses in its Injuries footnote) is left as-is -- those footnote
-// entries are filtered out below before they ever reach this map, and GK
-// doesn't need translating.
-const ROTOWIRE_POSITION_MAP: Record<string, string> = {
-  DC: "CB",
-  DL: "LB",
-  DR: "RB",
-  ML: "LM",
-  MR: "RM",
-  MC: "CM",
-  DMC: "DM",
-  AML: "LW",
-  AMR: "RW",
-  AMC: "CAM",
-  FW: "FW",
-};
-
-function translateRotowirePosition(position: string | null): string | null {
-  if (!position) return null;
-  return ROTOWIRE_POSITION_MAP[position] ?? position;
 }
 
 // Exported separately from the fetch so it can be run against a saved copy
@@ -116,7 +93,7 @@ export function parseRotowireLineups(html: string): ParsedMatch[] {
 }
 
 type TeamRow = { abbrev: string; name: string; full_name: string };
-type PlayerRow = { id: string; name: string; team: string | null };
+type PlayerRow = { id: string; name: string; team: string | null; position: string | null };
 type FixtureRow = { gameweek: number; home_team: string; away_team: string };
 
 function matchTeam(rotowireTeamName: string, teams: TeamRow[]): string | null {
@@ -143,7 +120,12 @@ function matchTeam(rotowireTeamName: string, teams: TeamRow[]): string | null {
   return partial?.abbrev ?? null;
 }
 
-function matchPlayer(rotowireName: string, teamAbbrev: string | null, players: PlayerRow[]): string | null {
+function matchPlayer(
+  rotowireName: string,
+  teamAbbrev: string | null,
+  players: PlayerRow[],
+  rotowirePosition: string | null
+): string | null {
   const candidates = teamAbbrev ? players.filter((player) => player.team === teamAbbrev) : players;
   const target = normalize(rotowireName);
 
@@ -152,22 +134,56 @@ function matchPlayer(rotowireName: string, teamAbbrev: string | null, players: P
     return exact.id;
   }
 
+  const rotowireTokens = rotowireName.trim().split(/\s+/).filter((token) => token.length > 0);
+
   // RotoWire sometimes drops middle names or uses a shortened first name
   // (e.g. "Bruno G." vs our "Bruno Guimaraes"). Fall back to matching on
   // surname alone within the same team, but only when exactly one player
   // qualifies -- an ambiguous surname match is worse than no match, since
   // it would silently record the wrong player's lineup status.
-  const surname = normalize(rotowireName.trim().split(/\s+/).pop() ?? "");
-  if (!surname) {
-    return null;
+  const surname = normalize(rotowireTokens[rotowireTokens.length - 1] ?? "");
+  if (surname) {
+    const surnameMatches = candidates.filter((player) => {
+      const playerSurname = normalize(player.name.trim().split(/\s+/).pop() ?? "");
+      return playerSurname === surname;
+    });
+
+    if (surnameMatches.length === 1) {
+      return surnameMatches[0].id;
+    }
   }
 
-  const surnameMatches = candidates.filter((player) => {
-    const playerSurname = normalize(player.name.trim().split(/\s+/).pop() ?? "");
-    return playerSurname === surname;
-  });
+  // RotoWire also displays some players (often Brazilian/Portuguese) by
+  // first name alone rather than surname, e.g. "Gabriel" for Gabriel
+  // Magalhaes. When RotoWire's name is a single token, try matching it
+  // against the first name of our fuller record instead. That alone isn't
+  // safe on a squad with multiple same-first-name players (Arsenal has
+  // Gabriel Magalhaes, Gabriel Jesus, and Gabriel Martinelli) -- but
+  // RotoWire only ever shows a bare first name for the one player it treats
+  // as commonly known that way, so if there's more than one candidate, use
+  // the position parsed for this lineup slot to narrow it down. That's safe
+  // here specifically because RotoWire abbreviates the others as "G. Jesus"
+  // / "G. Martinelli", so they never reach this single-token path at all.
+  if (rotowireTokens.length === 1) {
+    const firstNameMatches = candidates.filter((player) => {
+      const playerFirstName = normalize(player.name.trim().split(/\s+/)[0] ?? "");
+      return playerFirstName === target;
+    });
 
-  return surnameMatches.length === 1 ? surnameMatches[0].id : null;
+    if (firstNameMatches.length === 1) {
+      return firstNameMatches[0].id;
+    }
+
+    const rotowireGroup = coarsePositionGroup(rotowirePosition);
+    if (firstNameMatches.length > 1 && rotowireGroup) {
+      const positionMatches = firstNameMatches.filter((player) => player.position === rotowireGroup);
+      if (positionMatches.length === 1) {
+        return positionMatches[0].id;
+      }
+    }
+  }
+
+  return null;
 }
 
 export type RotowireSyncResult = {
@@ -200,7 +216,7 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
   const [{ data: teamsData, error: teamsError }, { data: playersData, error: playersError }, { data: fixturesData, error: fixturesError }] =
     await Promise.all([
       supabase.from("teams").select("abbrev, name, full_name"),
-      supabase.from("players").select("id, name, team"),
+      supabase.from("players").select("id, name, team, position"),
       supabase.from("fixtures").select("gameweek, home_team, away_team").eq("season", FIXTURES_SEASON),
     ]);
 
@@ -254,7 +270,7 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
 
     for (const [lineupPlayers, teamAbbrev] of sides) {
       for (const lineupPlayer of lineupPlayers) {
-        const playerId = matchPlayer(lineupPlayer.name, teamAbbrev, players);
+        const playerId = matchPlayer(lineupPlayer.name, teamAbbrev, players, lineupPlayer.position);
         if (!playerId) {
           unmatchedPlayers.add(`${lineupPlayer.name} (${teamAbbrev})`);
           continue;
