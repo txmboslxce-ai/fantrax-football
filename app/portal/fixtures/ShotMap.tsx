@@ -111,6 +111,13 @@ export default function ShotMap({ shots, homeAbbrev, awayAbbrev, playerInfoById 
           <div className="absolute left-1/2 top-[3%] h-[94%] w-px -translate-x-1/2 bg-white/40" />
           <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
 
+          {/* Each side's shots cluster around the goal it's attacking --
+              home mirrors to the right edge, away sits at the left (see the
+              rawLeft comment below) -- so label each end with the team
+              taking those shots. */}
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{awayAbbrev}</span>
+          <span className="absolute right-1.5 top-1.5 rounded bg-black/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{homeAbbrev}</span>
+
           {/* Penalty + six-yard boxes at both ends */}
           <div className="absolute left-[3%] top-[21%] h-[58%] w-[16%] border border-white/40" />
           <div className="absolute right-[3%] top-[21%] h-[58%] w-[16%] border border-white/40" />
