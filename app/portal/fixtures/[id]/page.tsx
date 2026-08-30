@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import FixtureDetailClient from "@/app/portal/fixtures/FixtureDetailClient";
+import FixtureFormationPitch, { type FantraxLookupEntry, type FormationTeamProps } from "@/app/portal/fixtures/FixtureFormationPitch";
+import MatchAnalytics from "@/app/portal/fixtures/MatchAnalytics";
+import ShotMap, { type ShotPlayerInfo } from "@/app/portal/fixtures/ShotMap";
+import { findBsdEventId } from "@/lib/bsd/events";
+import { fetchBsdEventStats } from "@/lib/bsd/eventStats";
+import { fetchBsdMatchLineup, type BsdLineupPlayer, type BsdTeamLineup } from "@/lib/bsd/lineups";
+import { groupByFormation, reorderLineByAcrossValue } from "@/lib/portal/formationLayout";
 import { getUserLeagueRoster } from "@/lib/portal/leagueRoster";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+
+const LINEUPS_GATE_MS = 60 * 60 * 1000;
 
 type PageProps = {
   params:
@@ -154,6 +163,34 @@ function positionOrder(position: "GK" | "DEF" | "MID" | "FWD"): number {
   return 3;
 }
 
+function isWithinLineupsWindow(kickoffAt: string | null): boolean {
+  if (!kickoffAt) {
+    return false;
+  }
+  return Date.now() >= new Date(kickoffAt).getTime() - LINEUPS_GATE_MS;
+}
+
+function buildFormationTeam(
+  lineup: BsdTeamLineup,
+  substitutions: FormationTeamProps["substitutions"],
+  isHome: boolean,
+  acrossValueByBsdId: Map<number, number>
+): FormationTeamProps {
+  const lines = groupByFormation(lineup.starters, lineup.formation) ?? [lineup.starters];
+  return {
+    teamName: lineup.teamName,
+    // BSD's starters array order doesn't reliably reflect which side of the
+    // pitch a player actually occupied (a winger and fullback can swap
+    // flanks from their nominal roles) -- the real average-position data
+    // does, so each line gets reordered by it instead of trusting array
+    // order. See reorderLineByAcrossValue for the fallback when that data
+    // isn't available yet.
+    lines: lines.map((line) => reorderLineByAcrossValue(line, acrossValueByBsdId)),
+    substitutions: substitutions.filter((sub) => sub.isHome === isHome),
+    substitutesBench: lineup.substitutes,
+  };
+}
+
 export default async function FixtureDetailPage({ params }: PageProps) {
   const resolvedParams = params && typeof params === "object" && "then" in params ? await params : params;
 
@@ -263,6 +300,91 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const homePlayers = rows.filter((row) => row.team === fixture.home_team);
   const awayPlayers = rows.filter((row) => row.team === fixture.away_team);
 
+  // Starting lineups only show up once BSD has confirmed them, which
+  // typically happens close to kickoff -- checking our own kickoff time
+  // first avoids an API round-trip for every fixture that's still days out.
+  // Shots/momentum/xG/average-positions have no equivalent gate: BSD just
+  // returns them empty until the match has actually kicked off, so the
+  // components themselves handle the "nothing yet" state.
+  let formationView: { home: FormationTeamProps; away: FormationTeamProps; fantraxByBsdId: Map<number, FantraxLookupEntry> } | null = null;
+  let shotMapView: { shots: Awaited<ReturnType<typeof fetchBsdEventStats>>["shots"]; playerInfoById: Map<number, ShotPlayerInfo> } | null = null;
+  let analyticsView: {
+    momentum: Awaited<ReturnType<typeof fetchBsdEventStats>>["momentum"];
+    xgFlow: Awaited<ReturnType<typeof fetchBsdEventStats>>["xgFlow"];
+    totalXg: Awaited<ReturnType<typeof fetchBsdEventStats>>["totalXg"];
+    averagePositions: Awaited<ReturnType<typeof fetchBsdEventStats>>["averagePositions"];
+    playerInfoById: Map<number, ShotPlayerInfo>;
+  } | null = null;
+
+  const bsdEventId = fixture.kickoff_at
+    ? await findBsdEventId({ homeAbbrev: fixture.home_team, awayAbbrev: fixture.away_team, kickoffAt: fixture.kickoff_at })
+    : null;
+
+  if (bsdEventId) {
+    const [lineup, eventStats] = await Promise.all([fetchBsdMatchLineup(bsdEventId), fetchBsdEventStats(bsdEventId)]);
+
+    const allBsdPlayers: BsdLineupPlayer[] = [
+      ...(lineup.home?.starters ?? []),
+      ...(lineup.home?.substitutes ?? []),
+      ...(lineup.away?.starters ?? []),
+      ...(lineup.away?.substitutes ?? []),
+    ];
+    const bsdPlayerIds = allBsdPlayers.map((player) => player.id);
+
+    const { data: bsdMappedPlayers, error: bsdMappedError } = bsdPlayerIds.length
+      ? await supabase.from("players").select("id, bsd_id").in("bsd_id", bsdPlayerIds)
+      : { data: [], error: null };
+
+    if (bsdMappedError) {
+      throw new Error(`Unable to load BSD player mappings: ${bsdMappedError.message}`);
+    }
+
+    const rowsByPlayerId = new Map(rows.map((row) => [row.id, row]));
+    const fantraxByBsdId = new Map<number, FantraxLookupEntry>();
+    for (const mapped of (bsdMappedPlayers ?? []) as Array<{ id: string; bsd_id: number }>) {
+      const scoreRow = rowsByPlayerId.get(mapped.id);
+      fantraxByBsdId.set(mapped.bsd_id, {
+        fantraxId: mapped.id,
+        score: scoreRow?.rawFantraxPts ?? null,
+        ghost: scoreRow?.ghostPts ?? null,
+      });
+    }
+
+    const playerInfoById = new Map<number, ShotPlayerInfo>(
+      allBsdPlayers.map((player) => {
+        const fantraxId = fantraxByBsdId.get(player.id)?.fantraxId;
+        return [player.id, fantraxId ? { name: player.name, fantraxId } : { name: player.name }];
+      })
+    );
+
+    if (isWithinLineupsWindow(fixture.kickoff_at) && lineup.status === "confirmed" && lineup.home && lineup.away) {
+      // Same transform as the Average Positions chart: home's raw y needs
+      // flipping to read correctly left-to-right, away's mirrored rotation
+      // cancels that same flip back out. See MatchAnalytics for the
+      // reasoning -- both places have to agree, or Lineups and Analytics
+      // would show a player on opposite sides of the same match.
+      const acrossValueByBsdId = new Map<number, number>([
+        ...eventStats.averagePositions.home.map((p): [number, number] => [p.playerId, 100 - p.y]),
+        ...eventStats.averagePositions.away.map((p): [number, number] => [p.playerId, p.y]),
+      ]);
+
+      formationView = {
+        home: buildFormationTeam(lineup.home, lineup.substitutions, true, acrossValueByBsdId),
+        away: buildFormationTeam(lineup.away, lineup.substitutions, false, acrossValueByBsdId),
+        fantraxByBsdId,
+      };
+    }
+
+    shotMapView = { shots: eventStats.shots, playerInfoById };
+    analyticsView = {
+      momentum: eventStats.momentum,
+      xgFlow: eventStats.xgFlow,
+      totalXg: eventStats.totalXg,
+      averagePositions: eventStats.averagePositions,
+      playerInfoById,
+    };
+  }
+
   return (
     <div className="space-y-6">
       <Link
@@ -280,6 +402,29 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         homePlayers={homePlayers}
         awayPlayers={awayPlayers}
         leagueRoster={leagueRoster}
+        formation={
+          formationView ? (
+            <FixtureFormationPitch home={formationView.home} away={formationView.away} fantraxByBsdId={formationView.fantraxByBsdId} />
+          ) : null
+        }
+        shotMap={
+          shotMapView ? (
+            <ShotMap shots={shotMapView.shots} homeAbbrev={fixture.home_team} awayAbbrev={fixture.away_team} playerInfoById={shotMapView.playerInfoById} />
+          ) : null
+        }
+        analytics={
+          analyticsView ? (
+            <MatchAnalytics
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              momentum={analyticsView.momentum}
+              xgFlow={analyticsView.xgFlow}
+              totalXg={analyticsView.totalXg}
+              averagePositions={analyticsView.averagePositions}
+              playerInfoById={analyticsView.playerInfoById}
+            />
+          ) : null
+        }
       />
     </div>
   );
