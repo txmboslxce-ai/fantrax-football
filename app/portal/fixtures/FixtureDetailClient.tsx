@@ -39,6 +39,7 @@ type FixtureDetailClientProps = {
   homePlayers: FixturePlayerRow[];
   awayPlayers: FixturePlayerRow[];
   leagueRoster: LeagueRosterData | null;
+  adminOverrideHref?: string | null;
   formation?: ReactNode;
   shotMap?: ReactNode;
   analytics?: ReactNode;
@@ -222,6 +223,7 @@ export default function FixtureDetailClient({
   homePlayers,
   awayPlayers,
   leagueRoster,
+  adminOverrideHref,
   formation,
   shotMap,
   analytics,
@@ -239,13 +241,21 @@ export default function FixtureDetailClient({
         <p className="mt-2 text-sm text-slate-500">{kickoffLabel ?? "Kickoff TBD"}</p>
       </div>
 
-      <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
-        {TOP_LEVEL_TABS.map((tab) => (
-          <TabButton key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)}>
-            {tab.label}
-          </TabButton>
-        ))}
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ flexWrap: "nowrap" }}>
+          {TOP_LEVEL_TABS.map((tab) => (
+            <TabButton key={tab.key} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)}>
+              {tab.label}
+            </TabButton>
+          ))}
+        </nav>
+
+        {activeTab === "lineups" && adminOverrideHref ? (
+          <Link href={adminOverrideHref} className="shrink-0 text-xs font-semibold text-slate-400 underline-offset-2 hover:text-brand-green hover:underline">
+            Admin: fix lineup
+          </Link>
+        ) : null}
+      </div>
 
       {activeTab === "lineups" ? formation ?? <PlaceholderPanel text="Lineups aren't confirmed yet -- check back closer to kickoff." /> : null}
 
