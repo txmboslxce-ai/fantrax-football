@@ -62,23 +62,37 @@ export function parseRotowireLineups(html: string): ParsedMatch[] {
     const statusText = $match.find(".lineup__status").first().text().trim().toLowerCase();
     const status: ParsedMatch["status"] = statusText.includes("confirmed") ? "confirmed" : "predicted";
 
-    const collectPlayers = (side: "is-home" | "is-visit"): ParsedLineupPlayer[] =>
-      $match
-        .find(`.lineup__list.${side} .lineup__player`)
-        // RotoWire tags each team's list with an "Injuries" divider followed
-        // by more `.lineup__player` <li>s for players who are OUT/doubtful,
-        // marked with a `.lineup__inj` status span. Those aren't part of the
-        // predicted/confirmed starting XI, so exclude anything carrying that
-        // span rather than trusting list order relative to the divider.
-        .filter((__, playerEl) => $(playerEl).find(".lineup__inj").length === 0)
-        .map((__, playerEl) => {
-          const $player = $(playerEl);
-          const name = $player.find("a").first().text().trim() || $player.text().trim();
-          const positionText = $player.find(".lineup__pos").first().text().trim();
-          return { name, position: translateRotowirePosition(positionText || null) };
-        })
-        .get()
-        .filter((player) => player.name.length > 0);
+    const collectPlayers = (side: "is-home" | "is-visit"): ParsedLineupPlayer[] => {
+      const players: ParsedLineupPlayer[] = [];
+
+      // RotoWire tags each team's list with an "Injuries" divider
+      // (`.lineup__title.is-middle`) followed by more `.lineup__player`
+      // <li>s for players who are OUT/doubtful -- those footnote entries
+      // aren't part of the starting XI. But a player *in* the XI can also
+      // carry a `.lineup__inj` "QUES" span directly on their own <li> when
+      // they're named as a starter despite a fitness doubt (e.g. Morgan
+      // Gibbs-White predicted to start but flagged questionable) -- so
+      // presence of `.lineup__inj` alone isn't a safe signal to exclude on;
+      // it would drop real starters, not just the footnote. Walk the list
+      // in DOM order instead and stop entirely once the divider is hit.
+      $match.find(`.lineup__list.${side}`).children().each((__, el) => {
+        const $el = $(el);
+        if ($el.hasClass("lineup__title")) {
+          return false; // stop the .each() loop -- everything after this is the footnote
+        }
+        if (!$el.hasClass("lineup__player")) {
+          return; // skip the "Predicted/Confirmed Lineup" status <li>
+        }
+
+        const name = $el.find("a").first().text().trim() || $el.text().trim();
+        if (!name) return;
+
+        const positionText = $el.find(".lineup__pos").first().text().trim();
+        players.push({ name, position: translateRotowirePosition(positionText || null) });
+      });
+
+      return players;
+    };
 
     matches.push({
       homeTeamName,

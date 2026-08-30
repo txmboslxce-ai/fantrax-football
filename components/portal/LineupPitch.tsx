@@ -27,10 +27,14 @@ function PlayerToken({ player }: { player: PitchPlayer }) {
 }
 
 export default function LineupPitch({ teamLabel, players }: { teamLabel: string; players: PitchPlayer[] }) {
-  // Players without a resolvable position (currently just anything that
-  // slipped through without a RotoWire position code) are left off the
-  // pitch entirely rather than guessing where to place them.
+  // Players without a resolvable position aren't placed on the pitch --
+  // there's nowhere to put them without guessing -- but they're still
+  // listed below it rather than silently dropped. A starter disappearing
+  // with no visible trace is exactly what made the last two parsing bugs
+  // (the Injuries footnote leaking in, then a QUES-flagged starter being
+  // excluded along with it) hard to notice from the UI alone.
   const positioned = players.filter((player) => coarsePositionGroup(player.position) !== null);
+  const unplaced = players.filter((player) => coarsePositionGroup(player.position) === null);
 
   const rowsByGroup = new Map<CoarsePosition, PitchPlayer[]>();
   for (const group of PITCH_ROWS) {
@@ -86,6 +90,12 @@ export default function LineupPitch({ teamLabel, players }: { teamLabel: string;
           })
         )}
       </div>
+
+      {unplaced.length > 0 ? (
+        <p className="border-t border-slate-200 px-3 py-1.5 text-[11px] text-slate-500">
+          Also listed, no position: {unplaced.map((player) => player.name).join(", ")}
+        </p>
+      ) : null}
     </div>
   );
 }
