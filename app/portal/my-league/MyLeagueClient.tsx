@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AnalyticsPayload } from "@/app/api/league-analytics/types";
+import TeamGraphsPanel from "./TeamGraphsPanel";
 
 export type LeagueTeam = {
   id: string;
@@ -35,6 +36,8 @@ type MyLeagueClientProps = {
   savedTeamId: string | null;
   savedTeamName: string | null;
   isConnected: boolean;
+  gameweeks: number[];
+  defaultGameweek: number;
 };
 
 type CachedLeague = {
@@ -42,13 +45,14 @@ type CachedLeague = {
   league_name: string;
 };
 
-type Tab = "roster" | "standings" | "analytics" | "trade-values";
+type Tab = "roster" | "standings" | "analytics" | "trade-values" | "team-graphs";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "roster", label: "Roster" },
   { id: "standings", label: "Standings" },
   { id: "analytics", label: "Analytics" },
   { id: "trade-values", label: "Compare Rosters" },
+  { id: "team-graphs", label: "Team Graphs" },
 ];
 
 const POSITION_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
@@ -91,7 +95,7 @@ function teamPlayers(players: LeaguePlayerData[], teamId: string): LeaguePlayerD
     .sort((a, b) => (POSITION_ORDER[a.position] ?? 4) - (POSITION_ORDER[b.position] ?? 4) || a.playerName.localeCompare(b.playerName));
 }
 
-export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, isConnected }: MyLeagueClientProps) {
+export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players, savedTeamId, isConnected, gameweeks, defaultGameweek }: MyLeagueClientProps) {
   const router = useRouter();
   const [secretId, setSecretId] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -779,6 +783,22 @@ export default function MyLeagueClient({ leagueId, lastSyncedAt, teams, players,
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === "team-graphs" && leagueId && (
+        selectedTeamPlayers.length > 0 ? (
+          <TeamGraphsPanel
+            leagueId={leagueId}
+            teamId={selectedTeamId}
+            teamName={teams.find((team) => team.id === selectedTeamId)?.name ?? "Team"}
+            gameweeks={gameweeks}
+            defaultGameweek={defaultGameweek}
+          />
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
+            Select a team above to see its shot map and average positions.
+          </div>
+        )
       )}
 
       {isUnsyncDialogOpen ? createPortal(
