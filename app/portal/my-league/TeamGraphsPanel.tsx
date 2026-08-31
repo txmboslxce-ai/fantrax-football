@@ -79,6 +79,16 @@ function shotSizePx(xg: number): number {
   return Math.min(30, Math.max(10, 10 + xg * 55));
 }
 
+// The shot map crops in on just the attacking zone (canonical x from here to
+// 100, "at the goal") rather than the full attacking half -- shots from
+// further out than this are rare enough that showing the mostly-empty rest
+// of the half wasn't worth the space. Anything deeper still renders, just
+// clamped to the near edge instead of pushed off it.
+const ATTACK_ZOOM_START = 55;
+function zoomDepth(canonicalX: number): number {
+  return Math.max(0, Math.min(100, ((canonicalX - ATTACK_ZOOM_START) / (100 - ATTACK_ZOOM_START)) * 100));
+}
+
 function PitchMarkings() {
   return (
     <>
@@ -93,18 +103,17 @@ function PitchMarkings() {
   );
 }
 
-// Every pooled player attacks the same way, so the "own half" of a full
-// pitch would always sit empty -- this shows only the attacking half, goal
-// on the right, with the center circle clipped by the container so just its
-// arc at the halfway edge shows (matching how broadcast half-pitch graphics
-// usually crop it).
+// Every pooled player attacks the same way, so the rest of the pitch would
+// always sit empty -- this crops in on just the attacking zone, goal at the
+// top (portrait, matching how most single-team shot maps are drawn) rather
+// than off to one side. No halfway-line device: ATTACK_ZOOM_START crops
+// well inside the attacking half, so the real halfway line isn't in frame.
 function HalfPitchMarkings() {
   return (
     <>
       <div className="absolute inset-[3%] border border-white/40" />
-      <div className="absolute left-[3%] top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
-      <div className="absolute right-[3%] top-[21%] h-[58%] w-[32%] border border-white/40" />
-      <div className="absolute right-[3%] top-[38%] h-[24%] w-[12%] border border-white/40" />
+      <div className="absolute left-[21%] top-[3%] h-[34%] w-[58%] border border-white/40" />
+      <div className="absolute left-[38%] top-[3%] h-[12%] w-[24%] border border-white/40" />
     </>
   );
 }
@@ -125,93 +134,147 @@ function TeamShotMap({ shots }: { shots: PooledShot[] }) {
   const sortedShots = [...shots].sort((a, b) => a.minute - b.minute);
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 lg:flex-[3]">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-          {Object.entries(SHOT_STYLE).map(([type, style]) => (
-            <span key={type} className="inline-flex items-center gap-1.5">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${style.dot}`} />
-              {style.label}
-            </span>
-          ))}
-          <span className="text-slate-400">Size = xG</span>
-        </div>
-
-        <div className="relative mx-auto mt-3 aspect-[4/3] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
-          <HalfPitchMarkings />
-          {sortedShots.map((shot, index) => {
-            const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
-            const size = shotSizePx(shot.xg);
-            return (
-              <a
-                key={index}
-                href={`#team-shot-${index}`}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-transform hover:scale-125 ${style.dot}`}
-                style={{ left: `${toPitchPct(shot.x)}%`, top: `${toPitchPct(shot.y)}%`, width: size, height: size }}
-                title={`${shot.playerName}, ${shot.minute}' vs ${shot.opponentAbbrev} -- ${style.label} (${shot.xg.toFixed(2)} xG)`}
-              />
-            );
-          })}
-        </div>
+    <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+      <h3 className="text-sm font-bold text-brand-dark">Shot Map</h3>
+      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+        {Object.entries(SHOT_STYLE).map(([type, style]) => (
+          <span key={type} className="inline-flex items-center gap-1.5">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${style.dot}`} />
+            {style.label}
+          </span>
+        ))}
+        <span className="text-slate-400">Size = xG</span>
       </div>
 
-      <div className="max-h-96 overflow-y-auto rounded-xl border border-slate-200 bg-white lg:flex-[2] lg:min-h-0 lg:max-h-none">
-        <ul className="divide-y divide-slate-100">
-          {sortedShots.map((shot, index) => {
-            const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
-            const bodyLabel = BODY_LABEL[shot.body] ?? shot.body;
-            const situationLabel = SITUATION_LABEL[shot.situation] ?? shot.situation;
+      <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none lg:flex-[3]">
+          <div className="relative aspect-[6/5] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
+            <HalfPitchMarkings />
+            {sortedShots.map((shot, index) => {
+              const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
+              const size = shotSizePx(shot.xg);
+              const top = toPitchPct(100 - zoomDepth(shot.x));
+              const left = toPitchPct(shot.y);
+              return (
+                <a
+                  key={index}
+                  href={`#team-shot-${index}`}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-transform hover:scale-125 ${style.dot}`}
+                  style={{ left: `${left}%`, top: `${top}%`, width: size, height: size }}
+                  title={`${shot.playerName}, ${shot.minute}' vs ${shot.opponentAbbrev} -- ${style.label} (${shot.xg.toFixed(2)} xG)`}
+                />
+              );
+            })}
+          </div>
+        </div>
 
-            return (
-              <li key={index} id={`team-shot-${index}`} className="scroll-mt-4 flex items-center gap-3 px-3 py-2.5 text-sm target:bg-emerald-50 target:ring-1 target:ring-inset target:ring-emerald-400">
-                <span className="w-8 shrink-0 text-xs font-semibold text-slate-500">{shot.minute}&apos;</span>
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <PlayerLink fantraxId={shot.fantraxId} name={shot.playerName} />
-                    <span className="text-xs font-semibold uppercase text-slate-400">vs {shot.opponentAbbrev}</span>
+        <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 lg:flex-[2] lg:min-h-0 lg:max-h-none">
+          <ul className="divide-y divide-slate-100">
+            {sortedShots.map((shot, index) => {
+              const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
+              const bodyLabel = BODY_LABEL[shot.body] ?? shot.body;
+              const situationLabel = SITUATION_LABEL[shot.situation] ?? shot.situation;
+
+              return (
+                <li key={index} id={`team-shot-${index}`} className="scroll-mt-4 flex items-center gap-3 px-3 py-2.5 text-sm target:bg-emerald-50 target:ring-1 target:ring-inset target:ring-emerald-400">
+                  <span className="w-8 shrink-0 text-xs font-semibold text-slate-500">{shot.minute}&apos;</span>
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <PlayerLink fantraxId={shot.fantraxId} name={shot.playerName} />
+                      <span className="text-xs font-semibold uppercase text-slate-400">vs {shot.opponentAbbrev}</span>
+                    </div>
+                    <p className="truncate text-xs text-slate-500">
+                      {bodyLabel} &middot; {situationLabel}
+                    </p>
                   </div>
-                  <p className="truncate text-xs text-slate-500">
-                    {bodyLabel} &middot; {situationLabel}
-                  </p>
-                </div>
-                <span className="shrink-0 text-sm font-bold text-brand-dark">{shot.xg.toFixed(2)} xG</span>
-              </li>
-            );
-          })}
-        </ul>
+                  <span className="shrink-0 text-sm font-bold text-brand-dark">{shot.xg.toFixed(2)} xG</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </div>
   );
 }
 
 function TeamAveragePositions({ positions }: { positions: PooledAveragePosition[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   if (positions.length === 0) {
     return <p className="text-sm text-slate-500">No average-position data yet for this gameweek.</p>;
   }
 
+  function toggle(fantraxId: string) {
+    setSelectedId((prev) => (prev === fantraxId ? null : fantraxId));
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-      <p className="text-xs text-slate-500">Each player&apos;s average touch position in their own match that gameweek, normalized onto one pitch.</p>
-      <div className="relative mx-auto mt-3 aspect-[16/10] w-full max-w-3xl overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
-        <PitchMarkings />
-        {positions.map((player, index) => (
-          <div
-            key={index}
-            className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
-            style={{ left: `${toPitchPct(player.x)}%`, top: `${toPitchPct(player.y)}%` }}
-          >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-green text-[10px] font-bold text-white shadow">
-              {player.jerseyNumber}
-            </span>
-            <span className="max-w-16 truncate text-[9px] leading-tight text-white drop-shadow">
-              <Link href={`/portal/players/${player.fantraxId}`} className="hover:underline">
-                {player.playerName}
-              </Link>
-            </span>
-            <span className="text-[8px] leading-tight text-white/80 drop-shadow">vs {player.opponentAbbrev}</span>
+      <h3 className="text-sm font-bold text-brand-dark">Average Positions</h3>
+      <p className="mt-1 text-xs text-slate-500">
+        Each player&apos;s average touch position in their own match that gameweek, normalized onto one pitch. Click a player to highlight them.
+      </p>
+
+      <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none lg:flex-[3]">
+          <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
+            <PitchMarkings />
+            {positions.map((player) => {
+              const isSelected = selectedId === player.fantraxId;
+              const isDimmed = selectedId !== null && !isSelected;
+              return (
+                <button
+                  key={player.fantraxId}
+                  type="button"
+                  onClick={() => toggle(player.fantraxId)}
+                  className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 transition-all ${isDimmed ? "opacity-30" : ""} ${isSelected ? "z-10 scale-125" : ""}`}
+                  style={{ left: `${toPitchPct(player.x)}%`, top: `${toPitchPct(player.y)}%` }}
+                >
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow ${
+                      isSelected ? "bg-amber-500 ring-2 ring-white" : "bg-brand-green"
+                    }`}
+                  >
+                    {player.jerseyNumber}
+                  </span>
+                  <span className="max-w-16 truncate text-[9px] leading-tight text-white drop-shadow">{player.playerName}</span>
+                  <span className="text-[8px] leading-tight text-white/80 drop-shadow">vs {player.opponentAbbrev}</span>
+                </button>
+              );
+            })}
           </div>
-        ))}
+        </div>
+
+        <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 lg:flex-[2] lg:min-h-0 lg:max-h-none">
+          <ul className="divide-y divide-slate-100">
+            {positions.map((player) => {
+              const isSelected = selectedId === player.fantraxId;
+              return (
+                <li key={player.fantraxId}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggle(player.fantraxId)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") toggle(player.fantraxId);
+                    }}
+                    className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm transition-colors ${isSelected ? "bg-amber-50" : "hover:bg-slate-50"}`}
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-green text-[10px] font-bold text-white">{player.jerseyNumber}</span>
+                    <div className="min-w-0 flex-1">
+                      <PlayerLink fantraxId={player.fantraxId} name={player.playerName} />
+                      <p className="truncate text-xs text-slate-500">
+                        {player.position} &middot; vs {player.opponentAbbrev}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </div>
   );
