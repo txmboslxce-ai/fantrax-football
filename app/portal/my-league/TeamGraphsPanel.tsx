@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 type PooledShot = {
   fantraxId: string;
@@ -79,6 +79,32 @@ function shotSizePx(xg: number): number {
   return Math.min(30, Math.max(10, 10 + xg * 55));
 }
 
+// Matches a scrollable sibling's height to the pitch's actual rendered
+// height. Plain flexbox "stretch" doesn't work for this: a flex row's
+// cross size is the max of every item's own natural size, so a tall list
+// would just make the whole row (pitch included) grow to fit it instead of
+// scrolling -- exactly the "one long pill" look this replaces. Measuring
+// the pitch directly and applying that as the list's max-height sidesteps
+// that entirely.
+function useMatchedHeight<T extends HTMLElement>(): [RefObject<T | null>, number | null] {
+  const ref = useRef<T | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, height];
+}
+
 // The shot map crops in on just the attacking zone (canonical x from here to
 // 100, "at the goal") rather than the full attacking half -- shots from
 // further out than this are rare enough that showing the mostly-empty rest
@@ -127,39 +153,83 @@ function PlayerLink({ fantraxId, name }: { fantraxId: string; name: string }) {
 }
 
 function TeamShotMap({ shots }: { shots: PooledShot[] }) {
+  const [playerFilter, setPlayerFilter] = useState("all");
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [pitchRef, pitchHeight] = useMatchedHeight<HTMLDivElement>();
+
+  const players = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const shot of shots) byId.set(shot.fantraxId, shot.playerName);
+    return Array.from(byId, ([fantraxId, playerName]) => ({ fantraxId, playerName })).sort((a, b) => a.playerName.localeCompare(b.playerName));
+  }, [shots]);
+
+  // Reset the filter/selection when a new gameweek's shots come in, without
+  // the extra render an effect would cost -- see
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevShots, setPrevShots] = useState(shots);
+  if (prevShots !== shots) {
+    setPrevShots(shots);
+    setPlayerFilter("all");
+    setSelectedIndex(null);
+  }
+
   if (shots.length === 0) {
     return <p className="text-sm text-slate-500">No shots recorded for this roster this gameweek.</p>;
   }
 
-  const sortedShots = [...shots].sort((a, b) => a.minute - b.minute);
+  const filteredShots = playerFilter === "all" ? shots : shots.filter((shot) => shot.fantraxId === playerFilter);
+  const sortedShots = [...filteredShots].sort((a, b) => a.minute - b.minute);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
       <h3 className="text-sm font-bold text-brand-dark">Shot Map</h3>
-      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-        {Object.entries(SHOT_STYLE).map(([type, style]) => (
-          <span key={type} className="inline-flex items-center gap-1.5">
-            <span className={`inline-block h-2.5 w-2.5 rounded-full ${style.dot}`} />
-            {style.label}
-          </span>
-        ))}
-        <span className="text-slate-400">Size = xG</span>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+          {Object.entries(SHOT_STYLE).map(([type, style]) => (
+            <span key={type} className="inline-flex items-center gap-1.5">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${style.dot}`} />
+              {style.label}
+            </span>
+          ))}
+          <span className="text-slate-400">Size = xG</span>
+        </div>
+
+        <select
+          value={playerFilter}
+          onChange={(event) => {
+            setPlayerFilter(event.target.value);
+            setSelectedIndex(null);
+          }}
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-brand-dark focus:border-brand-green focus:outline-none"
+        >
+          <option value="all">All players</option>
+          {players.map((player) => (
+            <option key={player.fantraxId} value={player.fantraxId}>
+              {player.playerName}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-stretch">
-        <div className="mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none lg:flex-[3]">
-          <div className="relative aspect-[6/5] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
+        <div className="mx-auto w-full max-w-3xl lg:mx-0 lg:flex-[3]">
+          <div ref={pitchRef} className="relative aspect-[6/5] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
             <HalfPitchMarkings />
             {sortedShots.map((shot, index) => {
               const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
               const size = shotSizePx(shot.xg);
               const top = toPitchPct(100 - zoomDepth(shot.x));
               const left = toPitchPct(shot.y);
+              const isSelected = selectedIndex === index;
+              const isDimmed = selectedIndex !== null && !isSelected;
               return (
                 <a
                   key={index}
                   href={`#team-shot-${index}`}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-transform hover:scale-125 ${style.dot}`}
+                  onClick={() => setSelectedIndex(index)}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 transition-all hover:scale-125 ${style.dot} ${
+                    isSelected ? "z-10 scale-150 ring-2 ring-white" : ""
+                  } ${isDimmed ? "opacity-30" : ""}`}
                   style={{ left: `${left}%`, top: `${top}%`, width: size, height: size }}
                   title={`${shot.playerName}, ${shot.minute}' vs ${shot.opponentAbbrev} -- ${style.label} (${shot.xg.toFixed(2)} xG)`}
                 />
@@ -168,15 +238,24 @@ function TeamShotMap({ shots }: { shots: PooledShot[] }) {
           </div>
         </div>
 
-        <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 lg:flex-[2] lg:min-h-0 lg:max-h-none">
+        <div
+          className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 lg:flex-[2]"
+          style={pitchHeight ? { maxHeight: pitchHeight } : undefined}
+        >
           <ul className="divide-y divide-slate-100">
             {sortedShots.map((shot, index) => {
               const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
               const bodyLabel = BODY_LABEL[shot.body] ?? shot.body;
               const situationLabel = SITUATION_LABEL[shot.situation] ?? shot.situation;
+              const isSelected = selectedIndex === index;
 
               return (
-                <li key={index} id={`team-shot-${index}`} className="scroll-mt-4 flex items-center gap-3 px-3 py-2.5 text-sm target:bg-emerald-50 target:ring-1 target:ring-inset target:ring-emerald-400">
+                <li
+                  key={index}
+                  id={`team-shot-${index}`}
+                  onClick={() => setSelectedIndex(index)}
+                  className={`scroll-mt-2 flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm transition-colors ${isSelected ? "bg-amber-50" : "hover:bg-slate-50"}`}
+                >
                   <span className="w-8 shrink-0 text-xs font-semibold text-slate-500">{shot.minute}&apos;</span>
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
                   <div className="min-w-0 flex-1">
@@ -201,6 +280,7 @@ function TeamShotMap({ shots }: { shots: PooledShot[] }) {
 
 function TeamAveragePositions({ positions }: { positions: PooledAveragePosition[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pitchRef, pitchHeight] = useMatchedHeight<HTMLDivElement>();
 
   if (positions.length === 0) {
     return <p className="text-sm text-slate-500">No average-position data yet for this gameweek.</p>;
@@ -218,8 +298,8 @@ function TeamAveragePositions({ positions }: { positions: PooledAveragePosition[
       </p>
 
       <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-stretch">
-        <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none lg:flex-[3]">
-          <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
+        <div className="mx-auto w-full max-w-3xl lg:mx-0 lg:flex-[3]">
+          <div ref={pitchRef} className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
             <PitchMarkings />
             {positions.map((player) => {
               const isSelected = selectedId === player.fantraxId;
@@ -247,7 +327,7 @@ function TeamAveragePositions({ positions }: { positions: PooledAveragePosition[
           </div>
         </div>
 
-        <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 lg:flex-[2] lg:min-h-0 lg:max-h-none">
+        <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 lg:flex-[2]" style={pitchHeight ? { maxHeight: pitchHeight } : undefined}>
           <ul className="divide-y divide-slate-100">
             {positions.map((player) => {
               const isSelected = selectedId === player.fantraxId;
