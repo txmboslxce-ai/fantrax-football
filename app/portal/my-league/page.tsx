@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { getCurrentGameweek } from "@/lib/fantrax/sync-scores";
 import { mapPosition } from "@/lib/portal/playerMetrics";
+import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentSeason } from "@/lib/season/current";
 import MyLeagueClient, { type LeaguePlayerData, type LeagueTeam } from "./MyLeagueClient";
@@ -44,6 +46,31 @@ function toNum(value: number | string | null | undefined): number {
   return 0;
 }
 
+// Team Graphs pools real-match data keyed off the `fixtures` table, which
+// (per lib/season/fixtures.ts) tracks its own independent season rather than
+// whatever getCurrentSeason() below considers current for Fantrax scoring --
+// hence FIXTURES_SEASON here instead of SEASON.
+async function loadTeamGraphsGameweeks(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>): Promise<{ gameweeks: number[]; defaultGameweek: number }> {
+  const { data } = await supabase.from("fixtures").select("gameweek").eq("season", FIXTURES_SEASON);
+  const gameweeks = Array.from(new Set(((data ?? []) as Array<{ gameweek: number }>).map((row) => row.gameweek))).sort((a, b) => a - b);
+
+  let currentGameweek = 1;
+  try {
+    currentGameweek = await getCurrentGameweek();
+  } catch {
+    // Keep the page useful if the live FPL schedule is temporarily unavailable.
+  }
+
+  const pastOrCurrentGameweeks = gameweeks.filter((gameweek) => gameweek <= currentGameweek);
+  const defaultGameweek = gameweeks.includes(currentGameweek)
+    ? currentGameweek
+    : pastOrCurrentGameweeks.length > 0
+      ? pastOrCurrentGameweeks[pastOrCurrentGameweeks.length - 1]
+      : (gameweeks[0] ?? 1);
+
+  return { gameweeks, defaultGameweek };
+}
+
 export default async function MyLeaguePage() {
   const supabase = await createServerSupabaseClient();
 
@@ -54,6 +81,8 @@ export default async function MyLeaguePage() {
   if (!user) {
     redirect("/auth/login");
   }
+
+  const { gameweeks, defaultGameweek } = await loadTeamGraphsGameweeks(supabase);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -69,7 +98,19 @@ export default async function MyLeaguePage() {
   const isConnected = Boolean(profileRow?.fantrax_secret_id_encrypted);
 
   if (!leagueId) {
-    return <MyLeagueClient leagueId={null} lastSyncedAt={null} teams={[]} players={[]} savedTeamId={null} savedTeamName={null} isConnected={isConnected} />;
+    return (
+      <MyLeagueClient
+        leagueId={null}
+        lastSyncedAt={null}
+        teams={[]}
+        players={[]}
+        savedTeamId={null}
+        savedTeamName={null}
+        isConnected={isConnected}
+        gameweeks={gameweeks}
+        defaultGameweek={defaultGameweek}
+      />
+    );
   }
 
   // Load full roster data for the league view
@@ -83,7 +124,19 @@ export default async function MyLeaguePage() {
   const playerIds = roster.map((r) => r.player_id);
 
   if (playerIds.length === 0) {
-    return <MyLeagueClient leagueId={leagueId} lastSyncedAt={lastSyncedAt} teams={[]} players={[]} savedTeamId={savedTeamId} savedTeamName={savedTeamName} isConnected={isConnected} />;
+    return (
+      <MyLeagueClient
+        leagueId={leagueId}
+        lastSyncedAt={lastSyncedAt}
+        teams={[]}
+        players={[]}
+        savedTeamId={savedTeamId}
+        savedTeamName={savedTeamName}
+        isConnected={isConnected}
+        gameweeks={gameweeks}
+        defaultGameweek={defaultGameweek}
+      />
+    );
   }
 
   const SEASON = await getCurrentSeason(supabase);
@@ -175,6 +228,8 @@ export default async function MyLeaguePage() {
       savedTeamId={savedTeamId}
       savedTeamName={savedTeamName}
       isConnected={isConnected}
+      gameweeks={gameweeks}
+      defaultGameweek={defaultGameweek}
     />
   );
 }
