@@ -59,11 +59,24 @@ export type TeamGraphsData = {
 // independent of which physical end it happened at or who was home (see
 // lib/bsd/eventStats.ts) -- that's exactly the canonical "attacking right"
 // frame already, once x is flipped so closer-to-goal renders near the right
-// edge. Average positions are the opposite: x is already "attacking right"
-// as-is, but y needs the same home-only flip established for the fixture
-// page's Average Positions chart (see MatchAnalytics.tsx) -- home's raw y
-// reads backwards, away's doesn't, because of how BSD's coordinate system
-// interacts with a 180-degree home/away rotation vs a simple mirror.
+// edge.
+//
+// Average positions are different, and easy to get wrong here: on the
+// fixture page's Analytics tab, home and away get *different* treatment
+// (home's x renders as-is, away's is mirrored; home's y is flipped, away's
+// isn't) -- but that asymmetry exists purely so two *opposing* teams can
+// share one pitch image without their attacking thirds overlapping. It has
+// nothing to do with either team's real-world side. Pooling a fantasy
+// roster has no opponent sharing the canvas, so applying that same
+// asymmetry here was a bug: it rendered two genuinely same-side players
+// (e.g. two right-sided attackers, each home in one real match and away in
+// another) on opposite ends of the pooled pitch, purely because of which
+// side they happened to be listed on in their own unrelated match.
+// Every row gets identical treatment instead: x already means "progress
+// toward this player's own attack" regardless of home/away, so it's used
+// as-is; y uses the same flip validated for home on the fixture page (the
+// only case actually checked against a real match), applied uniformly
+// rather than only to rows that happened to come from the home array.
 export async function fetchTeamGraphsData(fixtures: GameweekFixture[], bsdIdToPlayer: Map<number, RosterPlayerInfo>): Promise<TeamGraphsData> {
   const shots: PooledShot[] = [];
   const averagePositions: PooledAveragePosition[] = [];
@@ -129,8 +142,8 @@ export async function fetchTeamGraphsData(fixtures: GameweekFixture[], bsdIdToPl
         opponentAbbrev: fixture.homeAbbrev,
         jerseyNumber: row.jerseyNumber,
         position: row.position,
-        x: 100 - row.x,
-        y: row.y,
+        x: row.x,
+        y: 100 - row.y,
       });
     }
   }

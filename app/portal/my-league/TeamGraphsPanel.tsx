@@ -93,6 +93,22 @@ function PitchMarkings() {
   );
 }
 
+// Every pooled player attacks the same way, so the "own half" of a full
+// pitch would always sit empty -- this shows only the attacking half, goal
+// on the right, with the center circle clipped by the container so just its
+// arc at the halfway edge shows (matching how broadcast half-pitch graphics
+// usually crop it).
+function HalfPitchMarkings() {
+  return (
+    <>
+      <div className="absolute inset-[3%] border border-white/40" />
+      <div className="absolute left-[3%] top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+      <div className="absolute right-[3%] top-[21%] h-[58%] w-[32%] border border-white/40" />
+      <div className="absolute right-[3%] top-[38%] h-[24%] w-[12%] border border-white/40" />
+    </>
+  );
+}
+
 function PlayerLink({ fantraxId, name }: { fantraxId: string; name: string }) {
   return (
     <Link href={`/portal/players/${fantraxId}`} className="font-semibold hover:underline">
@@ -109,8 +125,8 @@ function TeamShotMap({ shots }: { shots: PooledShot[] }) {
   const sortedShots = [...shots].sort((a, b) => a.minute - b.minute);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 lg:flex-[3]">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
           {Object.entries(SHOT_STYLE).map(([type, style]) => (
             <span key={type} className="inline-flex items-center gap-1.5">
@@ -121,8 +137,8 @@ function TeamShotMap({ shots }: { shots: PooledShot[] }) {
           <span className="text-slate-400">Size = xG</span>
         </div>
 
-        <div className="relative mx-auto mt-3 aspect-[16/10] w-full max-w-3xl overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
-          <PitchMarkings />
+        <div className="relative mx-auto mt-3 aspect-[4/3] w-full overflow-hidden rounded-lg border border-emerald-900 bg-gradient-to-b from-emerald-700 to-emerald-800">
+          <HalfPitchMarkings />
           {sortedShots.map((shot, index) => {
             const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
             const size = shotSizePx(shot.xg);
@@ -139,7 +155,7 @@ function TeamShotMap({ shots }: { shots: PooledShot[] }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="max-h-96 overflow-y-auto rounded-xl border border-slate-200 bg-white lg:flex-[2] lg:min-h-0 lg:max-h-none">
         <ul className="divide-y divide-slate-100">
           {sortedShots.map((shot, index) => {
             const style = SHOT_STYLE[shot.type] ?? FALLBACK_SHOT_STYLE;
