@@ -17,6 +17,10 @@
       "schedule": "0 */6 * * *"
     },
     {
+      "path": "/api/cron/sync-scores?mode=poll",
+      "schedule": "*/2 * * * *"
+    },
+    {
       "path": "/api/cron/sync-my-leagues",
       "schedule": "0 * * * *"
     },

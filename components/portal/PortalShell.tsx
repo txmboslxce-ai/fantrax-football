@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { href: "/portal/injury", label: "Injuries" },
   { href: "/portal/lineups", label: "Lineups" },
   { href: "/portal/fixtures", label: "Fixtures" },
+  { href: "/portal/transfers", label: "Transfers" },
   { href: "/portal/teams", label: "Teams" },
   { href: "/portal/compare", label: "Compare" },
   { href: "/portal/stats", label: "Stats" },

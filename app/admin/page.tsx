@@ -29,6 +29,11 @@ const adminLinks = [
     description: "Manually match FPL players to Fantrax players when the automatic sync can't.",
   },
   {
+    href: "/admin/bsd-player-mapping",
+    title: "BSD Player Mapping",
+    description: "Link sports.bzzoiro.com player ids to Fantrax players so pages like Transfers can link to them.",
+  },
+  {
     href: "/admin/product-updates",
     title: "Product Updates",
     description: "Post what's new on the portal — shows up on the subscriber Dashboard.",
