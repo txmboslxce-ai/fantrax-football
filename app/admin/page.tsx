@@ -43,6 +43,11 @@ const adminLinks = [
     title: "Product Updates",
     description: "Post what's new on the portal — shows up on the subscriber Dashboard.",
   },
+  {
+    href: "/admin/team-strength",
+    title: "Team Strength Ratings",
+    description: "Opponent-adjustment factors (xG, shots, big chances, etc.) computed from backfilled BSD match stats.",
+  },
 ];
 
 export default async function AdminPage() {
