@@ -1,5 +1,8 @@
 import Link from "next/link";
-import LineupPitch from "@/components/portal/LineupPitch";
+import PredictedLineupPitch, {
+  type PredictedInjuryPlayer,
+  type PredictedLineupPlayer,
+} from "@/components/portal/PredictedLineupPitch";
 import { getCurrentGameweek } from "@/lib/fantrax/sync-scores";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -28,21 +31,19 @@ type LineupRow = {
   status: "predicted" | "confirmed";
   fetched_at: string;
   position: string | null;
+  is_starter: boolean;
+  injury_status: string | null;
   players: { id: string; name: string; team: string } | Array<{ id: string; name: string; team: string }> | null;
-};
-
-type LineupPlayer = {
-  id: string;
-  name: string;
-  position: string | null;
 };
 
 type FixtureLineup = {
   fixture: FixtureRow;
   homeTeamLabel: string;
   awayTeamLabel: string;
-  homePlayers: LineupPlayer[];
-  awayPlayers: LineupPlayer[];
+  homePlayers: PredictedLineupPlayer[];
+  awayPlayers: PredictedLineupPlayer[];
+  homeInjuries: PredictedInjuryPlayer[];
+  awayInjuries: PredictedInjuryPlayer[];
   status: "predicted" | "confirmed" | null;
   fetchedAt: string | null;
 };
@@ -95,10 +96,9 @@ export default async function LineupsPage({ searchParams }: PageProps) {
 
   const { data: lineupData, error: lineupError } = await supabase
     .from("player_lineups")
-    .select("status, fetched_at, position, is_starter, players!inner(id, name, team)")
+    .select("status, fetched_at, position, is_starter, injury_status, players!inner(id, name, team)")
     .eq("season", season)
-    .eq("gameweek", gameweek)
-    .eq("is_starter", true);
+    .eq("gameweek", gameweek);
 
   if (lineupError) {
     throw new Error(`Unable to load lineups: ${lineupError.message}`);
@@ -114,6 +114,8 @@ export default async function LineupsPage({ searchParams }: PageProps) {
       awayTeamLabel: teamLabelByAbbrev.get(fixture.away_team) ?? fixture.away_team,
       homePlayers: [],
       awayPlayers: [],
+      homeInjuries: [],
+      awayInjuries: [],
       status: null,
       fetchedAt: null,
     });
@@ -128,11 +130,12 @@ export default async function LineupsPage({ searchParams }: PageProps) {
       const isAway = fixtureLineup.fixture.away_team === player.team;
       if (!isHome && !isAway) continue;
 
-      const lineupPlayer: LineupPlayer = { id: player.id, name: player.name, position: row.position };
-      if (isHome) {
-        fixtureLineup.homePlayers.push(lineupPlayer);
-      } else {
-        fixtureLineup.awayPlayers.push(lineupPlayer);
+      if (row.is_starter) {
+        const lineupPlayer: PredictedLineupPlayer = { id: player.id, name: player.name, position: row.position };
+        (isHome ? fixtureLineup.homePlayers : fixtureLineup.awayPlayers).push(lineupPlayer);
+      } else if (row.injury_status) {
+        const injuryPlayer: PredictedInjuryPlayer = { id: player.id, name: player.name, status: row.injury_status };
+        (isHome ? fixtureLineup.homeInjuries : fixtureLineup.awayInjuries).push(injuryPlayer);
       }
 
       fixtureLineup.status = row.status;
@@ -177,7 +180,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
           No fixtures found for gameweek {gameweek}.
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {fixtureLineups.map((fixtureLineup) => (
             <div key={fixtureLineup.fixture.id} className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
@@ -211,9 +214,11 @@ export default async function LineupsPage({ searchParams }: PageProps) {
                 </p>
               ) : null}
 
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <LineupPitch teamLabel={fixtureLineup.homeTeamLabel} players={fixtureLineup.homePlayers} />
-                <LineupPitch teamLabel={fixtureLineup.awayTeamLabel} players={fixtureLineup.awayPlayers} />
+              <div className="mt-3">
+                <PredictedLineupPitch
+                  home={{ teamLabel: fixtureLineup.homeTeamLabel, players: fixtureLineup.homePlayers, injuries: fixtureLineup.homeInjuries }}
+                  away={{ teamLabel: fixtureLineup.awayTeamLabel, players: fixtureLineup.awayPlayers, injuries: fixtureLineup.awayInjuries }}
+                />
               </div>
 
               {fixtureLineup.fetchedAt ? (
