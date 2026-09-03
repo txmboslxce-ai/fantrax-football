@@ -73,28 +73,28 @@ export function horizontalOrder(position: string | null): number {
 }
 
 // A finer banding than CoarsePosition, used for the pitch layout (see
-// lib/rotowire/pitchLayout.ts) rather than for player-matching. Splits
-// midfield into up to three depths -- a holding pivot (DM), a flat/central
-// band (CM/LM/RM), and an advanced #10 band (CAM) -- instead of stacking
-// every midfielder on one line regardless of how deep or advanced they
-// play. A plain back-four-three-front-three team never populates the DM or
-// AM bands and renders exactly like the old GK/DEF/MID/FWD layout; a team
-// with a genuine double pivot and a #10 (e.g. 4-2-3-1) gets the extra
-// depth instead of all five midfielders crowded onto one row.
-export type PitchBand = "GK" | "DEF" | "DM" | "MID" | "AM" | "FWD";
+// lib/rotowire/pitchLayout.ts) rather than for player-matching. Fixed bands
+// by role, not by how advanced a specific player happens to be: DM/CM/LM/RM
+// always share one line, CAM/LW/RW always share the line ahead of it (so a
+// 4-2-3-1's wingers sit level with the #10, not pushed up with the lone
+// striker), and defenders always share the back line. Renders as 4 rows
+// (GK/DEF/MID/FWD) only for a team with no CAM and no wingers at all;
+// anything with a #10, a winger, or both gets the extra AM row instead of
+// crowding them in with the central midfielders or the striker.
+export type PitchBand = "GK" | "DEF" | "MID" | "AM" | "FWD";
 
 const PITCH_BAND_GROUP: Record<string, PitchBand> = {
   GK: "GK",
   CB: "DEF",
   LB: "DEF",
   RB: "DEF",
-  DM: "DM",
+  DM: "MID",
   CM: "MID",
   LM: "MID",
   RM: "MID",
   CAM: "AM",
-  LW: "FWD",
-  RW: "FWD",
+  LW: "AM",
+  RW: "AM",
   FW: "FWD",
 };
 
@@ -105,4 +105,4 @@ export function pitchBand(position: string | null): PitchBand | null {
 
 // Own-goal to opponent's-goal order. The renderer skips any band with no
 // players rather than reserving a row for it.
-export const PITCH_BAND_ORDER: PitchBand[] = ["GK", "DEF", "DM", "MID", "AM", "FWD"];
+export const PITCH_BAND_ORDER: PitchBand[] = ["GK", "DEF", "MID", "AM", "FWD"];

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import PredictedLineupPitch, {
   type PredictedInjuryPlayer,
   type PredictedLineupPlayer,
@@ -6,12 +5,6 @@ import PredictedLineupPitch, {
 import { getCurrentGameweek } from "@/lib/fantrax/sync-scores";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-
-type PageProps = {
-  searchParams?:
-    | { gameweek?: string | string[] }
-    | Promise<{ gameweek?: string | string[] }>;
-};
 
 type FixtureRow = {
   id: string;
@@ -27,13 +20,22 @@ type TeamRow = {
   name: string | null;
 };
 
+type FplAvailability = {
+  chance_of_playing_next_round: number | null;
+  status: string | null;
+  news: string | null;
+};
+
 type LineupRow = {
   status: "predicted" | "confirmed";
   fetched_at: string;
   position: string | null;
   is_starter: boolean;
   injury_status: string | null;
-  players: { id: string; name: string; team: string } | Array<{ id: string; name: string; team: string }> | null;
+  players:
+    | { id: string; name: string; team: string; fpl_player_data: FplAvailability | FplAvailability[] | null }
+    | Array<{ id: string; name: string; team: string; fpl_player_data: FplAvailability | FplAvailability[] | null }>
+    | null;
 };
 
 type FixtureLineup = {
@@ -48,41 +50,33 @@ type FixtureLineup = {
   fetchedAt: string | null;
 };
 
-function parseRequestedGameweek(value: string | string[] | undefined): number | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-export default async function LineupsPage({ searchParams }: PageProps) {
-  const resolvedSearchParams =
-    searchParams && typeof searchParams === "object" && "then" in searchParams ? await searchParams : searchParams;
-
+export default async function LineupsPage() {
   const supabase = await createServerSupabaseClient();
   const season = FIXTURES_SEASON;
+
+  // No manual gameweek picker -- always whatever FPL currently considers
+  // the live/upcoming gameweek. Since this is computed fresh on every page
+  // load (not cached against whenever the last sync ran), it moves on to
+  // the next gameweek by itself once the current one's matches finish,
+  // with no extra plumbing needed on the sync side.
+  let gameweek = 1;
+  try {
+    gameweek = await getCurrentGameweek();
+  } catch {
+    // Keep the page useful if the live FPL schedule is temporarily unavailable.
+  }
 
   const { data: fixturesData, error: fixturesError } = await supabase
     .from("fixtures")
     .select("id, gameweek, home_team, away_team, kickoff_at")
     .eq("season", season)
-    .order("gameweek");
+    .eq("gameweek", gameweek);
 
   if (fixturesError) {
     throw new Error(`Unable to load fixtures: ${fixturesError.message}`);
   }
 
-  const fixtures = (fixturesData ?? []) as FixtureRow[];
-  const gameweeks = Array.from(new Set(fixtures.map((fixture) => fixture.gameweek))).sort((a, b) => a - b);
-
-  let currentGameweek = 1;
-  try {
-    currentGameweek = await getCurrentGameweek();
-  } catch {
-    // Keep the page useful if the live FPL schedule is temporarily unavailable.
-  }
-
-  const requestedGameweek = parseRequestedGameweek(resolvedSearchParams?.gameweek);
-  const gameweek = requestedGameweek && gameweeks.includes(requestedGameweek) ? requestedGameweek : currentGameweek;
+  const gameweekFixtures = (fixturesData ?? []) as FixtureRow[];
 
   const { data: teamsData, error: teamsError } = await supabase.from("teams").select("abbrev, full_name, name");
   if (teamsError) {
@@ -96,15 +90,15 @@ export default async function LineupsPage({ searchParams }: PageProps) {
 
   const { data: lineupData, error: lineupError } = await supabase
     .from("player_lineups")
-    .select("status, fetched_at, position, is_starter, injury_status, players!inner(id, name, team)")
+    .select(
+      "status, fetched_at, position, is_starter, injury_status, players!inner(id, name, team, fpl_player_data(chance_of_playing_next_round, status, news))"
+    )
     .eq("season", season)
     .eq("gameweek", gameweek);
 
   if (lineupError) {
     throw new Error(`Unable to load lineups: ${lineupError.message}`);
   }
-
-  const gameweekFixtures = fixtures.filter((fixture) => fixture.gameweek === gameweek);
 
   const fixturesByTeamPair = new Map<string, FixtureLineup>();
   for (const fixture of gameweekFixtures) {
@@ -125,13 +119,22 @@ export default async function LineupsPage({ searchParams }: PageProps) {
     const player = Array.isArray(row.players) ? row.players[0] : row.players;
     if (!player) continue;
 
+    const availability = Array.isArray(player.fpl_player_data) ? player.fpl_player_data[0] : player.fpl_player_data;
+
     for (const fixtureLineup of fixturesByTeamPair.values()) {
       const isHome = fixtureLineup.fixture.home_team === player.team;
       const isAway = fixtureLineup.fixture.away_team === player.team;
       if (!isHome && !isAway) continue;
 
       if (row.is_starter) {
-        const lineupPlayer: PredictedLineupPlayer = { id: player.id, name: player.name, position: row.position };
+        const lineupPlayer: PredictedLineupPlayer = {
+          id: player.id,
+          name: player.name,
+          position: row.position,
+          chanceOfPlaying: availability?.chance_of_playing_next_round ?? null,
+          availabilityStatus: availability?.status ?? null,
+          availabilityNews: availability?.news ?? null,
+        };
         (isHome ? fixtureLineup.homePlayers : fixtureLineup.awayPlayers).push(lineupPlayer);
       } else if (row.injury_status) {
         const injuryPlayer: PredictedInjuryPlayer = { id: player.id, name: player.name, status: row.injury_status };
@@ -153,26 +156,8 @@ export default async function LineupsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-brand-dark sm:text-4xl">Predicted Lineups</h1>
-        <p className="mt-2 text-sm text-brand-dark/70">
-          Starting XIs sourced from RotoWire — shown as &quot;Predicted&quot; until each club officially confirms, usually
-          around an hour before kickoff.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-1">
-        {gameweeks.map((gw) => (
-          <Link
-            key={gw}
-            href={`/portal/lineups?gameweek=${gw}`}
-            className={`rounded border px-2 py-1 text-xs font-semibold ${
-              gw === gameweek
-                ? "border-brand-green bg-brand-green text-brand-cream"
-                : "border-slate-300 bg-white text-brand-dark hover:bg-slate-50"
-            }`}
-          >
-            GW{gw}
-          </Link>
-        ))}
+        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Gameweek {gameweek}</p>
+        <p className="mt-2 text-sm text-brand-dark/70">Predicted line ups as per RotoWire.</p>
       </div>
 
       {fixtureLineups.length === 0 ? (
@@ -180,7 +165,7 @@ export default async function LineupsPage({ searchParams }: PageProps) {
           No fixtures found for gameweek {gameweek}.
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           {fixtureLineups.map((fixtureLineup) => (
             <div key={fixtureLineup.fixture.id} className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">

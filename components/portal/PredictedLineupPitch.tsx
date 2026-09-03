@@ -1,10 +1,14 @@
 import Link from "next/link";
+import AvailabilityIcon from "@/app/components/ui/AvailabilityIcon";
 import { layoutPredictedTeam } from "@/lib/rotowire/pitchLayout";
 
 export type PredictedLineupPlayer = {
   id: string;
   name: string;
   position: string | null;
+  chanceOfPlaying: number | null;
+  availabilityStatus: string | null;
+  availabilityNews: string | null;
 };
 
 export type PredictedInjuryPlayer = {
@@ -30,6 +34,12 @@ function positionOf(player: PredictedLineupPlayer): string | null {
   return player.position;
 }
 
+// Names get cramped fast at pitch-chip scale -- last name only, full name
+// still available on hover via the title attribute.
+function lastName(fullName: string): string {
+  return fullName.trim().split(/\s+/).pop() ?? fullName;
+}
+
 function PlayerChip({
   positioned,
   axis,
@@ -43,15 +53,20 @@ function PlayerChip({
   const nameSize = axis === "horizontal" ? "max-w-20 text-xs" : "max-w-14 text-[9px]";
 
   return (
-    <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center" style={style}>
-      <Link
-        href={`/portal/players/${player.id}`}
-        prefetch={false}
-        className={`flex items-center justify-center rounded-full border-2 border-white bg-brand-dark font-bold text-brand-cream shadow transition-colors hover:bg-brand-greenLight ${badgeSize}`}
-      >
-        {player.position ?? ""}
-      </Link>
-      <span className={`truncate leading-tight text-white drop-shadow ${nameSize}`}>{player.name}</span>
+    <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center" style={style} title={player.name}>
+      <span className="relative">
+        <Link
+          href={`/portal/players/${player.id}`}
+          prefetch={false}
+          className={`flex items-center justify-center rounded-full border-2 border-white bg-brand-dark font-bold text-brand-cream shadow transition-colors hover:bg-brand-greenLight ${badgeSize}`}
+        >
+          {player.position ?? ""}
+        </Link>
+        <span className="absolute -right-1.5 -top-1.5">
+          <AvailabilityIcon chanceOfPlaying={player.chanceOfPlaying} status={player.availabilityStatus} news={player.availabilityNews} />
+        </span>
+      </span>
+      <span className={`truncate leading-tight text-white drop-shadow ${nameSize}`}>{lastName(player.name)}</span>
     </div>
   );
 }
@@ -134,8 +149,8 @@ function InjuriesList({ team }: { team: PredictedLineupTeam }) {
       <ul className="mt-1.5 space-y-1">
         {team.injuries.map((player) => (
           <li key={player.id} className="flex items-center justify-between gap-2 text-[11px] text-brand-dark">
-            <Link href={`/portal/players/${player.id}`} prefetch={false} className="min-w-0 flex-1 truncate hover:underline">
-              {player.name}
+            <Link href={`/portal/players/${player.id}`} prefetch={false} title={player.name} className="min-w-0 flex-1 truncate hover:underline">
+              {lastName(player.name)}
             </Link>
             <span className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-800">{player.status}</span>
           </li>
