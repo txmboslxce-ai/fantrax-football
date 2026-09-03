@@ -73,7 +73,15 @@ function round(value: number): number {
 // happen given the backfill job always writes both, but defensively
 // checked anyway) are skipped rather than treated as a 0 for the missing
 // side, which would otherwise silently understate that team's numbers.
-export async function computeTeamStrengthRatings(supabase: SupabaseClient): Promise<Map<string, TeamStrengthProfile>> {
+export type TeamStrengthResult = {
+  profiles: Map<string, TeamStrengthProfile>;
+  // Same baseline every factor above is relative to -- exposed so a fixture
+  // projection (Phase 4) can turn two teams' factors into an absolute
+  // expected-goals-against number, not just a relative multiplier.
+  leagueAvgPerMatch: Record<TeamStatKey, number>;
+};
+
+export async function computeTeamStrengthRatings(supabase: SupabaseClient): Promise<TeamStrengthResult> {
   const { data, error } = await supabase.from("team_match_stats").select(["fixture_id", "team_abbrev", "is_home", ...TEAM_STAT_KEYS].join(","));
 
   if (error) {
@@ -151,5 +159,5 @@ export async function computeTeamStrengthRatings(supabase: SupabaseClient): Prom
     profiles.set(teamAbbrev, { teamAbbrev, gamesPlayed: acc.gamesPlayed, createdPerMatch, createdFactor, concededPerMatch, concededFactor });
   }
 
-  return profiles;
+  return { profiles, leagueAvgPerMatch };
 }

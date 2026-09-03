@@ -18,8 +18,8 @@ export async function GET() {
   const db = createAdminSupabaseClient() ?? supabase;
 
   try {
-    const ratings = await computeTeamStrengthRatings(db);
-    const teams = Array.from(ratings.values()).sort((a, b) => a.teamAbbrev.localeCompare(b.teamAbbrev));
+    const { profiles } = await computeTeamStrengthRatings(db);
+    const teams = Array.from(profiles.values()).sort((a, b) => a.teamAbbrev.localeCompare(b.teamAbbrev));
     return NextResponse.json({ teams });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to compute team strength ratings";
