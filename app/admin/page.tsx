@@ -48,6 +48,11 @@ const adminLinks = [
     title: "Team Strength Ratings",
     description: "Opponent-adjustment factors (xG, shots, big chances, etc.) computed from backfilled BSD match stats.",
   },
+  {
+    href: "/admin/player-shot-profiles",
+    title: "Player Shot Profiles",
+    description: "Shot volume, xG quality, and regressed finishing factor per player, from backfilled BSD match stats.",
+  },
 ];
 
 export default async function AdminPage() {
