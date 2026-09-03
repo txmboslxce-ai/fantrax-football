@@ -59,12 +59,23 @@ export function layoutPredictedTeam<T>(
   const widestLine = Math.max(...lines.map((line) => line.players.length));
   const fullSpread = ACROSS_MAX_PCT - ACROSS_MIN_PCT;
 
+  // horizontalOrder is defined from each team's own perspective (their
+  // left back is their left back, whichever way they're attacking). The
+  // away team attacks the opposite direction, so their actual left/right
+  // is mirrored on screen relative to the home team's -- without this
+  // flip, an away-side left back renders on the same visual side as the
+  // home side's left back instead of the opposite one.
+  const sideOrder = (player: T) => {
+    const order = horizontalOrder(positionOf(player));
+    return attackingTowardHigherPct ? order : 2 - order;
+  };
+
   return lines.flatMap((line, lineIndex) => {
     const along =
       lineCount === 1 ? OWN_GOAL_PCT : OWN_GOAL_PCT + (lineIndex * (HALFWAY_APPROACH_PCT - OWN_GOAL_PCT)) / (lineCount - 1);
     const alongPct = attackingTowardHigherPct ? along : 100 - along;
 
-    const orderedPlayers = [...line.players].sort((a, b) => horizontalOrder(positionOf(a)) - horizontalOrder(positionOf(b)));
+    const orderedPlayers = [...line.players].sort((a, b) => sideOrder(a) - sideOrder(b));
     const lineSpread = fullSpread * (orderedPlayers.length / widestLine);
     const acrossStart = 50 - lineSpread / 2;
 

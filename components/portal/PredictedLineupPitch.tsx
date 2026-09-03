@@ -5,6 +5,11 @@ import { layoutPredictedTeam } from "@/lib/rotowire/pitchLayout";
 export type PredictedLineupPlayer = {
   id: string;
   name: string;
+  // RotoWire's own parsed name text for this row, e.g. "Rayan" or "V. van
+  // Dijk" -- what's actually displayed (see lastName below), since RotoWire
+  // already gets naming conventions right (mononyms, abbreviations) that
+  // trying to shorten our own full `name` can't reproduce.
+  rotowireName: string;
   position: string | null;
   chanceOfPlaying: number | null;
   availabilityStatus: string | null;
@@ -14,6 +19,7 @@ export type PredictedLineupPlayer = {
 export type PredictedInjuryPlayer = {
   id: string;
   name: string;
+  rotowireName: string;
   status: string;
 };
 
@@ -85,7 +91,7 @@ function PlayerChip({
           <AvailabilityIcon chanceOfPlaying={player.chanceOfPlaying} status={player.availabilityStatus} news={player.availabilityNews} />
         </span>
       </span>
-      <span className={`truncate leading-tight text-white drop-shadow ${nameSize}`}>{lastName(player.name)}</span>
+      <span className={`truncate leading-tight text-white drop-shadow ${nameSize}`}>{lastName(player.rotowireName)}</span>
     </div>
   );
 }
@@ -169,7 +175,7 @@ function InjuriesList({ team }: { team: PredictedLineupTeam }) {
         {team.injuries.map((player) => (
           <li key={player.id} className="flex items-center justify-between gap-2 text-[11px] text-brand-dark">
             <Link href={`/portal/players/${player.id}`} prefetch={false} title={player.name} className="min-w-0 flex-1 truncate hover:underline">
-              {lastName(player.name)}
+              {lastName(player.rotowireName)}
             </Link>
             <span className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-800">{player.status}</span>
           </li>

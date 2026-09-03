@@ -31,6 +31,7 @@ type LineupRow = {
   position: string | null;
   is_starter: boolean;
   injury_status: string | null;
+  rotowire_display_name: string | null;
   players:
     | { id: string; name: string; team: string; fpl_player_data: FplAvailability | FplAvailability[] | null }
     | Array<{ id: string; name: string; team: string; fpl_player_data: FplAvailability | FplAvailability[] | null }>
@@ -114,7 +115,7 @@ export default async function LineupsPage() {
   const { data: lineupData, error: lineupError } = await supabase
     .from("player_lineups")
     .select(
-      "status, fetched_at, position, is_starter, injury_status, players!inner(id, name, team, fpl_player_data(chance_of_playing_next_round, status, news))"
+      "status, fetched_at, position, is_starter, injury_status, rotowire_display_name, players!inner(id, name, team, fpl_player_data(chance_of_playing_next_round, status, news))"
     )
     .eq("season", season)
     .eq("gameweek", gameweek);
@@ -153,6 +154,7 @@ export default async function LineupsPage() {
         const lineupPlayer: PredictedLineupPlayer = {
           id: player.id,
           name: player.name,
+          rotowireName: row.rotowire_display_name ?? player.name,
           position: row.position,
           chanceOfPlaying: availability?.chance_of_playing_next_round ?? null,
           availabilityStatus: availability?.status ?? null,
@@ -160,7 +162,12 @@ export default async function LineupsPage() {
         };
         (isHome ? fixtureLineup.homePlayers : fixtureLineup.awayPlayers).push(lineupPlayer);
       } else if (row.injury_status) {
-        const injuryPlayer: PredictedInjuryPlayer = { id: player.id, name: player.name, status: row.injury_status };
+        const injuryPlayer: PredictedInjuryPlayer = {
+          id: player.id,
+          name: player.name,
+          rotowireName: row.rotowire_display_name ?? player.name,
+          status: row.injury_status,
+        };
         (isHome ? fixtureLineup.homeInjuries : fixtureLineup.awayInjuries).push(injuryPlayer);
       }
 

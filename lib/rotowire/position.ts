@@ -18,6 +18,11 @@ const ROTOWIRE_POSITION_MAP: Record<string, string> = {
   AML: "LW",
   AMR: "RW",
   AMC: "CAM",
+  // RotoWire uses AML/AMR for a wide attacking midfielder and FWL/FWR for a
+  // wide forward (e.g. the front two in a 4-3-3's wide positions) -- both
+  // land in our LW/RW, since the pitch view treats them the same band.
+  FWL: "LW",
+  FWR: "RW",
   FW: "FW",
 };
 

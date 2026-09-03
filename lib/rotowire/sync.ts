@@ -263,6 +263,7 @@ export type ResolvedLineupRow = {
   is_starter: boolean;
   position: string | null;
   injury_status: string | null;
+  rotowire_display_name: string;
   fetched_at: string;
 };
 
@@ -399,6 +400,7 @@ async function resolveRotowireLineups(supabase: ReturnType<typeof createAdminSup
           is_starter: true,
           position: player.position,
           injury_status: injuryStatusByIdentity.get(identity) ?? null,
+          rotowire_display_name: player.name,
           fetched_at: fetchedAt,
         });
       }
@@ -425,6 +427,7 @@ async function resolveRotowireLineups(supabase: ReturnType<typeof createAdminSup
           is_starter: false,
           position: null,
           injury_status: player.status,
+          rotowire_display_name: player.name,
           fetched_at: fetchedAt,
         });
       }
