@@ -17,7 +17,14 @@ const FETCH_HEADERS = {
 
 export type ParsedLineupPlayer = {
   name: string;
+  rotowireId: number | null;
   position: string | null;
+};
+
+export type ParsedInjuryPlayer = {
+  name: string;
+  rotowireId: number | null;
+  status: string;
 };
 
 export type ParsedMatch = {
@@ -26,6 +33,8 @@ export type ParsedMatch = {
   status: "predicted" | "confirmed";
   homePlayers: ParsedLineupPlayer[];
   awayPlayers: ParsedLineupPlayer[];
+  homeInjuries: ParsedInjuryPlayer[];
+  awayInjuries: ParsedInjuryPlayer[];
 };
 
 function normalize(value: string): string {
@@ -34,6 +43,14 @@ function normalize(value: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+}
+
+// RotoWire's player links end in a stable numeric id
+// (/soccer/player/gabriel-23477 -> 23477), independent of however they're
+// displaying the player's name that day.
+function extractRotowireId(href: string | undefined): number | null {
+  const match = href?.match(/-(\d+)\/?$/);
+  return match ? Number(match[1]) : null;
 }
 
 // Exported separately from the fetch so it can be run against a saved copy
@@ -62,44 +79,59 @@ export function parseRotowireLineups(html: string): ParsedMatch[] {
     const statusText = $match.find(".lineup__status").first().text().trim().toLowerCase();
     const status: ParsedMatch["status"] = statusText.includes("confirmed") ? "confirmed" : "predicted";
 
-    const collectPlayers = (side: "is-home" | "is-visit"): ParsedLineupPlayer[] => {
-      const players: ParsedLineupPlayer[] = [];
+    const collectSide = (side: "is-home" | "is-visit") => {
+      const starters: ParsedLineupPlayer[] = [];
+      const injuries: ParsedInjuryPlayer[] = [];
+      let pastDivider = false;
 
       // RotoWire tags each team's list with an "Injuries" divider
       // (`.lineup__title.is-middle`) followed by more `.lineup__player`
-      // <li>s for players who are OUT/doubtful -- those footnote entries
-      // aren't part of the starting XI. But a player *in* the XI can also
-      // carry a `.lineup__inj` "QUES" span directly on their own <li> when
-      // they're named as a starter despite a fitness doubt (e.g. Morgan
-      // Gibbs-White predicted to start but flagged questionable) -- so
-      // presence of `.lineup__inj` alone isn't a safe signal to exclude on;
-      // it would drop real starters, not just the footnote. Walk the list
-      // in DOM order instead and stop entirely once the divider is hit.
+      // <li>s for players who are OUT/doubtful. A player *in* the XI can
+      // also carry a `.lineup__inj` "QUES" span directly on their own <li>
+      // when they're named as a starter despite a fitness doubt (e.g.
+      // Morgan Gibbs-White predicted to start but flagged questionable),
+      // so presence of `.lineup__inj` alone isn't a safe signal for which
+      // list an entry belongs to -- position in the DOM relative to the
+      // divider is.
       $match.find(`.lineup__list.${side}`).children().each((__, el) => {
         const $el = $(el);
         if ($el.hasClass("lineup__title")) {
-          return false; // stop the .each() loop -- everything after this is the footnote
+          pastDivider = true;
+          return;
         }
         if (!$el.hasClass("lineup__player")) {
           return; // skip the "Predicted/Confirmed Lineup" status <li>
         }
 
-        const name = $el.find("a").first().text().trim() || $el.text().trim();
+        const $link = $el.find("a").first();
+        const name = $link.text().trim() || $el.text().trim();
         if (!name) return;
 
-        const positionText = $el.find(".lineup__pos").first().text().trim();
-        players.push({ name, position: translateRotowirePosition(positionText || null) });
+        const rotowireId = extractRotowireId($link.attr("href"));
+
+        if (pastDivider) {
+          const status = $el.find(".lineup__inj").first().text().trim() || "OUT";
+          injuries.push({ name, rotowireId, status });
+        } else {
+          const positionText = $el.find(".lineup__pos").first().text().trim();
+          starters.push({ name, rotowireId, position: translateRotowirePosition(positionText || null) });
+        }
       });
 
-      return players;
+      return { starters, injuries };
     };
+
+    const home = collectSide("is-home");
+    const away = collectSide("is-visit");
 
     matches.push({
       homeTeamName,
       awayTeamName,
       status,
-      homePlayers: collectPlayers("is-home"),
-      awayPlayers: collectPlayers("is-visit"),
+      homePlayers: home.starters,
+      awayPlayers: away.starters,
+      homeInjuries: home.injuries,
+      awayInjuries: away.injuries,
     });
   });
 
@@ -107,7 +139,7 @@ export function parseRotowireLineups(html: string): ParsedMatch[] {
 }
 
 type TeamRow = { abbrev: string; name: string; full_name: string };
-type PlayerRow = { id: string; name: string; team: string | null; position: string | null };
+type PlayerRow = { id: string; name: string; team: string | null; position: string | null; rotowire_id: number | null };
 type FixtureRow = { gameweek: number; home_team: string; away_team: string };
 
 function matchTeam(rotowireTeamName: string, teams: TeamRow[]): string | null {
@@ -136,10 +168,23 @@ function matchTeam(rotowireTeamName: string, teams: TeamRow[]): string | null {
 
 function matchPlayer(
   rotowireName: string,
+  rotowireId: number | null,
   teamAbbrev: string | null,
   players: PlayerRow[],
   rotowirePosition: string | null
 ): string | null {
+  // Highest priority: an exact RotoWire player id match, once one's been
+  // recorded (either by an earlier run's name-based match, or a human
+  // pairing them in the admin mapping tool). Authoritative regardless of
+  // team, since players_rotowire_id_unique guarantees at most one player
+  // claims a given id.
+  if (rotowireId != null) {
+    const idMatch = players.find((player) => player.rotowire_id === rotowireId);
+    if (idMatch) {
+      return idMatch.id;
+    }
+  }
+
   const candidates = teamAbbrev ? players.filter((player) => player.team === teamAbbrev) : players;
   const target = normalize(rotowireName);
 
@@ -200,16 +245,49 @@ function matchPlayer(
   return null;
 }
 
-export type RotowireSyncResult = {
-  matchesFound: number;
-  playersUpserted: number;
-  unmatchedTeams: string[];
-  unmatchedPlayers: string[];
-  skippedFixtures: string[];
+export type UnmatchedRotowirePlayer = {
+  name: string;
+  rotowireId: number | null;
+  team: string;
+  position: string | null;
+  kind: "starter" | "injury";
 };
 
-export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
-  const supabase = createAdminSupabaseClient();
+export type ResolvedLineupRow = {
+  player_id: string;
+  season: string;
+  gameweek: number;
+  source: string;
+  source_event_id: string;
+  status: "predicted" | "confirmed";
+  is_starter: boolean;
+  position: string | null;
+  injury_status: string | null;
+  fetched_at: string;
+};
+
+type ResolvedSide = {
+  teamAbbrev: string;
+  sourceEventId: string;
+  gameweek: number;
+  rows: ResolvedLineupRow[];
+};
+
+type ResolveResult = {
+  parsedMatches: ParsedMatch[];
+  players: PlayerRow[];
+  unmatchedTeams: string[];
+  unmatchedPlayers: UnmatchedRotowirePlayer[];
+  skippedFixtures: string[];
+  sides: ResolvedSide[];
+  rotowireIdBackfills: Map<string, number>;
+};
+
+// Fetches, parses, and matches against our own teams/players/fixtures, but
+// never writes anything -- shared by the actual sync (which then diffs and
+// writes) and the admin mapping tool's read-only "what's unmatched right
+// now" view.
+async function resolveRotowireLineups(supabase: ReturnType<typeof createAdminSupabaseClient>): Promise<ResolveResult> {
   if (!supabase) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for RotoWire lineup sync.");
   }
@@ -230,7 +308,7 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
   const [{ data: teamsData, error: teamsError }, { data: playersData, error: playersError }, { data: fixturesData, error: fixturesError }] =
     await Promise.all([
       supabase.from("teams").select("abbrev, name, full_name"),
-      supabase.from("players").select("id, name, team, position"),
+      supabase.from("players").select("id, name, team, position, rotowire_id"),
       supabase.from("fixtures").select("gameweek, home_team, away_team").eq("season", FIXTURES_SEASON),
     ]);
 
@@ -243,21 +321,11 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
   const fixtures = (fixturesData ?? []) as FixtureRow[];
 
   const unmatchedTeams = new Set<string>();
-  const unmatchedPlayers = new Set<string>();
+  const unmatchedPlayers: UnmatchedRotowirePlayer[] = [];
   const skippedFixtures: string[] = [];
+  const sides: ResolvedSide[] = [];
+  const rotowireIdBackfills = new Map<string, number>();
   const fetchedAt = new Date().toISOString();
-
-  const rows: {
-    player_id: string;
-    season: string;
-    gameweek: number;
-    source: string;
-    source_event_id: string;
-    status: "predicted" | "confirmed";
-    is_starter: boolean;
-    position: string | null;
-    fetched_at: string;
-  }[] = [];
 
   for (const match of parsedMatches) {
     const homeAbbrev = matchTeam(match.homeTeamName, teams);
@@ -277,19 +345,50 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
 
     const sourceEventId = `${homeAbbrev}-${awayAbbrev}-${FIXTURES_SEASON}`;
 
-    const sides: [ParsedLineupPlayer[], string][] = [
-      [match.homePlayers, homeAbbrev],
-      [match.awayPlayers, awayAbbrev],
+    const teamSides: [string, ParsedLineupPlayer[], ParsedInjuryPlayer[]][] = [
+      [homeAbbrev, match.homePlayers, match.homeInjuries],
+      [awayAbbrev, match.awayPlayers, match.awayInjuries],
     ];
 
-    for (const [lineupPlayers, teamAbbrev] of sides) {
-      for (const lineupPlayer of lineupPlayers) {
-        const playerId = matchPlayer(lineupPlayer.name, teamAbbrev, players, lineupPlayer.position);
+    for (const [teamAbbrev, starters, injuries] of teamSides) {
+      const rows: ResolvedLineupRow[] = [];
+
+      // A player can appear in both the XI and the Injuries footnote --
+      // named as a starter, but flagged with a fitness doubt (e.g. Morgan
+      // Gibbs-White). Both would otherwise target the same (player_id,
+      // season, gameweek) row, and the table's unique constraint means
+      // only one can exist -- the footnote row would silently clobber the
+      // starter row in the same upsert call. Identify that overlap using
+      // RotoWire's own identity (its player id, or the name) before
+      // matching against our players at all, and merge the footnote's
+      // status onto the starter's row instead of writing a second one.
+      const starterIdentities = new Set(
+        starters.map((player) => (player.rotowireId != null ? `id:${player.rotowireId}` : `name:${normalize(player.name)}`))
+      );
+      const injuryStatusByIdentity = new Map<string, string>();
+      const standaloneInjuries: ParsedInjuryPlayer[] = [];
+      for (const injury of injuries) {
+        const identity = injury.rotowireId != null ? `id:${injury.rotowireId}` : `name:${normalize(injury.name)}`;
+        if (starterIdentities.has(identity)) {
+          injuryStatusByIdentity.set(identity, injury.status);
+        } else {
+          standaloneInjuries.push(injury);
+        }
+      }
+
+      for (const player of starters) {
+        const playerId = matchPlayer(player.name, player.rotowireId, teamAbbrev, players, player.position);
         if (!playerId) {
-          unmatchedPlayers.add(`${lineupPlayer.name} (${teamAbbrev})`);
+          unmatchedPlayers.push({ name: player.name, rotowireId: player.rotowireId, team: teamAbbrev, position: player.position, kind: "starter" });
           continue;
         }
-
+        if (player.rotowireId != null) {
+          const existing = players.find((p) => p.id === playerId);
+          if (existing && existing.rotowire_id !== player.rotowireId) {
+            rotowireIdBackfills.set(playerId, player.rotowireId);
+          }
+        }
+        const identity = player.rotowireId != null ? `id:${player.rotowireId}` : `name:${normalize(player.name)}`;
         rows.push({
           player_id: playerId,
           season: FIXTURES_SEASON,
@@ -298,44 +397,161 @@ export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
           source_event_id: sourceEventId,
           status: match.status,
           is_starter: true,
-          position: lineupPlayer.position,
+          position: player.position,
+          injury_status: injuryStatusByIdentity.get(identity) ?? null,
           fetched_at: fetchedAt,
         });
+      }
+
+      for (const player of standaloneInjuries) {
+        const playerId = matchPlayer(player.name, player.rotowireId, teamAbbrev, players, null);
+        if (!playerId) {
+          unmatchedPlayers.push({ name: player.name, rotowireId: player.rotowireId, team: teamAbbrev, position: null, kind: "injury" });
+          continue;
+        }
+        if (player.rotowireId != null) {
+          const existing = players.find((p) => p.id === playerId);
+          if (existing && existing.rotowire_id !== player.rotowireId) {
+            rotowireIdBackfills.set(playerId, player.rotowireId);
+          }
+        }
+        rows.push({
+          player_id: playerId,
+          season: FIXTURES_SEASON,
+          gameweek: fixture.gameweek,
+          source: "rotowire",
+          source_event_id: sourceEventId,
+          status: match.status,
+          is_starter: false,
+          position: null,
+          injury_status: player.status,
+          fetched_at: fetchedAt,
+        });
+      }
+
+      // Only record a side when this run actually found something for it --
+      // an empty side (RotoWire hasn't posted this team's lineup yet) must
+      // not wipe out a previous run's rows for it. See syncRotowireLineups.
+      if (rows.length > 0) {
+        sides.push({ teamAbbrev, sourceEventId, gameweek: fixture.gameweek, rows });
       }
     }
   }
 
-  // Before the Injuries-footnote filter above, a player who was both named
-  // in the predicted XI and flagged questionable in that team's Injuries
-  // footnote could be collected twice, submitting two rows for the same
-  // (player_id, season, gameweek) in one upsert call -- Postgres rejects
-  // that outright ("ON CONFLICT DO UPDATE command cannot affect row a
-  // second time"), even though the rows were identical. The footnote filter
-  // should prevent that at the source now, but this collapse is left in
-  // place as a cheap safety net: last one wins, which is harmless since any
-  // remaining duplicates would carry the same status/is_starter anyway.
-  const dedupedRows = Array.from(
-    new Map(rows.map((row) => [`${row.player_id}|${row.season}|${row.gameweek}`, row])).values()
-  );
+  return { parsedMatches, players, unmatchedTeams: Array.from(unmatchedTeams), unmatchedPlayers, skippedFixtures, sides, rotowireIdBackfills };
+}
 
-  if (dedupedRows.length > 0) {
-    // Idempotent via the table's existing unique(player_id, season,
-    // gameweek) constraint -- re-running throughout the week (predicted ->
-    // confirmed as kickoff approaches) upserts the same rows in place.
-    const { error: upsertError } = await supabase.from("player_lineups").upsert(dedupedRows, {
-      onConflict: "player_id,season,gameweek",
-    });
+export type RotowireSyncResult = {
+  matchesFound: number;
+  playersUpserted: number;
+  playersRemoved: number;
+  rotowireIdsRecorded: number;
+  unmatchedTeams: string[];
+  unmatchedPlayers: string[];
+  skippedFixtures: string[];
+};
 
-    if (upsertError) {
-      throw new Error(upsertError.message);
-    }
+export async function syncRotowireLineups(): Promise<RotowireSyncResult> {
+  const supabase = createAdminSupabaseClient();
+  const resolved = await resolveRotowireLineups(supabase);
+
+  if (!supabase) {
+    // resolveRotowireLineups already throws in this case -- unreachable,
+    // but keeps TypeScript happy about supabase being non-null below.
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for RotoWire lineup sync.");
   }
 
+  // Diff each covered side against what's already stored for that fixture +
+  // team, so a player who's no longer in this run's parse (transferred,
+  // dropped, or just a stale row from before a parsing bug was fixed)
+  // doesn't linger in player_lineups forever -- upsert alone only ever
+  // adds/updates rows, never removes them.
+  const { data: existingData, error: existingError } = await supabase
+    .from("player_lineups")
+    .select("id, player_id, source_event_id")
+    .eq("source", "rotowire")
+    .eq("season", FIXTURES_SEASON);
+
+  if (existingError) throw new Error(existingError.message);
+
+  const teamByPlayerId = new Map(resolved.players.map((player) => [player.id, player.team]));
+  const existingRows = (existingData ?? []) as { id: string; player_id: string; source_event_id: string }[];
+
+  let playersRemoved = 0;
+  let playersUpserted = 0;
+
+  for (const side of resolved.sides) {
+    const newPlayerIds = new Set(side.rows.map((row) => row.player_id));
+    const staleIds = existingRows
+      .filter(
+        (row) =>
+          row.source_event_id === side.sourceEventId &&
+          teamByPlayerId.get(row.player_id) === side.teamAbbrev &&
+          !newPlayerIds.has(row.player_id)
+      )
+      .map((row) => row.id);
+
+    if (staleIds.length > 0) {
+      const { error: deleteError } = await supabase.from("player_lineups").delete().in("id", staleIds);
+      if (deleteError) throw new Error(deleteError.message);
+      playersRemoved += staleIds.length;
+    }
+
+    const { error: upsertError } = await supabase
+      .from("player_lineups")
+      .upsert(side.rows, { onConflict: "player_id,season,gameweek" });
+    if (upsertError) throw new Error(upsertError.message);
+    playersUpserted += side.rows.length;
+  }
+
+  // Record any RotoWire ids matched by name this run, so future runs (and
+  // the admin mapping tool's unmatched count) don't need to re-guess them.
+  // Best-effort: a write failing here (e.g. a genuine unique-constraint
+  // clash from bad data) shouldn't fail the whole sync.
+  let rotowireIdsRecorded = 0;
+  await Promise.all(
+    Array.from(resolved.rotowireIdBackfills.entries()).map(async ([playerId, rotowireId]) => {
+      const { error } = await supabase.from("players").update({ rotowire_id: rotowireId }).eq("id", playerId);
+      if (!error) rotowireIdsRecorded += 1;
+    })
+  );
+
   return {
-    matchesFound: parsedMatches.length,
-    playersUpserted: dedupedRows.length,
-    unmatchedTeams: Array.from(unmatchedTeams),
-    unmatchedPlayers: Array.from(unmatchedPlayers),
-    skippedFixtures,
+    matchesFound: resolved.parsedMatches.length,
+    playersUpserted,
+    playersRemoved,
+    rotowireIdsRecorded,
+    unmatchedTeams: resolved.unmatchedTeams,
+    unmatchedPlayers: resolved.unmatchedPlayers.map((p) => `${p.name} (${p.team})`),
+    skippedFixtures: resolved.skippedFixtures,
+  };
+}
+
+export type RotowireMatchingReport = {
+  matchesFound: number;
+  unmatchedTeams: string[];
+  skippedFixtures: string[];
+  unmatchedRotowirePlayers: UnmatchedRotowirePlayer[];
+  unmatchedFantraxPlayers: { id: string; name: string; team: string }[];
+};
+
+// Read-only counterpart for the admin mapping tool -- fetches and matches
+// exactly like a real sync, but never writes, so it's safe to call just to
+// render the current gaps.
+export async function getRotowireMatchingReport(): Promise<RotowireMatchingReport> {
+  const supabase = createAdminSupabaseClient();
+  const resolved = await resolveRotowireLineups(supabase);
+
+  const unmatchedFantraxPlayers = resolved.players
+    .filter((player) => player.rotowire_id == null && player.team)
+    .map((player) => ({ id: player.id, name: player.name, team: player.team as string }))
+    .sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name));
+
+  return {
+    matchesFound: resolved.parsedMatches.length,
+    unmatchedTeams: resolved.unmatchedTeams,
+    skippedFixtures: resolved.skippedFixtures,
+    unmatchedRotowirePlayers: resolved.unmatchedPlayers,
+    unmatchedFantraxPlayers,
   };
 }

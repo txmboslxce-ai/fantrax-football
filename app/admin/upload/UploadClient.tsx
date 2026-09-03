@@ -88,6 +88,8 @@ type RotowireSyncResponse = {
   success: boolean;
   matchesFound?: number;
   playersUpserted?: number;
+  playersRemoved?: number;
+  rotowireIdsRecorded?: number;
   unmatchedTeams?: string[];
   unmatchedPlayers?: string[];
   skippedFixtures?: string[];
@@ -792,6 +794,10 @@ function RotowireSyncPanel() {
               <>
                 <p className="font-semibold">
                   {result.matchesFound ?? 0} matches found on RotoWire, {result.playersUpserted ?? 0} players saved.
+                </p>
+                <p className="mt-1 text-brand-creamDark">
+                  {result.playersRemoved ?? 0} stale rows removed, {result.rotowireIdsRecorded ?? 0} RotoWire ids
+                  recorded for future runs.
                 </p>
                 <p className="mt-1 text-brand-creamDark">
                   Unmatched teams: {(result.unmatchedTeams ?? []).join(", ") || "None"}
