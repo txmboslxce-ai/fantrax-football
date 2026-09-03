@@ -35,9 +35,28 @@ function positionOf(player: PredictedLineupPlayer): string | null {
 }
 
 // Names get cramped fast at pitch-chip scale -- last name only, full name
-// still available on hover via the title attribute.
+// still available on hover via the title attribute. A bare last token would
+// cut "Virgil van Dijk" down to just "Dijk" -- these lowercase connective
+// particles are part of the surname, so keep any of them immediately
+// preceding the final (capitalized) token attached to it. Matched
+// case-insensitively since some records capitalize them ("Van Dijk") and
+// some don't ("van Dijk").
+const SURNAME_PARTICLES = new Set([
+  "van", "der", "den", "de", "di", "da", "dos", "das", "von", "el", "al", "st", "st.", "la", "le", "du",
+]);
+
 function lastName(fullName: string): string {
-  return fullName.trim().split(/\s+/).pop() ?? fullName;
+  const tokens = fullName.trim().split(/\s+/);
+  if (tokens.length <= 1) {
+    return fullName;
+  }
+
+  let start = tokens.length - 1;
+  while (start > 0 && SURNAME_PARTICLES.has(tokens[start - 1].toLowerCase())) {
+    start -= 1;
+  }
+
+  return tokens.slice(start).join(" ");
 }
 
 function PlayerChip({

@@ -2,7 +2,6 @@ import PredictedLineupPitch, {
   type PredictedInjuryPlayer,
   type PredictedLineupPlayer,
 } from "@/components/portal/PredictedLineupPitch";
-import { getCurrentGameweek } from "@/lib/fantrax/sync-scores";
 import { FIXTURES_SEASON } from "@/lib/season/fixtures";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -54,16 +53,40 @@ export default async function LineupsPage() {
   const supabase = await createServerSupabaseClient();
   const season = FIXTURES_SEASON;
 
-  // No manual gameweek picker -- always whatever FPL currently considers
-  // the live/upcoming gameweek. Since this is computed fresh on every page
-  // load (not cached against whenever the last sync ran), it moves on to
-  // the next gameweek by itself once the current one's matches finish,
-  // with no extra plumbing needed on the sync side.
-  let gameweek = 1;
-  try {
-    gameweek = await getCurrentGameweek();
-  } catch {
-    // Keep the page useful if the live FPL schedule is temporarily unavailable.
+  // No manual gameweek picker -- always the gameweek containing the
+  // soonest fixture that hasn't kicked off yet. This deliberately isn't
+  // lib/fantrax/sync-scores's getCurrentGameweek(): that one tracks FPL's
+  // own "currently being played" gameweek, which stays on the *previous*
+  // gameweek from the moment its last match finishes until the next one's
+  // first match actually kicks off (FPL doesn't flip is_current early) --
+  // exactly the multi-day window RotoWire's predicted lineups exist for.
+  // Since this is computed fresh on every page load, it moves on to the
+  // next gameweek by itself once every fixture in the current one has
+  // kicked off, with no extra plumbing needed on the sync side.
+  const { data: nextFixtureData, error: nextFixtureError } = await supabase
+    .from("fixtures")
+    .select("gameweek")
+    .eq("season", season)
+    .gt("kickoff_at", new Date().toISOString())
+    .order("kickoff_at", { ascending: true })
+    .limit(1);
+
+  if (nextFixtureError) {
+    throw new Error(`Unable to resolve the upcoming gameweek: ${nextFixtureError.message}`);
+  }
+
+  let gameweek = nextFixtureData?.[0]?.gameweek as number | undefined;
+
+  if (gameweek == null) {
+    // Nothing left to kick off -- the season's over. Show the last
+    // gameweek rather than resetting to GW1.
+    const { data: lastFixtureData } = await supabase
+      .from("fixtures")
+      .select("gameweek")
+      .eq("season", season)
+      .order("gameweek", { ascending: false })
+      .limit(1);
+    gameweek = lastFixtureData?.[0]?.gameweek ?? 1;
   }
 
   const { data: fixturesData, error: fixturesError } = await supabase
