@@ -34,6 +34,11 @@ const adminLinks = [
     description: "Link sports.bzzoiro.com player ids to Fantrax players so pages like Transfers can link to them.",
   },
   {
+    href: "/admin/rotowire-player-mapping",
+    title: "RotoWire Player Mapping",
+    description: "Manually pair RotoWire's predicted-lineup names to Fantrax players when the sync can't match them.",
+  },
+  {
     href: "/admin/product-updates",
     title: "Product Updates",
     description: "Post what's new on the portal — shows up on the subscriber Dashboard.",
