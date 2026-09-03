@@ -96,6 +96,16 @@ type RotowireSyncResponse = {
   message?: string;
 };
 
+type MatchStatsBackfillResponse = {
+  success: boolean;
+  totalFixtures?: number;
+  alreadyBackfilled?: number;
+  attempted?: number;
+  summary?: { backfilled: number; not_finished: number; no_bsd_match: number; error: number };
+  errors?: Array<{ fixtureId: string; message?: string }>;
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -629,6 +639,71 @@ function FplSyncNowPanel() {
   );
 }
 
+function MatchStatsBackfillPanel() {
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [result, setResult] = useState<MatchStatsBackfillResponse | null>(null);
+
+  async function handleBackfill() {
+    setIsBackfilling(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/backfill-match-stats", { method: "POST" });
+      setResult((await response.json()) as MatchStatsBackfillResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Match stats backfill failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsBackfilling(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Backfill Match Stats (BSD)</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        Pulls team and player shot/xG stats from BSD for every finished fixture not already backfilled -- the data feed for
+        stats-based projections. Safe to re-run; already-backfilled fixtures are skipped.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <button
+          type="button"
+          onClick={handleBackfill}
+          disabled={isBackfilling}
+          className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isBackfilling ? "Backfilling..." : "Backfill Match Stats"}
+        </button>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success ? (
+              <>
+                <p className="font-semibold">
+                  {result.summary?.backfilled ?? 0} fixtures backfilled ({result.attempted ?? 0} attempted, {result.alreadyBackfilled ?? 0} already done of {result.totalFixtures ?? 0} total).
+                </p>
+                <p className="mt-1 text-brand-creamDark">
+                  Not finished yet: {result.summary?.not_finished ?? 0}. No BSD match found: {result.summary?.no_bsd_match ?? 0}. Errors: {result.summary?.error ?? 0}.
+                </p>
+                {result.errors && result.errors.length > 0 ? (
+                  <ul className="mt-2 space-y-0.5 text-xs text-red-300">
+                    {result.errors.slice(0, 10).map((err) => (
+                      <li key={err.fixtureId}>
+                        {err.fixtureId}: {err.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : <p>{result.message ?? "Match stats backfill failed."}</p>}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function AdpRefreshPanel() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [result, setResult] = useState<AdpRefreshResponse | null>(null);
@@ -837,6 +912,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
         <RecomputeSummariesPanel defaultSeason={defaultSeason} seasons={seasons} />
         <FplSyncNowPanel />
         <RotowireSyncPanel />
+        <MatchStatsBackfillPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>
