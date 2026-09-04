@@ -274,6 +274,77 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
     shotProfileByFantraxId.set(profile.fantraxId, profile);
   }
 
+  // Team strength ratings and the shot-profile finishing factor both use
+  // empirical-Bayes shrinkage (PRIOR_GAMES/PRIOR_XG) because a couple of
+  // games of history isn't enough sample to trust at face value. The
+  // remaining per-player counting stats below need the same treatment: with
+  // only 1-2 gameweeks of history this early in the season, a single busy
+  // match (a fluky high clearance or key-pass count) gets extrapolated at
+  // full weight into every future projection, and since ~15 of these
+  // categories sum into one player's score simultaneously, that noise
+  // compounds into exactly the kind of standout-player blowup a naive
+  // stat-line model would produce -- the opposite of the edge this is
+  // supposed to provide. Shrinking each player's per-90 rate toward their
+  // position's league-average per-90 rate, weighted by PRIOR_MINUTES of
+  // assumed average performance, tempers that without waiting for a full
+  // season to accumulate. A starting value (five matches' worth) to revisit
+  // once there's more of a season to check calibration against.
+  const PRIOR_MINUTES = 450;
+
+  const STAT_KEYS = [
+    "goals",
+    "assists",
+    "keyPasses",
+    "shotsOnTarget",
+    "tacklesWon",
+    "interceptions",
+    "clearances",
+    "dribblesSucceeded",
+    "blockedShots",
+    "accurateCrosses",
+    "penaltiesDrawn",
+    "penaltiesMissed",
+    "aerialsWon",
+    "dispossessed",
+    "yellowCards",
+    "redCards",
+    "ownGoals",
+    "saves",
+    "penaltySaves",
+    "highClaims",
+    "smothers",
+  ] as const satisfies ReadonlyArray<keyof HistoryTotals>;
+
+  const positionMinutes: Record<string, number> = { G: 0, D: 0, M: 0, F: 0 };
+  const positionStatTotals: Record<string, Record<string, number>> = {
+    G: {},
+    D: {},
+    M: {},
+    F: {},
+  };
+  for (const position of ["G", "D", "M", "F"]) {
+    for (const key of STAT_KEYS) positionStatTotals[position][key] = 0;
+  }
+
+  for (const player of players) {
+    const history = historyByPlayer.get(player.id);
+    if (!history || history.minutes === 0) continue;
+    positionMinutes[player.position] += history.minutes;
+    for (const key of STAT_KEYS) {
+      positionStatTotals[player.position][key] += history[key];
+    }
+  }
+
+  function positionAvgPer90(position: string, key: (typeof STAT_KEYS)[number]): number {
+    const minutes = positionMinutes[position];
+    return minutes > 0 ? (positionStatTotals[position][key] / minutes) * 90 : 0;
+  }
+
+  function shrunkPer90(history: HistoryTotals, key: (typeof STAT_KEYS)[number], position: string): number {
+    const avg = positionAvgPer90(position, key);
+    return (history[key] * 90 + PRIOR_MINUTES * avg) / (history.minutes + PRIOR_MINUTES);
+  }
+
   function opponentFactor(team: TeamStrengthProfile | undefined, key: TeamStatKey): number {
     return team?.concededFactor[key] ?? 1;
   }
@@ -302,40 +373,48 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
 
         const expectedMinutes = history.minutes / history.gamesPlayed;
         const minutesScale = expectedMinutes / 90;
-        const per90 = 90 / history.minutes;
 
         const shotProfile = shotProfileByFantraxId.get(player.id);
-        const goalsRatePer90 = shotProfile ? shotProfile.projectedGoalRatePer90 : history.goals * per90;
-        const shotsOnTargetRatePer90 = shotProfile ? shotProfile.totalShotsOnTarget * per90 : history.shotsOnTarget * per90;
+        const goalsRatePer90 = shotProfile ? shotProfile.projectedGoalRatePer90 : shrunkPer90(history, "goals", player.position);
+        const shotsOnTargetRatePer90 = shotProfile
+          ? shotProfile.totalShotsOnTarget * (90 / history.minutes)
+          : shrunkPer90(history, "shotsOnTarget", player.position);
 
         const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
         const projectedShotsOnTarget = shotsOnTargetRatePer90 * opponentFactor(opponentStrength, "shots_on_target") * minutesScale;
-        const projectedKeyPasses = history.keyPasses * per90 * opponentFactor(opponentStrength, "big_chances") * minutesScale;
-        const projectedCrosses = history.accurateCrosses * per90 * opponentFactor(opponentStrength, "touches_in_penalty_area") * minutesScale;
-        const projectedAssists = history.assists * per90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
+        const projectedKeyPasses =
+          shrunkPer90(history, "keyPasses", player.position) * opponentFactor(opponentStrength, "big_chances") * minutesScale;
+        const projectedCrosses =
+          shrunkPer90(history, "accurateCrosses", player.position) *
+          opponentFactor(opponentStrength, "touches_in_penalty_area") *
+          minutesScale;
+        const projectedAssists =
+          shrunkPer90(history, "assists", player.position) * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
 
         // No defensible opponent signal for these (see OPPONENT_FACTOR_KEY
-        // comment) -- projected from the player's own rate only.
-        const projectedTacklesWon = history.tacklesWon * per90 * minutesScale;
-        const projectedInterceptions = history.interceptions * per90 * minutesScale;
-        const projectedClearances = history.clearances * per90 * minutesScale;
-        const projectedDribbles = history.dribblesSucceeded * per90 * minutesScale;
-        const projectedBlockedShots = history.blockedShots * per90 * minutesScale;
-        const projectedPenaltiesDrawn = history.penaltiesDrawn * per90 * minutesScale;
-        const projectedPenaltiesMissed = history.penaltiesMissed * per90 * minutesScale;
-        const projectedAerials = history.aerialsWon * per90 * minutesScale;
-        const projectedDispossessed = history.dispossessed * per90 * minutesScale;
-        const projectedYellows = history.yellowCards * per90 * minutesScale;
-        const projectedReds = history.redCards * per90 * minutesScale;
-        const projectedOwnGoals = history.ownGoals * per90 * minutesScale;
+        // comment) -- projected from the player's own rate, shrunk toward
+        // their position's league-average per-90 (see PRIOR_MINUTES above).
+        const projectedTacklesWon = shrunkPer90(history, "tacklesWon", player.position) * minutesScale;
+        const projectedInterceptions = shrunkPer90(history, "interceptions", player.position) * minutesScale;
+        const projectedClearances = shrunkPer90(history, "clearances", player.position) * minutesScale;
+        const projectedDribbles = shrunkPer90(history, "dribblesSucceeded", player.position) * minutesScale;
+        const projectedBlockedShots = shrunkPer90(history, "blockedShots", player.position) * minutesScale;
+        const projectedPenaltiesDrawn = shrunkPer90(history, "penaltiesDrawn", player.position) * minutesScale;
+        const projectedPenaltiesMissed = shrunkPer90(history, "penaltiesMissed", player.position) * minutesScale;
+        const projectedAerials = shrunkPer90(history, "aerialsWon", player.position) * minutesScale;
+        const projectedDispossessed = shrunkPer90(history, "dispossessed", player.position) * minutesScale;
+        const projectedYellows = shrunkPer90(history, "yellowCards", player.position) * minutesScale;
+        const projectedReds = shrunkPer90(history, "redCards", player.position) * minutesScale;
+        const projectedOwnGoals = shrunkPer90(history, "ownGoals", player.position) * minutesScale;
 
         // Shots faced (and so saves) scale with how much the opponent
         // attacks; goals_against/goals_against_outfield use the same
         // Poisson expectation computed once per team above.
-        const projectedSaves = history.saves * per90 * attackFactor(opponentStrength, "shots_on_target") * minutesScale;
-        const projectedPenaltySaves = history.penaltySaves * per90 * minutesScale;
-        const projectedHighClaims = history.highClaims * per90 * minutesScale;
-        const projectedSmothers = history.smothers * per90 * minutesScale;
+        const projectedSaves =
+          shrunkPer90(history, "saves", player.position) * attackFactor(opponentStrength, "shots_on_target") * minutesScale;
+        const projectedPenaltySaves = shrunkPer90(history, "penaltySaves", player.position) * minutesScale;
+        const projectedHighClaims = shrunkPer90(history, "highClaims", player.position) * minutesScale;
+        const projectedSmothers = shrunkPer90(history, "smothers", player.position) * minutesScale;
 
         const statLine: ProjectedStatLine = {
           goals: round(projectedGoals),
