@@ -23,10 +23,19 @@ type RawEventListResponse = {
 // Deliberately separate from findBsdEventId (lib/bsd/events.ts), which only
 // returns an id for live display -- the backfill also needs `status` so it
 // never persists a match that hasn't actually finished yet.
+//
+// Matches on team pairing within [dateFrom, dateTo], not on an exact
+// kickoff -- a home/away pairing happens exactly once per team per season
+// in the Premier League, so as long as the window covers the whole season
+// this is unambiguous even when it's wide. That's what lets a fixture with
+// no kickoff_at at all (see seasonDateBounds below) still resolve reliably,
+// not just the precise ones-day-either-side window used when a real
+// kickoff time is available.
 async function resolveBsdEventForFixture(fixture: {
   homeAbbrev: string;
   awayAbbrev: string;
-  kickoffAt: string;
+  dateFrom: string;
+  dateTo: string;
 }): Promise<RawEventRow | null> {
   const homeTeamId = BSD_ABBREV_TO_TEAM_ID[fixture.homeAbbrev];
   const awayTeamId = BSD_ABBREV_TO_TEAM_ID[fixture.awayAbbrev];
@@ -34,21 +43,26 @@ async function resolveBsdEventForFixture(fixture: {
     return null;
   }
 
-  const kickoff = new Date(fixture.kickoffAt);
-  if (Number.isNaN(kickoff.getTime())) {
-    return null;
-  }
-
-  const dateFrom = new Date(kickoff.getTime() - ONE_DAY_MS).toISOString().slice(0, 10);
-  const dateTo = new Date(kickoff.getTime() + ONE_DAY_MS).toISOString().slice(0, 10);
-
   const data = await bzzoiroGet<RawEventListResponse>(
     "/events/",
-    { team_id: String(homeTeamId), date_from: dateFrom, date_to: dateTo },
+    { team_id: String(homeTeamId), date_from: fixture.dateFrom, date_to: fixture.dateTo },
     3600
   );
 
   return data.results.find((event) => event.home_team_id === homeTeamId && event.away_team_id === awayTeamId) ?? null;
+}
+
+// Fallback search window for a fixture with no kickoff_at: the full English
+// top-flight season for `season` ("YYYY-YY"), padded well past both ends
+// (pre-season friendlies, rescheduled or run-over fixtures) since precision
+// isn't needed here -- team pairing alone disambiguates within it (see
+// resolveBsdEventForFixture above). Returns null for a season string that
+// doesn't parse rather than guessing.
+function seasonDateBounds(season: string): { dateFrom: string; dateTo: string } | null {
+  const match = /^(\d{4})-\d{2}$/.exec(season);
+  if (!match) return null;
+  const startYear = Number(match[1]);
+  return { dateFrom: `${startYear}-06-01`, dateTo: `${startYear + 1}-07-31` };
 }
 
 type RawTeamStatsBlock = {
@@ -235,26 +249,41 @@ function aggregatePlayerShots(shotmap: RawShot[], assistLookup: Map<string, numb
 
 export type BackfillResult = {
   fixtureId: string;
-  // missing_kickoff is split out from no_bsd_match: the same underlying
-  // resolveBsdEventForFixture lookup never even runs without a kickoff
-  // time, which is a data-completeness problem (the fixture row needs a
-  // kickoff_at) rather than "BSD doesn't have this match" -- worth telling
-  // apart when a whole season comes back empty.
+  // missing_kickoff now only fires when there's no kickoff_at *and* the
+  // season string doesn't parse into a fallback search window (see
+  // seasonDateBounds) -- a fixture with no kickoff otherwise still
+  // resolves fine via the season-wide window, since team pairing alone
+  // disambiguates it.
   status: "backfilled" | "not_finished" | "missing_kickoff" | "no_bsd_match" | "error";
   message?: string;
 };
 
 export async function backfillFixtureMatchStats(
   db: SupabaseClient,
-  fixture: { id: string; homeAbbrev: string; awayAbbrev: string; kickoffAt: string | null }
+  fixture: { id: string; homeAbbrev: string; awayAbbrev: string; kickoffAt: string | null; season: string }
 ): Promise<BackfillResult> {
-  if (!fixture.kickoffAt) {
-    return { fixtureId: fixture.id, status: "missing_kickoff", message: "No kickoff time" };
+  let dateFrom: string;
+  let dateTo: string;
+
+  if (fixture.kickoffAt) {
+    const kickoff = new Date(fixture.kickoffAt);
+    if (Number.isNaN(kickoff.getTime())) {
+      return { fixtureId: fixture.id, status: "missing_kickoff", message: "Invalid kickoff time" };
+    }
+    dateFrom = new Date(kickoff.getTime() - ONE_DAY_MS).toISOString().slice(0, 10);
+    dateTo = new Date(kickoff.getTime() + ONE_DAY_MS).toISOString().slice(0, 10);
+  } else {
+    const bounds = seasonDateBounds(fixture.season);
+    if (!bounds) {
+      return { fixtureId: fixture.id, status: "missing_kickoff", message: `No kickoff time, and season '${fixture.season}' didn't parse for a fallback window` };
+    }
+    dateFrom = bounds.dateFrom;
+    dateTo = bounds.dateTo;
   }
 
   let event: RawEventRow | null;
   try {
-    event = await resolveBsdEventForFixture({ homeAbbrev: fixture.homeAbbrev, awayAbbrev: fixture.awayAbbrev, kickoffAt: fixture.kickoffAt });
+    event = await resolveBsdEventForFixture({ homeAbbrev: fixture.homeAbbrev, awayAbbrev: fixture.awayAbbrev, dateFrom, dateTo });
   } catch (error) {
     return { fixtureId: fixture.id, status: "error", message: error instanceof Error ? error.message : "Failed to resolve BSD event" };
   }

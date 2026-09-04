@@ -63,6 +63,7 @@ export async function POST(request: Request) {
       homeAbbrev: fixture.home_team,
       awayAbbrev: fixture.away_team,
       kickoffAt: fixture.kickoff_at,
+      season,
     });
     summary[result.status] += 1;
     if (result.status === "error") {
