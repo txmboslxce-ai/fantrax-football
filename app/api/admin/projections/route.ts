@@ -34,7 +34,9 @@ export async function GET(request: Request) {
 
   const { data, error } = await db
     .from("player_projections")
-    .select("player_id, opponent_abbrev, is_home, expected_minutes, projected_score, stat_line, computed_at, players(name, team, position)")
+    .select(
+      "player_id, opponent_abbrev, is_home, expected_minutes, projected_score, projected_score_if_starting, is_predicted_starter, injury_status, stat_line, computed_at, players(name, team, position)"
+    )
     .eq("season", FIXTURES_SEASON)
     .eq("gameweek", gameweek)
     .order("projected_score", { ascending: false });
@@ -87,6 +89,9 @@ export async function POST(request: Request) {
     is_home: projection.isHome,
     expected_minutes: projection.expectedMinutes,
     projected_score: projection.projectedScore,
+    projected_score_if_starting: projection.projectedScoreIfStarting,
+    is_predicted_starter: projection.isPredictedStarter,
+    injury_status: projection.injuryStatus,
     stat_line: projection.statLine,
     computed_at: new Date().toISOString(),
   }));

@@ -34,10 +34,22 @@ type ProjectionRow = {
   is_home: boolean;
   expected_minutes: number;
   projected_score: number;
+  projected_score_if_starting: number;
+  is_predicted_starter: boolean | null;
+  injury_status: string | null;
   stat_line: ProjectedStatLine;
   computed_at: string;
   players: { name: string; team: string; position: string } | null;
 };
+
+const INJURY_LABELS: Record<string, string> = { i: "Injured", s: "Suspended", u: "Unavailable", d: "Doubtful" };
+
+function statusLabel(row: ProjectionRow): string {
+  if (row.injury_status && row.injury_status in INJURY_LABELS) return INJURY_LABELS[row.injury_status];
+  if (row.is_predicted_starter === true) return "Starting";
+  if (row.is_predicted_starter === false) return "Bench risk";
+  return "-";
+}
 
 const CSV_COLUMNS: Array<{ header: string; value: (row: ProjectionRow) => string | number }> = [
   { header: "player", value: (row) => row.players?.name ?? row.player_id },
@@ -45,8 +57,10 @@ const CSV_COLUMNS: Array<{ header: string; value: (row: ProjectionRow) => string
   { header: "position", value: (row) => row.players?.position ?? "" },
   { header: "opponent", value: (row) => row.opponent_abbrev },
   { header: "home_or_away", value: (row) => (row.is_home ? "H" : "A") },
+  { header: "status", value: (row) => statusLabel(row) },
   { header: "expected_minutes", value: (row) => row.expected_minutes },
   { header: "projected_score", value: (row) => row.projected_score },
+  { header: "projected_score_if_starting", value: (row) => row.projected_score_if_starting },
   { header: "goals", value: (row) => row.stat_line.goals },
   { header: "assists", value: (row) => row.stat_line.assists },
   { header: "clean_sheet_probability", value: (row) => row.stat_line.clean_sheet },
@@ -149,8 +163,10 @@ export default function ProjectionsClient() {
         <h1 className="text-3xl font-black sm:text-4xl">Player Projections</h1>
         <p className="mt-2 text-sm text-brand-creamDark">
           Full stat-line projections assembled from team strength ratings and player shot profiles, run through the real
-          scoring formula. Expected minutes uses average minutes when played this season -- there&apos;s no start-probability
-          model yet, so a rotation-risk player&apos;s number assumes they play their usual minutes if selected.
+          scoring formula. A player FPL marks injured/suspended/unavailable projects 0. Otherwise, expected minutes uses
+          RotoWire&apos;s predicted lineup when one exists for that match -- a predicted starter gets their usual minutes when
+          played, a player not in the predicted XI is capped at a substitute-length cameo. &quot;If Starting&quot; shows what
+          the latter would score with their normal minutes, for comparison.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-brand-cream/20 bg-brand-dark/70 p-4">
@@ -202,32 +218,46 @@ export default function ProjectionsClient() {
                   <th className="px-3 py-2 font-bold uppercase tracking-wide">Player</th>
                   <th className="px-3 py-2 font-bold uppercase tracking-wide">Team</th>
                   <th className="px-3 py-2 font-bold uppercase tracking-wide">Opponent</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Status</th>
                   <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">Exp. Mins</th>
                   <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">Goals</th>
                   <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">Assists</th>
                   <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">Clean Sheet %</th>
                   <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">Key Passes</th>
                   <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">Proj. Score</th>
+                  <th className="px-3 py-2 text-right font-bold uppercase tracking-wide">If Starting</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.player_id} className={index % 2 === 0 ? "bg-brand-dark/40" : "bg-brand-dark/20"}>
-                    <td className="px-3 py-2 font-semibold">{row.players?.name ?? row.player_id}</td>
-                    <td className="px-3 py-2 text-brand-creamDark">
-                      {row.players?.team} <span className="text-brand-creamDark/70">({row.players?.position})</span>
-                    </td>
-                    <td className="px-3 py-2 text-brand-creamDark">
-                      {row.is_home ? "vs" : "@"} {row.opponent_abbrev}
-                    </td>
-                    <td className="px-3 py-2 text-right text-brand-creamDark">{row.expected_minutes}</td>
-                    <td className="px-3 py-2 text-right text-brand-creamDark">{row.stat_line.goals.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right text-brand-creamDark">{row.stat_line.assists.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right text-brand-creamDark">{(row.stat_line.clean_sheet * 100).toFixed(0)}%</td>
-                    <td className="px-3 py-2 text-right text-brand-creamDark">{row.stat_line.key_passes.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right text-base font-bold text-emerald-300">{row.projected_score.toFixed(2)}</td>
-                  </tr>
-                ))}
+                {rows.map((row, index) => {
+                  const status = statusLabel(row);
+                  const statusClass = row.injury_status
+                    ? "text-red-300"
+                    : row.is_predicted_starter === false
+                      ? "text-amber-300"
+                      : "text-brand-creamDark/70";
+                  return (
+                    <tr key={row.player_id} className={index % 2 === 0 ? "bg-brand-dark/40" : "bg-brand-dark/20"}>
+                      <td className="px-3 py-2 font-semibold">{row.players?.name ?? row.player_id}</td>
+                      <td className="px-3 py-2 text-brand-creamDark">
+                        {row.players?.team} <span className="text-brand-creamDark/70">({row.players?.position})</span>
+                      </td>
+                      <td className="px-3 py-2 text-brand-creamDark">
+                        {row.is_home ? "vs" : "@"} {row.opponent_abbrev}
+                      </td>
+                      <td className={`px-3 py-2 ${statusClass}`}>{status}</td>
+                      <td className="px-3 py-2 text-right text-brand-creamDark">{row.expected_minutes}</td>
+                      <td className="px-3 py-2 text-right text-brand-creamDark">{row.stat_line.goals.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right text-brand-creamDark">{row.stat_line.assists.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right text-brand-creamDark">{(row.stat_line.clean_sheet * 100).toFixed(0)}%</td>
+                      <td className="px-3 py-2 text-right text-brand-creamDark">{row.stat_line.key_passes.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right text-base font-bold text-emerald-300">{row.projected_score.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right text-brand-creamDark">
+                        {row.projected_score_if_starting !== row.projected_score ? row.projected_score_if_starting.toFixed(2) : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

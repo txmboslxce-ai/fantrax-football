@@ -48,10 +48,42 @@ export type PlayerProjection = {
   expectedMinutes: number;
   statLine: ProjectedStatLine;
   projectedScore: number;
+  // Same projection, but assuming this player starts and plays their usual
+  // minutes regardless of what RotoWire currently predicts -- identical to
+  // projectedScore for an actual predicted starter (or when no lineup
+  // prediction exists yet), and shows the upside case for a rotation risk.
+  // Not computed at all (left equal to projectedScore, both 0) for a player
+  // FPL has flagged as out -- there's no "if starting" for someone injured
+  // or suspended.
+  projectedScoreIfStarting: number;
+  // null = no RotoWire lineup prediction for this player's team yet (falls
+  // back to their usual expected minutes, same as before this existed).
+  isPredictedStarter: boolean | null;
+  // Raw FPL status code ('a'/'d'/'i'/'s'/'u'), or null if never synced.
+  injuryStatus: string | null;
 };
 
 type PlayerRow = { id: string; name: string; team: string; position: "G" | "D" | "M" | "F" };
 type FixtureRow = { id: string; home_team: string; away_team: string };
+type FplStatusRow = { player_id: string; status: string | null };
+type PlayerLineupRow = { player_id: string; is_starter: boolean };
+
+// FPL status codes that mean "will not play this week" -- see
+// lib/portal/injuryStatus.ts for the same codes used on the injury page.
+// 'd' (doubtful) deliberately isn't included here: a doubtful player might
+// still play, so zeroing them out would just trade one wrong extreme for
+// another -- chance_of_playing_next_round would be the right signal to
+// incorporate for that case, not a hard cutoff, and isn't wired in yet.
+const OUT_STATUS_CODES = new Set(["i", "s", "u"]);
+
+// Starting heuristic for a player RotoWire doesn't predict to start: rather
+// than their full history-based expected minutes (which is what a
+// guaranteed starter gets), cap it at a typical substitute cameo. This is
+// deliberately a flat number, not derived from data, because the actual
+// signal we have -- "not in the predicted XI" -- doesn't itself say how
+// long a run out they'd get; a starting value to revisit once there's
+// enough of a season to check real bench-minute patterns against it.
+const BENCH_FALLBACK_MINUTES = 20;
 
 type HistoryTotals = {
   gamesPlayed: number;
@@ -238,17 +270,56 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
 
   const teamAbbrevs = Array.from(new Set(fixtures.flatMap((fixture) => [fixture.home_team, fixture.away_team])));
 
-  const [{ profiles: teamStrength, leagueAvgPerMatch }, { profiles: shotProfiles }, { data: playerRows, error: playerError }] = await Promise.all([
+  const [
+    { profiles: teamStrength, leagueAvgPerMatch },
+    { profiles: shotProfiles },
+    { data: playerRows, error: playerError },
+    { data: fplStatusRows, error: fplStatusError },
+    { data: lineupRows, error: lineupError },
+  ] = await Promise.all([
     computeTeamStrengthRatings(supabase),
     computePlayerShotProfiles(supabase),
     supabase.from("players").select("id, name, team, position").in("team", teamAbbrevs),
+    // Small table (one row per FPL-tracked player league-wide) -- fetched
+    // whole rather than filtered by player_id for the same URL-length
+    // reason as player_gameweeks below.
+    supabase.from("fpl_player_data").select("player_id, status"),
+    // RotoWire only ever writes a row for a predicted starter or an
+    // injury-flagged player (see comment below on teamsWithKnownLineup) --
+    // there's no "confirmed bench" row to distinguish from "no prediction
+    // yet", so this is read as booleans purely on row presence.
+    supabase.from("player_lineups").select("player_id, is_starter").eq("season", FIXTURES_SEASON).eq("gameweek", gameweek).eq("is_starter", true),
   ]);
 
   if (playerError) {
     throw new Error(`Unable to load players: ${playerError.message}`);
   }
+  if (fplStatusError) {
+    throw new Error(`Unable to load fpl_player_data: ${fplStatusError.message}`);
+  }
+  if (lineupError) {
+    throw new Error(`Unable to load player_lineups: ${lineupError.message}`);
+  }
 
   const players = (playerRows ?? []) as PlayerRow[];
+  const playerById = new Map(players.map((player) => [player.id, player]));
+
+  const statusByPlayerId = new Map<string, string | null>();
+  for (const row of (fplStatusRows ?? []) as FplStatusRow[]) {
+    statusByPlayerId.set(row.player_id, row.status);
+  }
+
+  const startersByPlayerId = new Set<string>();
+  // A team having ANY predicted starter row for this gameweek is the only
+  // way to tell "RotoWire has a lineup for this match" apart from "no
+  // prediction posted yet" -- a plain bench player never gets a row either
+  // way, so their absence alone is ambiguous without this.
+  const teamsWithKnownLineup = new Set<string>();
+  for (const row of (lineupRows ?? []) as PlayerLineupRow[]) {
+    startersByPlayerId.add(row.player_id);
+    const team = playerById.get(row.player_id)?.team;
+    if (team) teamsWithKnownLineup.add(team);
+  }
 
   // A full gameweek round involves every team, so `players` here is
   // basically the whole league's squad list (500+ players) -- filtering
@@ -386,124 +457,189 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
       const goalsAgainstPenalty = expectedGoalsAgainstPenalty(expectedGoalsAgainstTeam);
 
       for (const player of players.filter((p) => p.team === teamAbbrev)) {
+        const injuryStatus = statusByPlayerId.get(player.id) ?? null;
+
+        // FPL says this player won't feature at all -- no history lookup,
+        // no minutes, no score, but still emitted (rather than skipped
+        // entirely) so the output says *why* a rostered player reads 0
+        // instead of just going quiet on them.
+        if (injuryStatus && OUT_STATUS_CODES.has(injuryStatus)) {
+          const zeroStatLine: ProjectedStatLine = {
+            goals: 0,
+            assists: 0,
+            clean_sheet: round(cleanSheetProbability),
+            key_passes: 0,
+            shots_on_target: 0,
+            tackles_won: 0,
+            interceptions: 0,
+            clearances: 0,
+            dribbles_succeeded: 0,
+            blocked_shots: 0,
+            accurate_crosses: 0,
+            penalties_drawn: 0,
+            aerials_won: 0,
+            dispossessed: 0,
+            yellow_cards: 0,
+            red_cards: 0,
+            penalties_missed: 0,
+            own_goals: 0,
+            saves: 0,
+            penalty_saves: 0,
+            high_claims: 0,
+            smothers: 0,
+            expected_goals_against_team: round(expectedGoalsAgainstTeam),
+          };
+          projections.push({
+            fantraxId: player.id,
+            playerName: player.name,
+            team: player.team,
+            position: player.position,
+            fixtureId: fixture.id,
+            opponentAbbrev,
+            isHome,
+            expectedMinutes: 0,
+            statLine: zeroStatLine,
+            projectedScore: 0,
+            projectedScoreIfStarting: 0,
+            isPredictedStarter: false,
+            injuryStatus,
+          });
+          continue;
+        }
+
         const history = historyByPlayer.get(player.id);
         if (!history || history.gamesPlayed === 0 || history.minutes === 0) continue;
         const priorSeason = priorSeasonByPlayer.get(player.id);
 
-        const expectedMinutes = history.minutes / history.gamesPlayed;
-        const minutesScale = expectedMinutes / 90;
+        function buildStatLineAndScore(expectedMinutesForCalc: number): { statLine: ProjectedStatLine; projectedScore: number } {
+          const minutesScale = expectedMinutesForCalc / 90;
 
-        const shotProfile = shotProfileByFantraxId.get(player.id);
-        const goalsRatePer90 = shotProfile
-          ? shotProfile.projectedGoalRatePer90
-          : shrunkPer90(history, "goals", player.position, priorSeason);
-        const shotsOnTargetRatePer90 = shotProfile
-          ? shotProfile.shotsOnTargetPer90
-          : shrunkPer90(history, "shotsOnTarget", player.position, priorSeason);
+          const shotProfile = shotProfileByFantraxId.get(player.id);
+          const goalsRatePer90 = shotProfile
+            ? shotProfile.projectedGoalRatePer90
+            : shrunkPer90(history!, "goals", player.position, priorSeason);
+          const shotsOnTargetRatePer90 = shotProfile
+            ? shotProfile.shotsOnTargetPer90
+            : shrunkPer90(history!, "shotsOnTarget", player.position, priorSeason);
 
-        const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
-        const projectedShotsOnTarget = shotsOnTargetRatePer90 * opponentFactor(opponentStrength, "shots_on_target") * minutesScale;
-        const projectedKeyPasses =
-          shrunkPer90(history, "keyPasses", player.position, priorSeason) *
-          opponentFactor(opponentStrength, "big_chances") *
-          minutesScale;
-        const projectedCrosses =
-          shrunkPer90(history, "accurateCrosses", player.position, priorSeason) *
-          opponentFactor(opponentStrength, "touches_in_penalty_area") *
-          minutesScale;
-        const projectedAssists =
-          shrunkPer90(history, "assists", player.position, priorSeason) *
-          opponentFactor(opponentStrength, "expected_goals") *
-          minutesScale;
+          const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
+          const projectedShotsOnTarget = shotsOnTargetRatePer90 * opponentFactor(opponentStrength, "shots_on_target") * minutesScale;
+          const projectedKeyPasses =
+            shrunkPer90(history!, "keyPasses", player.position, priorSeason) *
+            opponentFactor(opponentStrength, "big_chances") *
+            minutesScale;
+          const projectedCrosses =
+            shrunkPer90(history!, "accurateCrosses", player.position, priorSeason) *
+            opponentFactor(opponentStrength, "touches_in_penalty_area") *
+            minutesScale;
+          const projectedAssists =
+            shrunkPer90(history!, "assists", player.position, priorSeason) *
+            opponentFactor(opponentStrength, "expected_goals") *
+            minutesScale;
 
-        // No defensible opponent signal for these (see OPPONENT_FACTOR_KEY
-        // comment) -- projected from the player's own rate, shrunk toward
-        // their prior-season rate (or position average -- see PRIOR_MINUTES
-        // above).
-        const projectedTacklesWon = shrunkPer90(history, "tacklesWon", player.position, priorSeason) * minutesScale;
-        const projectedInterceptions = shrunkPer90(history, "interceptions", player.position, priorSeason) * minutesScale;
-        const projectedClearances = shrunkPer90(history, "clearances", player.position, priorSeason) * minutesScale;
-        const projectedDribbles = shrunkPer90(history, "dribblesSucceeded", player.position, priorSeason) * minutesScale;
-        const projectedBlockedShots = shrunkPer90(history, "blockedShots", player.position, priorSeason) * minutesScale;
-        const projectedPenaltiesDrawn = shrunkPer90(history, "penaltiesDrawn", player.position, priorSeason) * minutesScale;
-        const projectedPenaltiesMissed = shrunkPer90(history, "penaltiesMissed", player.position, priorSeason) * minutesScale;
-        const projectedAerials = shrunkPer90(history, "aerialsWon", player.position, priorSeason) * minutesScale;
-        const projectedDispossessed = shrunkPer90(history, "dispossessed", player.position, priorSeason) * minutesScale;
-        const projectedYellows = shrunkPer90(history, "yellowCards", player.position, priorSeason) * minutesScale;
-        const projectedReds = shrunkPer90(history, "redCards", player.position, priorSeason) * minutesScale;
-        const projectedOwnGoals = shrunkPer90(history, "ownGoals", player.position, priorSeason) * minutesScale;
+          // No defensible opponent signal for these (see OPPONENT_FACTOR_KEY
+          // comment) -- projected from the player's own rate, shrunk toward
+          // their prior-season rate (or position average -- see PRIOR_MINUTES
+          // above).
+          const projectedTacklesWon = shrunkPer90(history!, "tacklesWon", player.position, priorSeason) * minutesScale;
+          const projectedInterceptions = shrunkPer90(history!, "interceptions", player.position, priorSeason) * minutesScale;
+          const projectedClearances = shrunkPer90(history!, "clearances", player.position, priorSeason) * minutesScale;
+          const projectedDribbles = shrunkPer90(history!, "dribblesSucceeded", player.position, priorSeason) * minutesScale;
+          const projectedBlockedShots = shrunkPer90(history!, "blockedShots", player.position, priorSeason) * minutesScale;
+          const projectedPenaltiesDrawn = shrunkPer90(history!, "penaltiesDrawn", player.position, priorSeason) * minutesScale;
+          const projectedPenaltiesMissed = shrunkPer90(history!, "penaltiesMissed", player.position, priorSeason) * minutesScale;
+          const projectedAerials = shrunkPer90(history!, "aerialsWon", player.position, priorSeason) * minutesScale;
+          const projectedDispossessed = shrunkPer90(history!, "dispossessed", player.position, priorSeason) * minutesScale;
+          const projectedYellows = shrunkPer90(history!, "yellowCards", player.position, priorSeason) * minutesScale;
+          const projectedReds = shrunkPer90(history!, "redCards", player.position, priorSeason) * minutesScale;
+          const projectedOwnGoals = shrunkPer90(history!, "ownGoals", player.position, priorSeason) * minutesScale;
 
-        // Shots faced (and so saves) scale with how much the opponent
-        // attacks; goals_against/goals_against_outfield use the same
-        // Poisson expectation computed once per team above.
-        const projectedSaves =
-          shrunkPer90(history, "saves", player.position, priorSeason) *
-          attackFactor(opponentStrength, "shots_on_target") *
-          minutesScale;
-        const projectedPenaltySaves = shrunkPer90(history, "penaltySaves", player.position, priorSeason) * minutesScale;
-        const projectedHighClaims = shrunkPer90(history, "highClaims", player.position, priorSeason) * minutesScale;
-        const projectedSmothers = shrunkPer90(history, "smothers", player.position, priorSeason) * minutesScale;
+          // Shots faced (and so saves) scale with how much the opponent
+          // attacks; goals_against/goals_against_outfield use the same
+          // Poisson expectation computed once per team above.
+          const projectedSaves =
+            shrunkPer90(history!, "saves", player.position, priorSeason) *
+            attackFactor(opponentStrength, "shots_on_target") *
+            minutesScale;
+          const projectedPenaltySaves = shrunkPer90(history!, "penaltySaves", player.position, priorSeason) * minutesScale;
+          const projectedHighClaims = shrunkPer90(history!, "highClaims", player.position, priorSeason) * minutesScale;
+          const projectedSmothers = shrunkPer90(history!, "smothers", player.position, priorSeason) * minutesScale;
 
-        const statLine: ProjectedStatLine = {
-          goals: round(projectedGoals),
-          assists: round(projectedAssists),
-          clean_sheet: round(cleanSheetProbability),
-          key_passes: round(projectedKeyPasses),
-          shots_on_target: round(projectedShotsOnTarget),
-          tackles_won: round(projectedTacklesWon),
-          interceptions: round(projectedInterceptions),
-          clearances: round(projectedClearances),
-          dribbles_succeeded: round(projectedDribbles),
-          blocked_shots: round(projectedBlockedShots),
-          accurate_crosses: round(projectedCrosses),
-          penalties_drawn: round(projectedPenaltiesDrawn),
-          aerials_won: round(projectedAerials),
-          dispossessed: round(projectedDispossessed),
-          yellow_cards: round(projectedYellows),
-          red_cards: round(projectedReds),
-          penalties_missed: round(projectedPenaltiesMissed),
-          own_goals: round(projectedOwnGoals),
-          saves: round(projectedSaves),
-          penalty_saves: round(projectedPenaltySaves),
-          high_claims: round(projectedHighClaims),
-          smothers: round(projectedSmothers),
-          expected_goals_against_team: round(expectedGoalsAgainstTeam),
-        };
+          const statLine: ProjectedStatLine = {
+            goals: round(projectedGoals),
+            assists: round(projectedAssists),
+            clean_sheet: round(cleanSheetProbability),
+            key_passes: round(projectedKeyPasses),
+            shots_on_target: round(projectedShotsOnTarget),
+            tackles_won: round(projectedTacklesWon),
+            interceptions: round(projectedInterceptions),
+            clearances: round(projectedClearances),
+            dribbles_succeeded: round(projectedDribbles),
+            blocked_shots: round(projectedBlockedShots),
+            accurate_crosses: round(projectedCrosses),
+            penalties_drawn: round(projectedPenaltiesDrawn),
+            aerials_won: round(projectedAerials),
+            dispossessed: round(projectedDispossessed),
+            yellow_cards: round(projectedYellows),
+            red_cards: round(projectedReds),
+            penalties_missed: round(projectedPenaltiesMissed),
+            own_goals: round(projectedOwnGoals),
+            saves: round(projectedSaves),
+            penalty_saves: round(projectedPenaltySaves),
+            high_claims: round(projectedHighClaims),
+            smothers: round(projectedSmothers),
+            expected_goals_against_team: round(expectedGoalsAgainstTeam),
+          };
 
-        // goals_against/goals_against_outfield are deliberately passed as 0
-        // here -- calcGoalsAgainstPts(0) is 0, so this cleanly removes that
-        // one component from the formula's own (mean-based) calculation,
-        // and the properly Poisson-averaged value is added back afterward.
-        const formulaRow = {
-          position: player.position,
-          goals: statLine.goals,
-          assists: statLine.assists,
-          clean_sheet: statLine.clean_sheet,
-          key_passes: statLine.key_passes,
-          shots_on_target: statLine.shots_on_target,
-          tackles_won: statLine.tackles_won,
-          interceptions: statLine.interceptions,
-          clearances: statLine.clearances,
-          dribbles_succeeded: statLine.dribbles_succeeded,
-          blocked_shots: statLine.blocked_shots,
-          accurate_crosses: statLine.accurate_crosses,
-          penalties_drawn: statLine.penalties_drawn,
-          aerials_won: statLine.aerials_won,
-          dispossessed: statLine.dispossessed,
-          yellow_cards: statLine.yellow_cards,
-          red_cards: statLine.red_cards,
-          penalties_missed: statLine.penalties_missed,
-          own_goals: statLine.own_goals,
-          goals_against_outfield: 0,
-          goals_against: 0,
-          saves: statLine.saves,
-          penalty_saves: statLine.penalty_saves,
-          high_claims: statLine.high_claims,
-          smothers: statLine.smothers,
-        };
+          // goals_against/goals_against_outfield are deliberately passed as 0
+          // here -- calcGoalsAgainstPts(0) is 0, so this cleanly removes that
+          // one component from the formula's own (mean-based) calculation,
+          // and the properly Poisson-averaged value is added back afterward.
+          const formulaRow = {
+            position: player.position,
+            goals: statLine.goals,
+            assists: statLine.assists,
+            clean_sheet: statLine.clean_sheet,
+            key_passes: statLine.key_passes,
+            shots_on_target: statLine.shots_on_target,
+            tackles_won: statLine.tackles_won,
+            interceptions: statLine.interceptions,
+            clearances: statLine.clearances,
+            dribbles_succeeded: statLine.dribbles_succeeded,
+            blocked_shots: statLine.blocked_shots,
+            accurate_crosses: statLine.accurate_crosses,
+            penalties_drawn: statLine.penalties_drawn,
+            aerials_won: statLine.aerials_won,
+            dispossessed: statLine.dispossessed,
+            yellow_cards: statLine.yellow_cards,
+            red_cards: statLine.red_cards,
+            penalties_missed: statLine.penalties_missed,
+            own_goals: statLine.own_goals,
+            goals_against_outfield: 0,
+            goals_against: 0,
+            saves: statLine.saves,
+            penalty_saves: statLine.penalty_saves,
+            high_claims: statLine.high_claims,
+            smothers: statLine.smothers,
+          };
 
-        const baseScore = player.position === "G" ? calcKeeperPts(formulaRow) : calcOutfielderPts(formulaRow);
-        const projectedScore = round(baseScore + goalsAgainstPenalty);
+          const baseScore = player.position === "G" ? calcKeeperPts(formulaRow) : calcOutfielderPts(formulaRow);
+          return { statLine, projectedScore: round(baseScore + goalsAgainstPenalty) };
+        }
+
+        const fullExpectedMinutes = history.minutes / history.gamesPlayed;
+
+        // Only trust "not in the predicted lineup" when RotoWire actually
+        // has a lineup for this player's team this gameweek (see
+        // teamsWithKnownLineup above) -- otherwise there's no signal yet and
+        // this falls back to exactly the pre-existing behavior.
+        const teamHasKnownLineup = teamsWithKnownLineup.has(player.team);
+        const isPredictedStarter = teamHasKnownLineup ? startersByPlayerId.has(player.id) : null;
+        const actualExpectedMinutes =
+          isPredictedStarter === false ? Math.min(fullExpectedMinutes, BENCH_FALLBACK_MINUTES) : fullExpectedMinutes;
+
+        const actual = buildStatLineAndScore(actualExpectedMinutes);
+        const ifStarting = actualExpectedMinutes === fullExpectedMinutes ? actual : buildStatLineAndScore(fullExpectedMinutes);
 
         projections.push({
           fantraxId: player.id,
@@ -513,9 +649,12 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
           fixtureId: fixture.id,
           opponentAbbrev,
           isHome,
-          expectedMinutes: round(expectedMinutes),
-          statLine,
-          projectedScore,
+          expectedMinutes: round(actualExpectedMinutes),
+          statLine: actual.statLine,
+          projectedScore: actual.projectedScore,
+          projectedScoreIfStarting: ifStarting.projectedScore,
+          isPredictedStarter,
+          injuryStatus,
         });
       }
     }
