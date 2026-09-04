@@ -281,6 +281,22 @@ export async function backfillFixtureMatchStats(
     dateTo = bounds.dateTo;
   }
 
+  // BSD_ABBREV_TO_TEAM_ID only covers whichever 20 teams are in the current
+  // top flight (see its own comment) -- a PRIOR_SEASON fixture involving a
+  // team that's since been relegated has no entry at all, and
+  // resolveBsdEventForFixture would otherwise return a bare null for that
+  // indistinguishable from "BSD genuinely has no record of this match".
+  // Worth telling apart explicitly rather than lumping an entire missing
+  // team into an unexplained no_bsd_match count.
+  const unmappedAbbrevs = [fixture.homeAbbrev, fixture.awayAbbrev].filter((abbrev) => !BSD_ABBREV_TO_TEAM_ID[abbrev]);
+  if (unmappedAbbrevs.length > 0) {
+    return {
+      fixtureId: fixture.id,
+      status: "no_bsd_match",
+      message: `No BSD team id mapped for ${unmappedAbbrevs.join(", ")} -- add it to BSD_ABBREV_TO_TEAM_ID in lib/bsd/teams.ts`,
+    };
+  }
+
   let event: RawEventRow | null;
   try {
     event = await resolveBsdEventForFixture({ homeAbbrev: fixture.homeAbbrev, awayAbbrev: fixture.awayAbbrev, dateFrom, dateTo });

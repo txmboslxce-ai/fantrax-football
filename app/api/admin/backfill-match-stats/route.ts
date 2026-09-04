@@ -56,6 +56,12 @@ export async function POST(request: Request) {
 
   const summary = { backfilled: 0, not_finished: 0, missing_kickoff: 0, no_bsd_match: 0, error: 0 };
   const errors: Array<{ fixtureId: string; message?: string }> = [];
+  // Distinct non-error messages (missing_kickoff/no_bsd_match), counted --
+  // there are only ever a handful of these in practice (one per unmapped
+  // team, say), so a count per message is far more useful than a
+  // fixture-by-fixture dump of the same reason repeated over a third of a
+  // season's worth of rows.
+  const noteCounts = new Map<string, number>();
 
   for (const fixture of fixtures) {
     const result = await backfillFixtureMatchStats(db, {
@@ -68,8 +74,14 @@ export async function POST(request: Request) {
     summary[result.status] += 1;
     if (result.status === "error") {
       errors.push({ fixtureId: result.fixtureId, message: result.message });
+    } else if (result.message) {
+      noteCounts.set(result.message, (noteCounts.get(result.message) ?? 0) + 1);
     }
   }
+
+  const notes = Array.from(noteCounts.entries())
+    .map(([message, count]) => ({ message, count }))
+    .sort((a, b) => b.count - a.count);
 
   return NextResponse.json({
     success: true,
@@ -77,6 +89,7 @@ export async function POST(request: Request) {
     alreadyBackfilled: alreadyBackfilled.size,
     attempted: fixtures.length,
     summary,
+    notes,
     errors,
   });
 }
