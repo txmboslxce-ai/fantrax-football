@@ -58,7 +58,7 @@ async function resolveBsdEventForFixture(fixture: {
 // isn't needed here -- team pairing alone disambiguates within it (see
 // resolveBsdEventForFixture above). Returns null for a season string that
 // doesn't parse rather than guessing.
-function seasonDateBounds(season: string): { dateFrom: string; dateTo: string } | null {
+export function seasonDateBounds(season: string): { dateFrom: string; dateTo: string } | null {
   const match = /^(\d{4})-\d{2}$/.exec(season);
   if (!match) return null;
   const startYear = Number(match[1]);

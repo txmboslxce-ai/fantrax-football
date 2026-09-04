@@ -108,6 +108,12 @@ type MatchStatsBackfillResponse = {
   message?: string;
 };
 
+type ResolveBsdTeamIdsResponse = {
+  success: boolean;
+  results?: Array<{ teamId: number; teamName: string | null; eventId: number | null }>;
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -734,6 +740,103 @@ function MatchStatsBackfillPanel() {
   );
 }
 
+function ResolveBsdTeamIdsPanel() {
+  const [teamIdsInput, setTeamIdsInput] = useState("8, 10, 11");
+  const [season, setSeason] = useState(PRIOR_SEASON);
+  const [isResolving, setIsResolving] = useState(false);
+  const [result, setResult] = useState<ResolveBsdTeamIdsResponse | null>(null);
+
+  async function handleResolve() {
+    const teamIds = teamIdsInput
+      .split(",")
+      .map((value) => Number.parseInt(value.trim(), 10))
+      .filter((value) => Number.isInteger(value));
+
+    if (teamIds.length === 0) {
+      setResult({ success: false, message: "Enter at least one numeric team id" });
+      return;
+    }
+
+    setIsResolving(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/resolve-bsd-team-ids", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamIds, season }),
+      });
+      setResult((await response.json()) as ResolveBsdTeamIdsResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Resolve failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsResolving(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Resolve BSD Team IDs</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        BSD_ABBREV_TO_TEAM_ID (lib/bsd/teams.ts) only covers the current top flight -- a relegated team has no entry, which
+        shows up as an unexplained &quot;No BSD team id mapped&quot; note above. Given candidate numeric ids, this finds one
+        match each id played in the chosen season and reads its team name back off that match&apos;s lineups.
+      </p>
+
+      <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold uppercase tracking-wide text-brand-creamDark">Candidate team IDs (comma-separated)</span>
+            <input
+              type="text"
+              value={teamIdsInput}
+              onChange={(event) => setTeamIdsInput(event.target.value)}
+              className="w-64 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-brand-cream focus:border-brand-green focus:outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold uppercase tracking-wide text-brand-creamDark">Season</span>
+            <select
+              value={season}
+              onChange={(event) => setSeason(event.target.value)}
+              className="rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-brand-cream focus:border-brand-green focus:outline-none"
+            >
+              <option value={FIXTURES_SEASON}>{FIXTURES_SEASON} (current)</option>
+              <option value={PRIOR_SEASON}>{PRIOR_SEASON} (prior)</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleResolve()}
+            disabled={isResolving}
+            className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+          >
+            {isResolving ? "Resolving..." : "Resolve"}
+          </button>
+        </div>
+
+        {result ? (
+          <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+            {result.success && result.results ? (
+              <ul className="space-y-1">
+                {result.results.map((row) => (
+                  <li key={row.teamId}>
+                    <span className="font-semibold">{row.teamId}</span> = {row.teamName ?? "(no match found)"}
+                    {row.eventId != null ? <span className="text-brand-creamDark"> (event {row.eventId})</span> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{result.message ?? "Resolve failed."}</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function AdpRefreshPanel() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [result, setResult] = useState<AdpRefreshResponse | null>(null);
@@ -943,6 +1046,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
         <FplSyncNowPanel />
         <RotowireSyncPanel />
         <MatchStatsBackfillPanel />
+        <ResolveBsdTeamIdsPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>
