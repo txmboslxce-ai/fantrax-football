@@ -97,12 +97,16 @@ type RotowireSyncResponse = {
   message?: string;
 };
 
+type MatchStatsBackfillSummary = { backfilled: number; not_finished: number; missing_kickoff: number; no_bsd_match: number; error: number };
+
 type MatchStatsBackfillResponse = {
   success: boolean;
   totalFixtures?: number;
   alreadyBackfilled?: number;
+  totalToAttempt?: number;
   attempted?: number;
-  summary?: { backfilled: number; not_finished: number; missing_kickoff: number; no_bsd_match: number; error: number };
+  nextOffset?: number | null;
+  summary?: MatchStatsBackfillSummary;
   notes?: Array<{ message: string; count: number }>;
   errors?: Array<{ fixtureId: string; message?: string }>;
   message?: string;
@@ -657,16 +661,66 @@ function MatchStatsBackfillPanel() {
     setIsBackfilling(true);
     setResult(null);
 
+    // A force re-backfill of a full season is far too large for one
+    // request to finish inside a serverless function's execution limit
+    // (confirmed live: the request just dies with no response, not even a
+    // clean error). The route processes a bounded batch per call and
+    // returns nextOffset when there's more to do, so this loops until
+    // that's null, merging each batch's counts into a running total and
+    // updating the displayed result after every batch for visible progress.
+    let offset = 0;
+    let aggregate: MatchStatsBackfillResponse | null = null;
+
     try {
-      const response = await fetch("/api/admin/backfill-match-stats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ season, force }),
-      });
-      setResult((await response.json()) as MatchStatsBackfillResponse);
+      for (;;) {
+        const response = await fetch("/api/admin/backfill-match-stats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ season, force, offset }),
+        });
+        const batch = (await response.json()) as MatchStatsBackfillResponse;
+        if (!response.ok || !batch.success) {
+          setResult(batch);
+          return;
+        }
+
+        const previous = aggregate;
+
+        const mergedSummary: MatchStatsBackfillSummary = {
+          backfilled: (previous?.summary?.backfilled ?? 0) + (batch.summary?.backfilled ?? 0),
+          not_finished: (previous?.summary?.not_finished ?? 0) + (batch.summary?.not_finished ?? 0),
+          missing_kickoff: (previous?.summary?.missing_kickoff ?? 0) + (batch.summary?.missing_kickoff ?? 0),
+          no_bsd_match: (previous?.summary?.no_bsd_match ?? 0) + (batch.summary?.no_bsd_match ?? 0),
+          error: (previous?.summary?.error ?? 0) + (batch.summary?.error ?? 0),
+        };
+
+        const mergedNotes = new Map<string, number>();
+        for (const note of [...(previous?.notes ?? []), ...(batch.notes ?? [])]) {
+          mergedNotes.set(note.message, (mergedNotes.get(note.message) ?? 0) + note.count);
+        }
+
+        const next: MatchStatsBackfillResponse = {
+          success: true,
+          totalFixtures: batch.totalFixtures,
+          alreadyBackfilled: batch.alreadyBackfilled,
+          totalToAttempt: batch.totalToAttempt,
+          attempted: (previous?.attempted ?? 0) + (batch.attempted ?? 0),
+          nextOffset: batch.nextOffset,
+          summary: mergedSummary,
+          notes: Array.from(mergedNotes.entries())
+            .map(([message, count]) => ({ message, count }))
+            .sort((a, b) => b.count - a.count),
+          errors: [...(previous?.errors ?? []), ...(batch.errors ?? [])],
+        };
+        aggregate = next;
+        setResult(next);
+
+        if (batch.nextOffset == null) break;
+        offset = batch.nextOffset;
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Match stats backfill failed.";
-      setResult({ success: false, message });
+      setResult(aggregate ? { ...aggregate, message: `${message} (partial progress shown above)` } : { success: false, message });
     } finally {
       setIsBackfilling(false);
     }
@@ -711,8 +765,15 @@ function MatchStatsBackfillPanel() {
           <div className={`mt-5 rounded-lg border p-4 text-sm ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
             {result.success ? (
               <>
+                {result.nextOffset != null ? (
+                  <p className="font-semibold text-amber-300">
+                    Processing... {result.attempted ?? 0} of {result.totalToAttempt ?? "?"} fixtures so far.
+                  </p>
+                ) : null}
                 <p className="font-semibold">
-                  {result.summary?.backfilled ?? 0} fixtures backfilled ({result.attempted ?? 0} attempted, {result.alreadyBackfilled ?? 0} already done of {result.totalFixtures ?? 0} total).
+                  {result.summary?.backfilled ?? 0} fixtures backfilled ({result.attempted ?? 0}
+                  {result.totalToAttempt != null ? ` of ${result.totalToAttempt}` : ""} attempted, {result.alreadyBackfilled ?? 0} already
+                  done of {result.totalFixtures ?? 0} total).
                 </p>
                 <p className="mt-1 text-brand-creamDark">
                   Not finished yet: {result.summary?.not_finished ?? 0}. Missing kickoff time: {result.summary?.missing_kickoff ?? 0}. No

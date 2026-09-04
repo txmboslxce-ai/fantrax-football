@@ -5,6 +5,18 @@ import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+// A force re-backfill of a full season is ~380 fixtures, each needing its
+// own BSD round-trip (event search, stats, incidents) -- comfortably past
+// any serverless function's execution limit as one request (confirmed
+// live: the client's fetch was killed mid-request with no response at all,
+// not a clean error). Processed in bounded batches instead (see
+// BATCH_SIZE/offset below) so no single request's duration depends on how
+// large the season or the force flag makes the job; this ceiling is just a
+// safety margin on top of that, not what actually keeps requests fast.
+export const maxDuration = 300;
+
+const BATCH_SIZE = 40;
+
 type FixtureRow = { id: string; home_team: string; away_team: string; kickoff_at: string | null };
 
 // Backfilling PRIOR_SEASON is what lets the projection engine use a
@@ -30,6 +42,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const season = typeof body?.season === "string" && body.season ? body.season : FIXTURES_SEASON;
   const force = body?.force === true;
+  const offset = Number.isInteger(body?.offset) && body.offset >= 0 ? body.offset : 0;
 
   if (!BACKFILLABLE_SEASONS.includes(season)) {
     return NextResponse.json({ success: false, message: `Unsupported season '${season}'` }, { status: 400 });
@@ -60,7 +73,14 @@ export async function POST(request: Request) {
   // matchStatsBackfill.ts, since the bad values are already persisted from
   // the first run and won't self-correct otherwise).
   const allFixtures = (fixtureRows ?? []) as FixtureRow[];
-  const fixtures = force ? allFixtures : allFixtures.filter((fixture) => !alreadyBackfilled.has(fixture.id));
+  // force re-processes every fixture regardless of alreadyBackfilled --
+  // both writes are upserts keyed on (fixture_id, ...), so this is just
+  // overwriting with freshly recomputed values (needed after a
+  // data-quality fix like the out-of-range xg guard in
+  // matchStatsBackfill.ts, since the bad values are already persisted from
+  // the first run and won't self-correct otherwise).
+  const toAttempt = force ? allFixtures : allFixtures.filter((fixture) => !alreadyBackfilled.has(fixture.id));
+  const fixtures = toAttempt.slice(offset, offset + BATCH_SIZE);
 
   const summary = { backfilled: 0, not_finished: 0, missing_kickoff: 0, no_bsd_match: 0, error: 0 };
   const errors: Array<{ fixtureId: string; message?: string }> = [];
@@ -91,11 +111,15 @@ export async function POST(request: Request) {
     .map(([message, count]) => ({ message, count }))
     .sort((a, b) => b.count - a.count);
 
+  const nextOffset = offset + fixtures.length < toAttempt.length ? offset + fixtures.length : null;
+
   return NextResponse.json({
     success: true,
     totalFixtures: fixtureRows?.length ?? 0,
     alreadyBackfilled: alreadyBackfilled.size,
+    totalToAttempt: toAttempt.length,
     attempted: fixtures.length,
+    nextOffset,
     summary,
     notes,
     errors,
