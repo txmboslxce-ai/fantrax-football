@@ -1,4 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchMatchWinProbabilities, type MatchWinProbabilities } from "@/lib/bsd/odds";
+import { fetchMatchExpectedGoals, type MatchExpectedGoals } from "@/lib/bsd/predictions";
+import { findBsdEventId } from "@/lib/bsd/events";
 import { calcGoalsAgainstPts, calcKeeperPts, calcOutfielderPts } from "@/lib/csv/transform";
 import { computePlayerShotProfiles, type PlayerShotProfile } from "@/lib/projections/playerShotProfile";
 import { computeTeamStrengthRatings, type TeamStatKey, type TeamStrengthProfile } from "@/lib/projections/teamStrength";
@@ -64,9 +67,10 @@ export type PlayerProjection = {
 };
 
 type PlayerRow = { id: string; name: string; team: string; position: "G" | "D" | "M" | "F" };
-type FixtureRow = { id: string; home_team: string; away_team: string };
+type FixtureRow = { id: string; home_team: string; away_team: string; kickoff_at: string | null };
 type FplStatusRow = { player_id: string; status: string | null };
 type PlayerLineupRow = { player_id: string; is_starter: boolean };
+type BsdMatchData = { expectedGoals: MatchExpectedGoals | null; winProbabilities: MatchWinProbabilities | null };
 
 // FPL status codes that mean "will not play this week" -- see
 // lib/portal/injuryStatus.ts for the same codes used on the injury page.
@@ -76,18 +80,28 @@ type PlayerLineupRow = { player_id: string; is_starter: boolean };
 // incorporate for that case, not a hard cutoff, and isn't wired in yet.
 const OUT_STATUS_CODES = new Set(["i", "s", "u"]);
 
-// Starting heuristic for a player RotoWire doesn't predict to start: rather
-// than their full history-based expected minutes (which is what a
-// guaranteed starter gets), cap it at a typical substitute cameo. This is
-// deliberately a flat number, not derived from data, because the actual
-// signal we have -- "not in the predicted XI" -- doesn't itself say how
-// long a run out they'd get; a starting value to revisit once there's
-// enough of a season to check real bench-minute patterns against it.
+// Fallback for a player RotoWire predicts to the bench who has no sub
+// appearances of their own to go on yet (see subAvgMinutes below, which is
+// preferred whenever it exists) -- caps their blended season average at a
+// typical substitute cameo rather than handing them a start-sized expected
+// minutes figure. This is deliberately a flat number, not derived from
+// data, because the actual signal we have -- "not in the predicted XI" --
+// doesn't itself say how long a run out they'd get; a starting value to
+// revisit once there's enough of a season to check real bench-minute
+// patterns against it.
 const BENCH_FALLBACK_MINUTES = 20;
 
 type HistoryTotals = {
   gamesPlayed: number;
   minutes: number;
+  // Split out from gamesPlayed/minutes so expected minutes can reflect
+  // "what they get when they start" separately from "what they get as a
+  // sub" -- see fullExpectedMinutes/subAvgMinutes below. A blended average
+  // across both understates a confirmed starter's real minutes if any of
+  // their appearances were substitute cameos, and overstates a bench
+  // player's if any were starts.
+  gamesStarted: number;
+  minutesWhenStarted: number;
   goals: number;
   assists: number;
   keyPasses: number;
@@ -116,6 +130,7 @@ type HistoryTotals = {
 type PlayerGameweekRow = {
   player_id: string;
   games_played: number | null;
+  games_started: number | null;
   minutes_played: number | null;
   goals: number | null;
   assists: number | null;
@@ -146,6 +161,8 @@ function zeroHistory(): HistoryTotals {
   return {
     gamesPlayed: 0,
     minutes: 0,
+    gamesStarted: 0,
+    minutesWhenStarted: 0,
     goals: 0,
     assists: 0,
     keyPasses: 0,
@@ -189,6 +206,10 @@ function accumulateHistory(rows: PlayerGameweekRow[]): Map<string, HistoryTotals
 
     totals.gamesPlayed += 1;
     totals.minutes += num(row.minutes_played);
+    if (num(row.games_started) > 0) {
+      totals.gamesStarted += 1;
+      totals.minutesWhenStarted += num(row.minutes_played);
+    }
     totals.goals += num(row.goals);
     totals.assists += num(row.assists);
     totals.keyPasses += num(row.key_passes);
@@ -252,10 +273,39 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+// One BSD event lookup + one prediction fetch + one odds fetch per fixture
+// (not per team-side -- both sides of the same match share one answer).
+// Fixtures with no kickoff_at, no resolvable BSD event, or no active
+// prediction/odds market for either endpoint just get a null entry, which
+// every caller below already treats as "fall back to the stats-only
+// signal" -- this feature is additive, never a hard requirement.
+async function resolveBsdMatchData(fixtures: FixtureRow[]): Promise<Map<string, BsdMatchData>> {
+  const byFixtureId = new Map<string, BsdMatchData>();
+
+  await Promise.all(
+    fixtures.map(async (fixture) => {
+      if (!fixture.kickoff_at) return;
+
+      let eventId: number | null;
+      try {
+        eventId = await findBsdEventId({ homeAbbrev: fixture.home_team, awayAbbrev: fixture.away_team, kickoffAt: fixture.kickoff_at });
+      } catch {
+        eventId = null;
+      }
+      if (!eventId) return;
+
+      const [expectedGoals, winProbabilities] = await Promise.all([fetchMatchExpectedGoals(eventId), fetchMatchWinProbabilities(eventId)]);
+      byFixtureId.set(fixture.id, { expectedGoals, winProbabilities });
+    })
+  );
+
+  return byFixtureId;
+}
+
 export async function computeGameweekProjections(supabase: SupabaseClient, gameweek: number): Promise<PlayerProjection[]> {
   const { data: fixtureRows, error: fixtureError } = await supabase
     .from("fixtures")
-    .select("id, home_team, away_team")
+    .select("id, home_team, away_team, kickoff_at")
     .eq("season", FIXTURES_SEASON)
     .eq("gameweek", gameweek);
 
@@ -273,12 +323,14 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   const [
     { profiles: teamStrength, leagueAvgPerMatch },
     { profiles: shotProfiles },
+    bsdMatchDataByFixtureId,
     { data: playerRows, error: playerError },
     { data: fplStatusRows, error: fplStatusError },
     { data: lineupRows, error: lineupError },
   ] = await Promise.all([
     computeTeamStrengthRatings(supabase),
     computePlayerShotProfiles(supabase),
+    resolveBsdMatchData(fixtures),
     supabase.from("players").select("id, name, team, position").in("team", teamAbbrevs),
     // Small table (one row per FPL-tracked player league-wide) -- fetched
     // whole rather than filtered by player_id for the same URL-length
@@ -331,7 +383,7 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   // even a full season's worth of rows across the whole league is a few
   // thousand, trivial for a single query.
   const PLAYER_GAMEWEEK_COLUMNS =
-    "player_id, games_played, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield";
+    "player_id, games_played, games_started, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield";
 
   const [{ data: pgRows, error: pgError }, { data: priorSeasonRows, error: priorSeasonError }] = await Promise.all([
     supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", FIXTURES_SEASON).lt("gameweek", gameweek).limit(50000),
@@ -456,9 +508,37 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
     return team?.createdFactor[key] ?? 1;
   }
 
+  // How lopsided a match is expected to be, from BSD's consensus odds (see
+  // lib/bsd/odds.ts for why odds rather than a re-derived expected-goals
+  // number). Multiplies only the attacking-output categories below (goals,
+  // assists, shots on target, key passes, crosses) -- a team that's a big
+  // favourite plausibly sees more of the ball and creates proportionally
+  // more chances, but the equivalent relationship for defensive volume
+  // (tackles, clearances, interceptions) is likely non-monotonic -- a team
+  // defending a lead sees a spell of pressure, then a stretch of game
+  // management -- and isn't calibrated here, so it's deliberately left
+  // alone. 1 = evenly matched (no adjustment); >1 = this team is the
+  // favourite; <1 = this team is the underdog. Clamped so a near-certain
+  // scoreline doesn't produce an unbounded multiplier from what's ultimately
+  // a rough proxy, not a fitted model.
+  const GAME_SCRIPT_SENSITIVITY = 0.3;
+  const GAME_SCRIPT_MIN = 0.7;
+  const GAME_SCRIPT_MAX = 1.3;
+
+  function gameScriptFactor(winProbabilities: MatchWinProbabilities | null | undefined, isHome: boolean): number {
+    if (!winProbabilities) return 1;
+    const ownWinProb = isHome ? winProbabilities.home : winProbabilities.away;
+    const oppWinProb = isHome ? winProbabilities.away : winProbabilities.home;
+    const favouriteMargin = ownWinProb - oppWinProb;
+    const factor = 1 + GAME_SCRIPT_SENSITIVITY * favouriteMargin;
+    return Math.min(GAME_SCRIPT_MAX, Math.max(GAME_SCRIPT_MIN, factor));
+  }
+
   const projections: PlayerProjection[] = [];
 
   for (const fixture of fixtures) {
+    const bsdMatchData = bsdMatchDataByFixtureId.get(fixture.id);
+
     for (const [teamAbbrev, opponentAbbrev, isHome] of [
       [fixture.home_team, fixture.away_team, true],
       [fixture.away_team, fixture.home_team, false],
@@ -466,10 +546,24 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
       const ownTeamStrength = teamStrength.get(teamAbbrev);
       const opponentStrength = teamStrength.get(opponentAbbrev);
 
-      const expectedGoalsAgainstTeam =
+      const statsExpectedGoalsAgainst =
         leagueAvgPerMatch.expected_goals * opponentFactor(ownTeamStrength, "expected_goals") * attackFactor(opponentStrength, "expected_goals");
+
+      // Blend in BSD's own predicted expected goals for this match, weighted
+      // by its own reported confidence (see lib/bsd/predictions.ts) --
+      // that's one AI model's read on this specific match, ours is a
+      // shrinkage-based read of both teams' season-long tendencies, and
+      // neither should fully override the other.
+      let expectedGoalsAgainstTeam = statsExpectedGoalsAgainst;
+      if (bsdMatchData?.expectedGoals) {
+        const bsdExpectedGoalsAgainst = isHome ? bsdMatchData.expectedGoals.away : bsdMatchData.expectedGoals.home;
+        const confidence = bsdMatchData.expectedGoals.confidence;
+        expectedGoalsAgainstTeam = confidence * bsdExpectedGoalsAgainst + (1 - confidence) * statsExpectedGoalsAgainst;
+      }
+
       const cleanSheetProbability = Math.exp(-expectedGoalsAgainstTeam);
       const goalsAgainstPenalty = expectedGoalsAgainstPenalty(expectedGoalsAgainstTeam);
+      const scriptFactor = gameScriptFactor(bsdMatchData?.winProbabilities, isHome);
 
       for (const player of players.filter((p) => p.team === teamAbbrev)) {
         const injuryStatus = statusByPlayerId.get(player.id) ?? null;
@@ -537,19 +631,28 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
             ? shotProfile.shotsOnTargetPer90
             : shrunkPer90(history!, "shotsOnTarget", player.position, priorSeason);
 
-          const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
-          const projectedShotsOnTarget = shotsOnTargetRatePer90 * opponentFactor(opponentStrength, "shots_on_target") * minutesScale;
+          // scriptFactor (how big a favourite/underdog this team is, from
+          // consensus odds -- see gameScriptFactor above) scales these five
+          // attacking categories alongside the existing opponent-strength
+          // factor: more expected territory and service for a favourite,
+          // less for an underdog.
+          const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * scriptFactor * minutesScale;
+          const projectedShotsOnTarget =
+            shotsOnTargetRatePer90 * opponentFactor(opponentStrength, "shots_on_target") * scriptFactor * minutesScale;
           const projectedKeyPasses =
             shrunkPer90(history!, "keyPasses", player.position, priorSeason) *
             opponentFactor(opponentStrength, "big_chances") *
+            scriptFactor *
             minutesScale;
           const projectedCrosses =
             shrunkPer90(history!, "accurateCrosses", player.position, priorSeason) *
             opponentFactor(opponentStrength, "touches_in_penalty_area") *
+            scriptFactor *
             minutesScale;
           const projectedAssists =
             shrunkPer90(history!, "assists", player.position, priorSeason) *
             opponentFactor(opponentStrength, "expected_goals") *
+            scriptFactor *
             minutesScale;
 
           // No defensible opponent signal for these (see OPPONENT_FACTOR_KEY
@@ -642,7 +745,18 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
           return { statLine, projectedScore: round(baseScore + goalsAgainstPenalty) };
         }
 
-        const fullExpectedMinutes = history.minutes / history.gamesPlayed;
+        // Starts and sub appearances get tracked separately (see
+        // HistoryTotals.gamesStarted/minutesWhenStarted) so a predicted
+        // starter's expected minutes come from their own starts, not a
+        // blended average dragged down by any sub cameos mixed in -- and,
+        // symmetrically, a predicted bench player's fallback comes from their
+        // own sub cameos, not a blended average inflated by any starts mixed
+        // in.
+        const startsAvgMinutes = history.gamesStarted > 0 ? history.minutesWhenStarted / history.gamesStarted : null;
+        const subGames = history.gamesPlayed - history.gamesStarted;
+        const subAvgMinutes = subGames > 0 ? (history.minutes - history.minutesWhenStarted) / subGames : null;
+        const blendedAvgMinutes = history.minutes / history.gamesPlayed;
+        const fullExpectedMinutes = startsAvgMinutes ?? blendedAvgMinutes;
 
         // Only trust "not in the predicted lineup" when RotoWire actually
         // has a lineup for this player's team this gameweek (see
@@ -651,7 +765,9 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
         const teamHasKnownLineup = teamsWithKnownLineup.has(player.team);
         const isPredictedStarter = teamHasKnownLineup ? startersByPlayerId.has(player.id) : null;
         const actualExpectedMinutes =
-          isPredictedStarter === false ? Math.min(fullExpectedMinutes, BENCH_FALLBACK_MINUTES) : fullExpectedMinutes;
+          isPredictedStarter === false
+            ? (subAvgMinutes ?? Math.min(blendedAvgMinutes, BENCH_FALLBACK_MINUTES))
+            : fullExpectedMinutes;
 
         const actual = buildStatLineAndScore(actualExpectedMinutes);
         const ifStarting = actualExpectedMinutes === fullExpectedMinutes ? actual : buildStatLineAndScore(fullExpectedMinutes);
