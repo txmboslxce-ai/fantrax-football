@@ -53,6 +53,11 @@ const adminLinks = [
     title: "Player Shot Profiles",
     description: "Shot volume, xG quality, and regressed finishing factor per player, from backfilled BSD match stats.",
   },
+  {
+    href: "/admin/projections",
+    title: "Player Projections",
+    description: "Full stat-line projections per gameweek, assembled from team strength and shot profiles, scored via the real points formula.",
+  },
 ];
 
 export default async function AdminPage() {
