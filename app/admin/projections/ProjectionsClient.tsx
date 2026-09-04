@@ -9,6 +9,23 @@ type ProjectedStatLine = {
   key_passes: number;
   shots_on_target: number;
   tackles_won: number;
+  interceptions: number;
+  clearances: number;
+  dribbles_succeeded: number;
+  blocked_shots: number;
+  accurate_crosses: number;
+  penalties_drawn: number;
+  aerials_won: number;
+  dispossessed: number;
+  yellow_cards: number;
+  red_cards: number;
+  penalties_missed: number;
+  own_goals: number;
+  saves: number;
+  penalty_saves: number;
+  high_claims: number;
+  smothers: number;
+  expected_goals_against_team: number;
 };
 
 type ProjectionRow = {
@@ -21,6 +38,51 @@ type ProjectionRow = {
   computed_at: string;
   players: { name: string; team: string; position: string } | null;
 };
+
+const CSV_COLUMNS: Array<{ header: string; value: (row: ProjectionRow) => string | number }> = [
+  { header: "player", value: (row) => row.players?.name ?? row.player_id },
+  { header: "team", value: (row) => row.players?.team ?? "" },
+  { header: "position", value: (row) => row.players?.position ?? "" },
+  { header: "opponent", value: (row) => row.opponent_abbrev },
+  { header: "home_or_away", value: (row) => (row.is_home ? "H" : "A") },
+  { header: "expected_minutes", value: (row) => row.expected_minutes },
+  { header: "projected_score", value: (row) => row.projected_score },
+  { header: "goals", value: (row) => row.stat_line.goals },
+  { header: "assists", value: (row) => row.stat_line.assists },
+  { header: "clean_sheet_probability", value: (row) => row.stat_line.clean_sheet },
+  { header: "key_passes", value: (row) => row.stat_line.key_passes },
+  { header: "shots_on_target", value: (row) => row.stat_line.shots_on_target },
+  { header: "tackles_won", value: (row) => row.stat_line.tackles_won },
+  { header: "interceptions", value: (row) => row.stat_line.interceptions },
+  { header: "clearances", value: (row) => row.stat_line.clearances },
+  { header: "dribbles_succeeded", value: (row) => row.stat_line.dribbles_succeeded },
+  { header: "blocked_shots", value: (row) => row.stat_line.blocked_shots },
+  { header: "accurate_crosses", value: (row) => row.stat_line.accurate_crosses },
+  { header: "penalties_drawn", value: (row) => row.stat_line.penalties_drawn },
+  { header: "aerials_won", value: (row) => row.stat_line.aerials_won },
+  { header: "dispossessed", value: (row) => row.stat_line.dispossessed },
+  { header: "yellow_cards", value: (row) => row.stat_line.yellow_cards },
+  { header: "red_cards", value: (row) => row.stat_line.red_cards },
+  { header: "penalties_missed", value: (row) => row.stat_line.penalties_missed },
+  { header: "own_goals", value: (row) => row.stat_line.own_goals },
+  { header: "saves", value: (row) => row.stat_line.saves },
+  { header: "penalty_saves", value: (row) => row.stat_line.penalty_saves },
+  { header: "high_claims", value: (row) => row.stat_line.high_claims },
+  { header: "smothers", value: (row) => row.stat_line.smothers },
+  { header: "expected_goals_against_team", value: (row) => row.stat_line.expected_goals_against_team },
+  { header: "computed_at", value: (row) => row.computed_at },
+];
+
+function csvEscape(value: string | number): string {
+  const str = String(value);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function projectionsToCsv(rows: ProjectionRow[]): string {
+  const header = CSV_COLUMNS.map((column) => column.header).join(",");
+  const lines = rows.map((row) => CSV_COLUMNS.map((column) => csvEscape(column.value(row))).join(","));
+  return [header, ...lines].join("\n");
+}
 
 export default function ProjectionsClient() {
   const [gameweek, setGameweek] = useState(2);
@@ -68,6 +130,19 @@ export default function ProjectionsClient() {
     }
   }
 
+  function handleExportCsv() {
+    const csv = projectionsToCsv(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `projections-gw${gameweek}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="min-h-full bg-brand-dark px-4 py-16 text-brand-cream sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
@@ -105,6 +180,14 @@ export default function ProjectionsClient() {
             className="rounded border border-brand-cream/35 px-4 py-2 text-sm font-semibold text-brand-creamDark transition-colors hover:bg-brand-greenDark disabled:opacity-60"
           >
             {loading ? "Loading..." : "Load Saved Projections"}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={rows.length === 0}
+            className="rounded border border-brand-cream/35 px-4 py-2 text-sm font-semibold text-brand-creamDark transition-colors hover:bg-brand-greenDark disabled:opacity-60"
+          >
+            Export CSV
           </button>
         </div>
 
