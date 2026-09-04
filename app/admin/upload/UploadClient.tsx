@@ -2,6 +2,7 @@
 
 import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
+import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
 
 type UploadType = "player" | "keeper";
 type FantraxPositionGroup = "POS_701" | "POS_702" | "POS_703" | "POS_704";
@@ -640,6 +641,7 @@ function FplSyncNowPanel() {
 }
 
 function MatchStatsBackfillPanel() {
+  const [season, setSeason] = useState(FIXTURES_SEASON);
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [result, setResult] = useState<MatchStatsBackfillResponse | null>(null);
 
@@ -648,7 +650,11 @@ function MatchStatsBackfillPanel() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/admin/backfill-match-stats", { method: "POST" });
+      const response = await fetch("/api/admin/backfill-match-stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ season }),
+      });
       setResult((await response.json()) as MatchStatsBackfillResponse);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Match stats backfill failed.";
@@ -663,10 +669,23 @@ function MatchStatsBackfillPanel() {
       <h2 className="text-xl font-bold text-brand-cream">Backfill Match Stats (BSD)</h2>
       <p className="mt-2 text-sm text-brand-creamDark">
         Pulls team and player shot/xG stats from BSD for every finished fixture not already backfilled -- the data feed for
-        stats-based projections. Safe to re-run; already-backfilled fixtures are skipped.
+        stats-based projections. Safe to re-run; already-backfilled fixtures are skipped. Backfilling {PRIOR_SEASON} lets
+        projections use a player&apos;s and team&apos;s own established rate from last season as a prior instead of a generic
+        league average.
       </p>
 
       <div className="mt-5 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <label className="mr-3 inline-flex items-center gap-2 text-sm">
+          <span className="font-semibold uppercase tracking-wide text-brand-creamDark">Season</span>
+          <select
+            value={season}
+            onChange={(event) => setSeason(event.target.value)}
+            className="rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-brand-cream focus:border-brand-green focus:outline-none"
+          >
+            <option value={FIXTURES_SEASON}>{FIXTURES_SEASON} (current)</option>
+            <option value={PRIOR_SEASON}>{PRIOR_SEASON} (prior)</option>
+          </select>
+        </label>
         <button
           type="button"
           onClick={handleBackfill}

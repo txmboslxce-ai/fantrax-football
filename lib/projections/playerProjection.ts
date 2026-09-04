@@ -398,7 +398,7 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
           ? shotProfile.projectedGoalRatePer90
           : shrunkPer90(history, "goals", player.position, priorSeason);
         const shotsOnTargetRatePer90 = shotProfile
-          ? shotProfile.totalShotsOnTarget * (90 / history.minutes)
+          ? shotProfile.shotsOnTargetPer90
           : shrunkPer90(history, "shotsOnTarget", player.position, priorSeason);
 
         const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;

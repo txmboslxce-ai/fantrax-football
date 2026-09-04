@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
 
 // Every flat numeric column on team_match_stats (see
 // supabase/migrations/045_add_match_stats.sql) that's worth an opponent-
@@ -49,12 +50,16 @@ type TeamMatchStatsRow = {
   is_home: boolean;
 } & Record<TeamStatKey, number | null>;
 
-// Games' worth of league-average prior blended into each team's own rate.
-// Early season (few real matches) leans heavily on the league average; by
-// ~PRIOR_GAMES matches a team's own data carries as much weight as the
+// Games' worth of prior belief blended into each team's own rate. Early
+// season (few real matches) leans heavily on the prior; by ~PRIOR_GAMES
+// matches a team's own current-season data carries as much weight as the
 // prior does. Deliberately a single flat constant rather than tuned per
 // stat for this first version -- revisit once there's enough of a season
-// to check calibration against it.
+// to check calibration against it. That prior is the team's own rate from
+// PRIOR_SEASON when they have one -- more informative than the league
+// average, and it fades out on its own as the current season accumulates
+// -- falling back to the current season's league average only for teams
+// with no PRIOR_SEASON row (promoted sides).
 const PRIOR_GAMES = 6;
 
 function zeroRecord(): Record<TeamStatKey, number> {
@@ -65,30 +70,16 @@ function round(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
+type TeamAccum = { gamesPlayed: number; createdSum: Record<TeamStatKey, number>; concededSum: Record<TeamStatKey, number> };
+
 // Pairs each fixture's two team_match_stats rows and, for every team,
 // accumulates both what they produced ("created") and what their opponent
-// produced in that same match ("conceded"), then shrinks both toward the
-// league-wide per-match average before expressing them as a factor (1.0 =
-// league average). Fixtures backfilled with only one side's row (shouldn't
-// happen given the backfill job always writes both, but defensively
-// checked anyway) are skipped rather than treated as a 0 for the missing
-// side, which would otherwise silently understate that team's numbers.
-export type TeamStrengthResult = {
-  profiles: Map<string, TeamStrengthProfile>;
-  // Same baseline every factor above is relative to -- exposed so a fixture
-  // projection (Phase 4) can turn two teams' factors into an absolute
-  // expected-goals-against number, not just a relative multiplier.
-  leagueAvgPerMatch: Record<TeamStatKey, number>;
-};
-
-export async function computeTeamStrengthRatings(supabase: SupabaseClient): Promise<TeamStrengthResult> {
-  const { data, error } = await supabase.from("team_match_stats").select(["fixture_id", "team_abbrev", "is_home", ...TEAM_STAT_KEYS].join(","));
-
-  if (error) {
-    throw new Error(`Unable to load team_match_stats: ${error.message}`);
-  }
-
-  const rows = (data ?? []) as unknown as TeamMatchStatsRow[];
+// produced in that same match ("conceded"). Fixtures backfilled with only
+// one side's row (shouldn't happen given the backfill job always writes
+// both, but defensively checked anyway) are skipped rather than treated as
+// a 0 for the missing side, which would otherwise silently understate that
+// team's numbers.
+function accumulateTeamStats(rows: TeamMatchStatsRow[]): { byTeam: Map<string, TeamAccum>; leagueAvgPerMatch: Record<TeamStatKey, number> } {
   const byFixture = new Map<string, TeamMatchStatsRow[]>();
   for (const row of rows) {
     const list = byFixture.get(row.fixture_id) ?? [];
@@ -96,12 +87,11 @@ export async function computeTeamStrengthRatings(supabase: SupabaseClient): Prom
     byFixture.set(row.fixture_id, list);
   }
 
-  type Accum = { gamesPlayed: number; createdSum: Record<TeamStatKey, number>; concededSum: Record<TeamStatKey, number> };
-  const byTeam = new Map<string, Accum>();
+  const byTeam = new Map<string, TeamAccum>();
   const leagueSum = zeroRecord();
   let leagueTeamMatches = 0;
 
-  function getOrCreateTeam(teamAbbrev: string): Accum {
+  function getOrCreateTeam(teamAbbrev: string): TeamAccum {
     let acc = byTeam.get(teamAbbrev);
     if (!acc) {
       acc = { gamesPlayed: 0, createdSum: zeroRecord(), concededSum: zeroRecord() };
@@ -139,17 +129,66 @@ export async function computeTeamStrengthRatings(supabase: SupabaseClient): Prom
     leagueAvgPerMatch[key] = leagueTeamMatches > 0 ? leagueSum[key] / leagueTeamMatches : 0;
   }
 
+  return { byTeam, leagueAvgPerMatch };
+}
+
+export type TeamStrengthResult = {
+  profiles: Map<string, TeamStrengthProfile>;
+  // Same baseline every factor above is relative to -- exposed so a fixture
+  // projection (Phase 4) can turn two teams' factors into an absolute
+  // expected-goals-against number, not just a relative multiplier. Always
+  // this season's league average, not a blend -- it's meant to reflect the
+  // scoring environment teams are actually playing in right now.
+  leagueAvgPerMatch: Record<TeamStatKey, number>;
+};
+
+export async function computeTeamStrengthRatings(supabase: SupabaseClient): Promise<TeamStrengthResult> {
+  const { data, error } = await supabase.from("team_match_stats").select(["fixture_id", "team_abbrev", "is_home", ...TEAM_STAT_KEYS].join(","));
+
+  if (error) {
+    throw new Error(`Unable to load team_match_stats: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as unknown as TeamMatchStatsRow[];
+
+  const fixtureIds = Array.from(new Set(rows.map((row) => row.fixture_id)));
+  const { data: fixtureRows, error: fixtureError } =
+    fixtureIds.length === 0 ? { data: [], error: null } : await supabase.from("fixtures").select("id, season").in("id", fixtureIds);
+
+  if (fixtureError) {
+    throw new Error(`Unable to load fixtures: ${fixtureError.message}`);
+  }
+
+  const seasonByFixtureId = new Map<string, string>();
+  for (const fixture of (fixtureRows ?? []) as Array<{ id: string; season: string }>) {
+    seasonByFixtureId.set(fixture.id, fixture.season);
+  }
+
+  // Not every fixture_id necessarily belongs to FIXTURES_SEASON or
+  // PRIOR_SEASON any more now that the backfill can cover both -- read each
+  // row's actual season off the fixture rather than assuming.
+  const thisSeasonRows = rows.filter((row) => seasonByFixtureId.get(row.fixture_id) === FIXTURES_SEASON);
+  const priorSeasonRows = rows.filter((row) => seasonByFixtureId.get(row.fixture_id) === PRIOR_SEASON);
+
+  const thisSeason = accumulateTeamStats(thisSeasonRows);
+  const priorSeason = accumulateTeamStats(priorSeasonRows);
+
   const profiles = new Map<string, TeamStrengthProfile>();
-  for (const [teamAbbrev, acc] of byTeam) {
+  for (const [teamAbbrev, acc] of thisSeason.byTeam) {
     const createdPerMatch = zeroRecord();
     const createdFactor = zeroRecord();
     const concededPerMatch = zeroRecord();
     const concededFactor = zeroRecord();
 
+    const priorAcc = priorSeason.byTeam.get(teamAbbrev);
+
     for (const key of TEAM_STAT_KEYS) {
-      const leagueAvg = leagueAvgPerMatch[key];
-      const shrunkCreated = (acc.createdSum[key] + PRIOR_GAMES * leagueAvg) / (acc.gamesPlayed + PRIOR_GAMES);
-      const shrunkConceded = (acc.concededSum[key] + PRIOR_GAMES * leagueAvg) / (acc.gamesPlayed + PRIOR_GAMES);
+      const leagueAvg = thisSeason.leagueAvgPerMatch[key];
+      const priorCreatedMean = priorAcc && priorAcc.gamesPlayed > 0 ? priorAcc.createdSum[key] / priorAcc.gamesPlayed : leagueAvg;
+      const priorConcededMean = priorAcc && priorAcc.gamesPlayed > 0 ? priorAcc.concededSum[key] / priorAcc.gamesPlayed : leagueAvg;
+
+      const shrunkCreated = (acc.createdSum[key] + PRIOR_GAMES * priorCreatedMean) / (acc.gamesPlayed + PRIOR_GAMES);
+      const shrunkConceded = (acc.concededSum[key] + PRIOR_GAMES * priorConcededMean) / (acc.gamesPlayed + PRIOR_GAMES);
       createdPerMatch[key] = round(shrunkCreated);
       concededPerMatch[key] = round(shrunkConceded);
       createdFactor[key] = leagueAvg > 0 ? round(shrunkCreated / leagueAvg) : 1;
@@ -159,5 +198,5 @@ export async function computeTeamStrengthRatings(supabase: SupabaseClient): Prom
     profiles.set(teamAbbrev, { teamAbbrev, gamesPlayed: acc.gamesPlayed, createdPerMatch, createdFactor, concededPerMatch, concededFactor });
   }
 
-  return { profiles, leagueAvgPerMatch };
+  return { profiles, leagueAvgPerMatch: thisSeason.leagueAvgPerMatch };
 }

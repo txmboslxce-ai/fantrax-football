@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { backfillFixtureMatchStats } from "@/lib/bsd/matchStatsBackfill";
-import { FIXTURES_SEASON } from "@/lib/season/fixtures";
+import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type FixtureRow = { id: string; home_team: string; away_team: string; kickoff_at: string | null };
 
-export async function POST() {
+// Backfilling PRIOR_SEASON is what lets the projection engine use a
+// player's/team's own established rate from last season as a prior instead
+// of a generic league/position average -- see playerShotProfile.ts and
+// teamStrength.ts. Restricted to these two rather than an arbitrary string
+// since backfillFixtureMatchStats resolves BSD events by date, which only
+// makes sense for a season this app actually has fixtures (with kickoffs)
+// for.
+const BACKFILLABLE_SEASONS = [FIXTURES_SEASON, PRIOR_SEASON];
+
+export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -18,12 +27,19 @@ export async function POST() {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
+  const body = await request.json().catch(() => ({}));
+  const season = typeof body?.season === "string" && body.season ? body.season : FIXTURES_SEASON;
+
+  if (!BACKFILLABLE_SEASONS.includes(season)) {
+    return NextResponse.json({ success: false, message: `Unsupported season '${season}'` }, { status: 400 });
+  }
+
   const db = createAdminSupabaseClient() ?? supabase;
 
   const { data: fixtureRows, error: fixturesError } = await db
     .from("fixtures")
     .select("id, home_team, away_team, kickoff_at")
-    .eq("season", FIXTURES_SEASON);
+    .eq("season", season);
 
   if (fixturesError) {
     return NextResponse.json({ success: false, message: `Unable to load fixtures: ${fixturesError.message}` }, { status: 500 });
