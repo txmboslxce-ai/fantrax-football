@@ -243,6 +243,23 @@ function aggregatePlayerShots(shotmap: RawShot[], assistLookup: Map<string, numb
   for (const shot of shotmap) {
     if (shot.type === "goal" && ownGoalKeys.has(`${shot.player_id}:${shot.min}`)) continue;
 
+    // A single shot's xG is a probability -- it can never exceed 1. Seen
+    // live: an own-goal whose (player_id, minute) didn't match any goal
+    // incident (so the exclusion above missed it) carrying a synthetic
+    // xg_estimated value in the double digits, which blew one player's
+    // whole-season goal rate up by an order of magnitude. Rather than trust
+    // every own-goal minute lines up exactly with its shotmap entry, drop
+    // any shot whose xg is outside a valid probability's range outright --
+    // whatever's wrong with it, it isn't a real shot to aggregate.
+    if (!(shot.xg >= 0 && shot.xg <= 1)) {
+      console.warn(`[bsd] Dropping shot with out-of-range xg=${shot.xg} for player ${shot.player_id} (min ${shot.min})`);
+      continue;
+    }
+    if (shot.xgot != null && !(shot.xgot >= 0 && shot.xgot <= 1)) {
+      console.warn(`[bsd] Dropping shot with out-of-range xgot=${shot.xgot} for player ${shot.player_id} (min ${shot.min})`);
+      continue;
+    }
+
     const row = getOrCreate(shot.player_id, shot.home);
     row.shots += 1;
     row.xg += shot.xg;

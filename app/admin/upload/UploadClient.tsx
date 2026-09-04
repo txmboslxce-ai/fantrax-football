@@ -649,6 +649,7 @@ function FplSyncNowPanel() {
 
 function MatchStatsBackfillPanel() {
   const [season, setSeason] = useState(FIXTURES_SEASON);
+  const [force, setForce] = useState(false);
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [result, setResult] = useState<MatchStatsBackfillResponse | null>(null);
 
@@ -660,7 +661,7 @@ function MatchStatsBackfillPanel() {
       const response = await fetch("/api/admin/backfill-match-stats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ season }),
+        body: JSON.stringify({ season, force }),
       });
       setResult((await response.json()) as MatchStatsBackfillResponse);
     } catch (error) {
@@ -692,6 +693,10 @@ function MatchStatsBackfillPanel() {
             <option value={FIXTURES_SEASON}>{FIXTURES_SEASON} (current)</option>
             <option value={PRIOR_SEASON}>{PRIOR_SEASON} (prior)</option>
           </select>
+        </label>
+        <label className="mr-3 inline-flex items-center gap-2 text-sm text-brand-creamDark">
+          <input type="checkbox" checked={force} onChange={(event) => setForce(event.target.checked)} className="accent-brand-green" />
+          Force re-backfill (overwrite already-done fixtures -- use after a data-quality fix)
         </label>
         <button
           type="button"

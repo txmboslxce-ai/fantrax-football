@@ -29,6 +29,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const season = typeof body?.season === "string" && body.season ? body.season : FIXTURES_SEASON;
+  const force = body?.force === true;
 
   if (!BACKFILLABLE_SEASONS.includes(season)) {
     return NextResponse.json({ success: false, message: `Unsupported season '${season}'` }, { status: 400 });
@@ -52,7 +53,14 @@ export async function POST(request: Request) {
   }
 
   const alreadyBackfilled = new Set(((alreadyBackfilledRows ?? []) as Array<{ fixture_id: string }>).map((row) => row.fixture_id));
-  const fixtures = ((fixtureRows ?? []) as FixtureRow[]).filter((fixture) => !alreadyBackfilled.has(fixture.id));
+  // force re-processes every fixture regardless of alreadyBackfilled --
+  // both writes are upserts keyed on (fixture_id, ...), so this is just
+  // overwriting with freshly recomputed values (needed after a
+  // data-quality fix like the out-of-range xg guard in
+  // matchStatsBackfill.ts, since the bad values are already persisted from
+  // the first run and won't self-correct otherwise).
+  const allFixtures = (fixtureRows ?? []) as FixtureRow[];
+  const fixtures = force ? allFixtures : allFixtures.filter((fixture) => !alreadyBackfilled.has(fixture.id));
 
   const summary = { backfilled: 0, not_finished: 0, missing_kickoff: 0, no_bsd_match: 0, error: 0 };
   const errors: Array<{ fixtureId: string; message?: string }> = [];
