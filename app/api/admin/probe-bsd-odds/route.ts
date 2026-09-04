@@ -2,24 +2,34 @@ import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { bzzoiroGet } from "@/lib/bsd/client";
 import { findBsdEventId } from "@/lib/bsd/events";
+import { BSD_ABBREV_TO_TEAM_ID } from "@/lib/bsd/teams";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-// One-off diagnostic: nothing in this codebase has ever touched BSD's odds
-// data, so the actual endpoint path and response shape are unknown. Rather
-// than guess at expected-goals conversion math blind (or need the API
-// token pasted into chat again), this tries a handful of plausible paths
-// -- following the same /events/{id}/<resource>/ pattern already
-// established for stats/incidents/lineups -- using the server's already-
-// configured BZZOIRO_API_KEY, and returns whatever comes back (including
-// the error) for each so the real shape can be read off directly.
-function candidatePaths(eventId: number): string[] {
-  return [
-    `/events/${eventId}/odds/`,
-    `/events/${eventId}/consensus-odds/`,
-    `/events/${eventId}/consensus/`,
-    `/events/${eventId}/markets/`,
-    `/events/${eventId}/`,
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+// Confirmed live: GET /api/v2/odds/ -- a flat list endpoint like /events/
+// and /transfers/, not nested under an event. The filter param name and
+// response shape are still unknown, so this tries several plausible
+// variants (an id-style filter to a specific match, a team_id + date
+// window like /events/ and /transfers/ use, and an unfiltered call to see
+// the raw envelope/pagination shape) using the server's already-configured
+// BZZOIRO_API_KEY, and surfaces the raw response (or error) for each.
+function candidateRequests(
+  eventId: number,
+  homeTeamId: number | undefined,
+  dateFrom: string | undefined,
+  dateTo: string | undefined
+): Array<{ label: string; path: string; params: Record<string, string> }> {
+  const requests: Array<{ label: string; path: string; params: Record<string, string> }> = [
+    { label: "?event_id=<event>", path: "/odds/", params: { event_id: String(eventId) } },
+    { label: "?match_id=<event>", path: "/odds/", params: { match_id: String(eventId) } },
+    { label: "?id=<event>", path: "/odds/", params: { id: String(eventId) } },
+    { label: "(no params)", path: "/odds/", params: {} },
   ];
+  if (homeTeamId && dateFrom && dateTo) {
+    requests.push({ label: "?team_id=<home>&date_from&date_to", path: "/odds/", params: { team_id: String(homeTeamId), date_from: dateFrom, date_to: dateTo } });
+  }
+  return requests;
 }
 
 export async function POST(request: Request) {
@@ -36,9 +46,13 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   let eventId: number | null = typeof body?.eventId === "number" && Number.isInteger(body.eventId) ? body.eventId : null;
 
-  if (!eventId && body?.homeAbbrev && body?.awayAbbrev && body?.kickoffAt) {
+  const homeAbbrev: string | undefined = typeof body?.homeAbbrev === "string" ? body.homeAbbrev : undefined;
+  const awayAbbrev: string | undefined = typeof body?.awayAbbrev === "string" ? body.awayAbbrev : undefined;
+  const kickoffAt: string | undefined = typeof body?.kickoffAt === "string" ? body.kickoffAt : undefined;
+
+  if (!eventId && homeAbbrev && awayAbbrev && kickoffAt) {
     try {
-      eventId = await findBsdEventId({ homeAbbrev: body.homeAbbrev, awayAbbrev: body.awayAbbrev, kickoffAt: body.kickoffAt });
+      eventId = await findBsdEventId({ homeAbbrev, awayAbbrev, kickoffAt });
     } catch (error) {
       return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Failed to resolve event id" }, { status: 502 });
     }
@@ -51,14 +65,25 @@ export async function POST(request: Request) {
     );
   }
 
+  const homeTeamId = homeAbbrev ? BSD_ABBREV_TO_TEAM_ID[homeAbbrev] : undefined;
+  let dateFrom: string | undefined;
+  let dateTo: string | undefined;
+  if (kickoffAt) {
+    const kickoff = new Date(kickoffAt);
+    if (!Number.isNaN(kickoff.getTime())) {
+      dateFrom = new Date(kickoff.getTime() - ONE_DAY_MS).toISOString().slice(0, 10);
+      dateTo = new Date(kickoff.getTime() + ONE_DAY_MS).toISOString().slice(0, 10);
+    }
+  }
+
   const results: Array<{ path: string; ok: boolean; body: unknown }> = [];
 
-  for (const path of candidatePaths(eventId)) {
+  for (const req of candidateRequests(eventId, homeTeamId, dateFrom, dateTo)) {
     try {
-      const data = await bzzoiroGet<unknown>(path, {}, 0);
-      results.push({ path, ok: true, body: data });
+      const data = await bzzoiroGet<unknown>(req.path, req.params, 0);
+      results.push({ path: req.label, ok: true, body: data });
     } catch (error) {
-      results.push({ path, ok: false, body: error instanceof Error ? error.message : String(error) });
+      results.push({ path: req.label, ok: false, body: error instanceof Error ? error.message : String(error) });
     }
   }
 
