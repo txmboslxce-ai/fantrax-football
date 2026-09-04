@@ -118,6 +118,13 @@ type ResolveBsdTeamIdsResponse = {
   message?: string;
 };
 
+type ProbeBsdOddsResponse = {
+  success: boolean;
+  eventId?: number;
+  results?: Array<{ path: string; ok: boolean; body: unknown }>;
+  message?: string;
+};
+
 type PreviewRow = Record<string, string>;
 
 type CsvUploadCardProps = {
@@ -903,6 +910,107 @@ function ResolveBsdTeamIdsPanel() {
   );
 }
 
+function ProbeBsdOddsPanel() {
+  const [homeAbbrev, setHomeAbbrev] = useState("LIV");
+  const [awayAbbrev, setAwayAbbrev] = useState("IPS");
+  const [kickoffAt, setKickoffAt] = useState("");
+  const [isProbing, setIsProbing] = useState(false);
+  const [result, setResult] = useState<ProbeBsdOddsResponse | null>(null);
+
+  async function handleProbe() {
+    setIsProbing(true);
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/admin/probe-bsd-odds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ homeAbbrev, awayAbbrev, kickoffAt }),
+      });
+      setResult((await response.json()) as ProbeBsdOddsResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Probe failed.";
+      setResult({ success: false, message });
+    } finally {
+      setIsProbing(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-brand-green/40 bg-brand-green/10 p-6">
+      <h2 className="text-xl font-bold text-brand-cream">Probe BSD Odds</h2>
+      <p className="mt-2 text-sm text-brand-creamDark">
+        One-off diagnostic -- nothing in this app has ever read BSD&apos;s odds data, so the endpoint path and response shape
+        are unknown. Resolves the BSD event for the fixture below and tries a handful of plausible paths, showing the raw
+        response (or error) for each.
+      </p>
+
+      <div className="mt-5 flex flex-wrap items-end gap-3 rounded-lg border border-brand-cream/20 bg-brand-dark/40 p-4">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold uppercase tracking-wide text-brand-creamDark">Home team abbrev</span>
+          <input
+            type="text"
+            value={homeAbbrev}
+            onChange={(event) => setHomeAbbrev(event.target.value.toUpperCase())}
+            className="w-24 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-brand-cream focus:border-brand-green focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold uppercase tracking-wide text-brand-creamDark">Away team abbrev</span>
+          <input
+            type="text"
+            value={awayAbbrev}
+            onChange={(event) => setAwayAbbrev(event.target.value.toUpperCase())}
+            className="w-24 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-brand-cream focus:border-brand-green focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold uppercase tracking-wide text-brand-creamDark">Kickoff (any parseable date/time)</span>
+          <input
+            type="text"
+            placeholder="2026-09-06T14:00:00Z"
+            value={kickoffAt}
+            onChange={(event) => setKickoffAt(event.target.value)}
+            className="w-56 rounded border border-brand-cream/35 bg-brand-dark px-2 py-1.5 text-brand-cream focus:border-brand-green focus:outline-none"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => void handleProbe()}
+          disabled={isProbing}
+          className="rounded-md border border-brand-cream/30 bg-brand-dark px-4 py-2 font-semibold text-brand-cream transition-colors hover:bg-brand-greenLight disabled:opacity-60"
+        >
+          {isProbing ? "Probing..." : "Probe"}
+        </button>
+      </div>
+
+      {result ? (
+        <div className={`mt-5 rounded-lg border p-4 text-xs ${result.success ? "border-green-400/50 bg-green-950/25" : "border-red-400/50 bg-red-950/25"}`}>
+          {result.success && result.results ? (
+            <>
+              <p className="mb-2 text-sm font-semibold text-brand-cream">Event {result.eventId}</p>
+              <div className="space-y-3">
+                {result.results.map((row) => (
+                  <div key={row.path}>
+                    <p className={`font-semibold ${row.ok ? "text-emerald-300" : "text-red-300"}`}>
+                      {row.ok ? "OK" : "FAIL"} {row.path}
+                    </p>
+                    <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-brand-dark/60 p-2 text-brand-creamDark">
+                      {typeof row.body === "string" ? row.body : JSON.stringify(row.body, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p>{result.message ?? "Probe failed."}</p>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function AdpRefreshPanel() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [result, setResult] = useState<AdpRefreshResponse | null>(null);
@@ -1113,6 +1221,7 @@ export default function UploadClient({ defaultSeason, seasons }: { defaultSeason
         <RotowireSyncPanel />
         <MatchStatsBackfillPanel />
         <ResolveBsdTeamIdsPanel />
+        <ProbeBsdOddsPanel />
         <CsvUploadCard title="Upload Player Dump" type="player" defaultSeason={defaultSeason} />
         <CsvUploadCard title="Upload Keeper Dump" type="keeper" defaultSeason={defaultSeason} />
       </div>
