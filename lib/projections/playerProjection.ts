@@ -742,7 +742,19 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
           };
 
           const baseScore = player.position === "G" ? calcKeeperPts(formulaRow) : calcOutfielderPts(formulaRow);
-          return { statLine, projectedScore: round(baseScore + goalsAgainstPenalty) };
+          // The real formula only docks goals-against points from keepers
+          // (goals_against) and defenders (goals_against_outfield, gated by
+          // isDefender(...) inside calcOutfielderPts) -- midfielders and
+          // forwards get zero penalty for their team conceding. This
+          // Poisson-averaged add-back exists only to replace the zeroed-out
+          // goals_against/goals_against_outfield inputs above with a properly
+          // averaged value (see the comment on formulaRow), so it must be
+          // gated the same way those inputs are, or every midfielder and
+          // forward gets docked a penalty their position doesn't actually
+          // have -- confirmed live: it was silently costing every M/F on a
+          // leaky-defense team ~0.5-1.5 points regardless of their own play.
+          const goalsAgainstPenaltyForPosition = player.position === "D" || player.position === "G" ? goalsAgainstPenalty : 0;
+          return { statLine, projectedScore: round(baseScore + goalsAgainstPenaltyForPosition) };
         }
 
         // Starts and sub appearances get tracked separately (see
