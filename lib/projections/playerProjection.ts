@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { calcGoalsAgainstPts, calcKeeperPts, calcOutfielderPts } from "@/lib/csv/transform";
 import { computePlayerShotProfiles, type PlayerShotProfile } from "@/lib/projections/playerShotProfile";
 import { computeTeamStrengthRatings, type TeamStatKey, type TeamStrengthProfile } from "@/lib/projections/teamStrength";
-import { FIXTURES_SEASON } from "@/lib/season/fixtures";
+import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
 
 export type ProjectedStatLine = {
   goals: number;
@@ -144,6 +144,46 @@ function num(value: number | null): number {
   return value ?? 0;
 }
 
+function accumulateHistory(rows: PlayerGameweekRow[]): Map<string, HistoryTotals> {
+  const byPlayer = new Map<string, HistoryTotals>();
+  for (const row of rows) {
+    if (num(row.games_played) <= 0) continue;
+
+    let totals = byPlayer.get(row.player_id);
+    if (!totals) {
+      totals = zeroHistory();
+      byPlayer.set(row.player_id, totals);
+    }
+
+    totals.gamesPlayed += 1;
+    totals.minutes += num(row.minutes_played);
+    totals.goals += num(row.goals);
+    totals.assists += num(row.assists);
+    totals.keyPasses += num(row.key_passes);
+    totals.shotsOnTarget += num(row.shots_on_target);
+    totals.tacklesWon += num(row.tackles_won);
+    totals.interceptions += num(row.interceptions);
+    totals.clearances += num(row.clearances);
+    totals.dribblesSucceeded += num(row.dribbles_succeeded);
+    totals.blockedShots += num(row.blocked_shots);
+    totals.accurateCrosses += num(row.accurate_crosses);
+    totals.penaltiesDrawn += num(row.penalties_drawn);
+    totals.penaltiesMissed += num(row.penalties_missed);
+    totals.aerialsWon += num(row.aerials_won);
+    totals.dispossessed += num(row.dispossessed);
+    totals.yellowCards += num(row.yellow_cards);
+    totals.redCards += num(row.red_cards);
+    totals.ownGoals += num(row.own_goals);
+    totals.saves += num(row.saves);
+    totals.penaltySaves += num(row.penalty_saves);
+    totals.highClaims += num(row.high_claims);
+    totals.smothers += num(row.smothers);
+    totals.goalsAgainst += num(row.goals_against);
+    totals.goalsAgainstOutfield += num(row.goals_against_outfield);
+  }
+  return byPlayer;
+}
+
 // A handful of the ~20 scoring categories get a defensible opponent
 // adjustment from team_match_stats (see the opponentFactor(...) calls
 // below: shots on target, key passes via big chances conceded, crosses via
@@ -219,55 +259,27 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   // keeping only the players we need in memory avoids that entirely --
   // even a full season's worth of rows across the whole league is a few
   // thousand, trivial for a single query.
-  const { data: pgRows, error: pgError } = await supabase
-    .from("player_gameweeks")
-    .select(
-      "player_id, games_played, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield"
-    )
-    .eq("season", FIXTURES_SEASON)
-    .lt("gameweek", gameweek)
-    .limit(50000);
+  const PLAYER_GAMEWEEK_COLUMNS =
+    "player_id, games_played, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield";
+
+  const [{ data: pgRows, error: pgError }, { data: priorSeasonRows, error: priorSeasonError }] = await Promise.all([
+    supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", FIXTURES_SEASON).lt("gameweek", gameweek).limit(50000),
+    // Last season's rows for the same player -- used below as a personalized
+    // prior (their own established per-90 rate) in place of a generic
+    // position average, for whoever has one. Not filtered by player_id for
+    // the same URL-length reason as above.
+    supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", PRIOR_SEASON).limit(50000),
+  ]);
 
   if (pgError) {
     throw new Error(`Unable to load player_gameweeks: ${pgError.message}`);
   }
-
-  const historyByPlayer = new Map<string, HistoryTotals>();
-  for (const row of (pgRows ?? []) as PlayerGameweekRow[]) {
-    if (num(row.games_played) <= 0) continue;
-
-    let totals = historyByPlayer.get(row.player_id);
-    if (!totals) {
-      totals = zeroHistory();
-      historyByPlayer.set(row.player_id, totals);
-    }
-
-    totals.gamesPlayed += 1;
-    totals.minutes += num(row.minutes_played);
-    totals.goals += num(row.goals);
-    totals.assists += num(row.assists);
-    totals.keyPasses += num(row.key_passes);
-    totals.shotsOnTarget += num(row.shots_on_target);
-    totals.tacklesWon += num(row.tackles_won);
-    totals.interceptions += num(row.interceptions);
-    totals.clearances += num(row.clearances);
-    totals.dribblesSucceeded += num(row.dribbles_succeeded);
-    totals.blockedShots += num(row.blocked_shots);
-    totals.accurateCrosses += num(row.accurate_crosses);
-    totals.penaltiesDrawn += num(row.penalties_drawn);
-    totals.penaltiesMissed += num(row.penalties_missed);
-    totals.aerialsWon += num(row.aerials_won);
-    totals.dispossessed += num(row.dispossessed);
-    totals.yellowCards += num(row.yellow_cards);
-    totals.redCards += num(row.red_cards);
-    totals.ownGoals += num(row.own_goals);
-    totals.saves += num(row.saves);
-    totals.penaltySaves += num(row.penalty_saves);
-    totals.highClaims += num(row.high_claims);
-    totals.smothers += num(row.smothers);
-    totals.goalsAgainst += num(row.goals_against);
-    totals.goalsAgainstOutfield += num(row.goals_against_outfield);
+  if (priorSeasonError) {
+    throw new Error(`Unable to load prior-season player_gameweeks: ${priorSeasonError.message}`);
   }
+
+  const historyByPlayer = accumulateHistory((pgRows ?? []) as PlayerGameweekRow[]);
+  const priorSeasonByPlayer = accumulateHistory((priorSeasonRows ?? []) as PlayerGameweekRow[]);
 
   const shotProfileByFantraxId = new Map<string, PlayerShotProfile>();
   for (const profile of shotProfiles) {
@@ -284,11 +296,16 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   // categories sum into one player's score simultaneously, that noise
   // compounds into exactly the kind of standout-player blowup a naive
   // stat-line model would produce -- the opposite of the edge this is
-  // supposed to provide. Shrinking each player's per-90 rate toward their
-  // position's league-average per-90 rate, weighted by PRIOR_MINUTES of
-  // assumed average performance, tempers that without waiting for a full
-  // season to accumulate. A starting value (five matches' worth) to revisit
-  // once there's more of a season to check calibration against.
+  // supposed to provide. Shrinking each player's per-90 rate toward a prior
+  // mean, weighted by PRIOR_MINUTES of assumed average performance, tempers
+  // that without waiting for a full season to accumulate. That prior mean is
+  // the player's own rate from last season (PRIOR_SEASON) when they have
+  // one -- a far more informative starting point than a generic position
+  // average, and it fades out on its own as this season's minutes overtake
+  // PRIOR_MINUTES -- falling back to the position's league-average per-90
+  // only for players with no prior-season row (promoted-team signings,
+  // players new to the league). A starting value (five matches' worth) to
+  // revisit once there's more of a season to check calibration against.
   const PRIOR_MINUTES = 450;
 
   const STAT_KEYS = [
@@ -340,9 +357,10 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
     return minutes > 0 ? (positionStatTotals[position][key] / minutes) * 90 : 0;
   }
 
-  function shrunkPer90(history: HistoryTotals, key: (typeof STAT_KEYS)[number], position: string): number {
-    const avg = positionAvgPer90(position, key);
-    return (history[key] * 90 + PRIOR_MINUTES * avg) / (history.minutes + PRIOR_MINUTES);
+  function shrunkPer90(history: HistoryTotals, key: (typeof STAT_KEYS)[number], position: string, priorSeason: HistoryTotals | undefined): number {
+    const priorMean =
+      priorSeason && priorSeason.minutes > 0 ? (priorSeason[key] * 90) / priorSeason.minutes : positionAvgPer90(position, key);
+    return (history[key] * 90 + PRIOR_MINUTES * priorMean) / (history.minutes + PRIOR_MINUTES);
   }
 
   function opponentFactor(team: TeamStrengthProfile | undefined, key: TeamStatKey): number {
@@ -370,51 +388,61 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
       for (const player of players.filter((p) => p.team === teamAbbrev)) {
         const history = historyByPlayer.get(player.id);
         if (!history || history.gamesPlayed === 0 || history.minutes === 0) continue;
+        const priorSeason = priorSeasonByPlayer.get(player.id);
 
         const expectedMinutes = history.minutes / history.gamesPlayed;
         const minutesScale = expectedMinutes / 90;
 
         const shotProfile = shotProfileByFantraxId.get(player.id);
-        const goalsRatePer90 = shotProfile ? shotProfile.projectedGoalRatePer90 : shrunkPer90(history, "goals", player.position);
+        const goalsRatePer90 = shotProfile
+          ? shotProfile.projectedGoalRatePer90
+          : shrunkPer90(history, "goals", player.position, priorSeason);
         const shotsOnTargetRatePer90 = shotProfile
           ? shotProfile.totalShotsOnTarget * (90 / history.minutes)
-          : shrunkPer90(history, "shotsOnTarget", player.position);
+          : shrunkPer90(history, "shotsOnTarget", player.position, priorSeason);
 
         const projectedGoals = goalsRatePer90 * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
         const projectedShotsOnTarget = shotsOnTargetRatePer90 * opponentFactor(opponentStrength, "shots_on_target") * minutesScale;
         const projectedKeyPasses =
-          shrunkPer90(history, "keyPasses", player.position) * opponentFactor(opponentStrength, "big_chances") * minutesScale;
+          shrunkPer90(history, "keyPasses", player.position, priorSeason) *
+          opponentFactor(opponentStrength, "big_chances") *
+          minutesScale;
         const projectedCrosses =
-          shrunkPer90(history, "accurateCrosses", player.position) *
+          shrunkPer90(history, "accurateCrosses", player.position, priorSeason) *
           opponentFactor(opponentStrength, "touches_in_penalty_area") *
           minutesScale;
         const projectedAssists =
-          shrunkPer90(history, "assists", player.position) * opponentFactor(opponentStrength, "expected_goals") * minutesScale;
+          shrunkPer90(history, "assists", player.position, priorSeason) *
+          opponentFactor(opponentStrength, "expected_goals") *
+          minutesScale;
 
         // No defensible opponent signal for these (see OPPONENT_FACTOR_KEY
         // comment) -- projected from the player's own rate, shrunk toward
-        // their position's league-average per-90 (see PRIOR_MINUTES above).
-        const projectedTacklesWon = shrunkPer90(history, "tacklesWon", player.position) * minutesScale;
-        const projectedInterceptions = shrunkPer90(history, "interceptions", player.position) * minutesScale;
-        const projectedClearances = shrunkPer90(history, "clearances", player.position) * minutesScale;
-        const projectedDribbles = shrunkPer90(history, "dribblesSucceeded", player.position) * minutesScale;
-        const projectedBlockedShots = shrunkPer90(history, "blockedShots", player.position) * minutesScale;
-        const projectedPenaltiesDrawn = shrunkPer90(history, "penaltiesDrawn", player.position) * minutesScale;
-        const projectedPenaltiesMissed = shrunkPer90(history, "penaltiesMissed", player.position) * minutesScale;
-        const projectedAerials = shrunkPer90(history, "aerialsWon", player.position) * minutesScale;
-        const projectedDispossessed = shrunkPer90(history, "dispossessed", player.position) * minutesScale;
-        const projectedYellows = shrunkPer90(history, "yellowCards", player.position) * minutesScale;
-        const projectedReds = shrunkPer90(history, "redCards", player.position) * minutesScale;
-        const projectedOwnGoals = shrunkPer90(history, "ownGoals", player.position) * minutesScale;
+        // their prior-season rate (or position average -- see PRIOR_MINUTES
+        // above).
+        const projectedTacklesWon = shrunkPer90(history, "tacklesWon", player.position, priorSeason) * minutesScale;
+        const projectedInterceptions = shrunkPer90(history, "interceptions", player.position, priorSeason) * minutesScale;
+        const projectedClearances = shrunkPer90(history, "clearances", player.position, priorSeason) * minutesScale;
+        const projectedDribbles = shrunkPer90(history, "dribblesSucceeded", player.position, priorSeason) * minutesScale;
+        const projectedBlockedShots = shrunkPer90(history, "blockedShots", player.position, priorSeason) * minutesScale;
+        const projectedPenaltiesDrawn = shrunkPer90(history, "penaltiesDrawn", player.position, priorSeason) * minutesScale;
+        const projectedPenaltiesMissed = shrunkPer90(history, "penaltiesMissed", player.position, priorSeason) * minutesScale;
+        const projectedAerials = shrunkPer90(history, "aerialsWon", player.position, priorSeason) * minutesScale;
+        const projectedDispossessed = shrunkPer90(history, "dispossessed", player.position, priorSeason) * minutesScale;
+        const projectedYellows = shrunkPer90(history, "yellowCards", player.position, priorSeason) * minutesScale;
+        const projectedReds = shrunkPer90(history, "redCards", player.position, priorSeason) * minutesScale;
+        const projectedOwnGoals = shrunkPer90(history, "ownGoals", player.position, priorSeason) * minutesScale;
 
         // Shots faced (and so saves) scale with how much the opponent
         // attacks; goals_against/goals_against_outfield use the same
         // Poisson expectation computed once per team above.
         const projectedSaves =
-          shrunkPer90(history, "saves", player.position) * attackFactor(opponentStrength, "shots_on_target") * minutesScale;
-        const projectedPenaltySaves = shrunkPer90(history, "penaltySaves", player.position) * minutesScale;
-        const projectedHighClaims = shrunkPer90(history, "highClaims", player.position) * minutesScale;
-        const projectedSmothers = shrunkPer90(history, "smothers", player.position) * minutesScale;
+          shrunkPer90(history, "saves", player.position, priorSeason) *
+          attackFactor(opponentStrength, "shots_on_target") *
+          minutesScale;
+        const projectedPenaltySaves = shrunkPer90(history, "penaltySaves", player.position, priorSeason) * minutesScale;
+        const projectedHighClaims = shrunkPer90(history, "highClaims", player.position, priorSeason) * minutesScale;
+        const projectedSmothers = shrunkPer90(history, "smothers", player.position, priorSeason) * minutesScale;
 
         const statLine: ProjectedStatLine = {
           goals: round(projectedGoals),
