@@ -6,16 +6,29 @@ import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { matchCurrentPremierLeaguePlayers } from "@/lib/bsd/matchPlayers";
 import type { BsdPlayer } from "@/lib/bsd/players";
 import { resolveUnmappedShotPlayers } from "@/lib/bsd/resolveUnmappedShotPlayers";
+import { resolveUnmappedTransferPlayers } from "@/lib/bsd/resolveUnmappedTransferPlayers";
 
 // matchCurrentPremierLeaguePlayers only offers candidates off BSD's live
-// current-team roster fetch, which misses anyone that roster hasn't caught
-// up on yet (a very recent transfer) even though they already have real
-// shot data on file (see resolveUnmappedShotPlayers). Merged in here so
-// they're still reachable for manual mapping instead of just missing.
-async function withShotDerivedCandidates(db: SupabaseClient, unmatchedBsdPlayers: BsdPlayer[]): Promise<BsdPlayer[]> {
-  const shotDerived = await resolveUnmappedShotPlayers(db).catch(() => [] as BsdPlayer[]);
+// current-team roster fetch. Two more sources catch what that one misses,
+// each lagging behind a recent transfer in a different way: shot data (a
+// player who's already appeared in a backfilled match) and BSD's own
+// transfer feed (the earliest signal of all three -- it's what records the
+// move in the first place, before either the player's played a match here
+// or BSD's roster listing has caught up). Merged in so they're all still
+// reachable for manual mapping instead of just missing.
+async function withExtraCandidates(db: SupabaseClient, unmatchedBsdPlayers: BsdPlayer[]): Promise<BsdPlayer[]> {
+  const [shotDerived, transferDerived] = await Promise.all([
+    resolveUnmappedShotPlayers(db).catch(() => [] as BsdPlayer[]),
+    resolveUnmappedTransferPlayers(db).catch(() => [] as BsdPlayer[]),
+  ]);
   const seen = new Set(unmatchedBsdPlayers.map((player) => player.id));
-  return [...unmatchedBsdPlayers, ...shotDerived.filter((player) => !seen.has(player.id))];
+  const merged = [...unmatchedBsdPlayers];
+  for (const player of [...shotDerived, ...transferDerived]) {
+    if (seen.has(player.id)) continue;
+    seen.add(player.id);
+    merged.push(player);
+  }
+  return merged;
 }
 
 async function requireAdmin() {
@@ -42,7 +55,7 @@ export async function GET() {
 
   try {
     const { matches, unmatchedBsdPlayers, unmatchedFantraxPlayers } = await matchCurrentPremierLeaguePlayers(db);
-    const allUnmatchedBsdPlayers = await withShotDerivedCandidates(db, unmatchedBsdPlayers);
+    const allUnmatchedBsdPlayers = await withExtraCandidates(db, unmatchedBsdPlayers);
     return NextResponse.json({ pendingAutoMatches: matches.length, unmatchedBsdPlayers: allUnmatchedBsdPlayers, unmatchedFantraxPlayers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to compute BSD player matches";
@@ -86,7 +99,7 @@ export async function POST(request: Request) {
       updatedCount += 1;
     }
 
-    const allUnmatchedBsdPlayers = await withShotDerivedCandidates(db, result.unmatchedBsdPlayers);
+    const allUnmatchedBsdPlayers = await withExtraCandidates(db, result.unmatchedBsdPlayers);
 
     return NextResponse.json({
       updatedCount,

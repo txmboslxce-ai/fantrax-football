@@ -40,6 +40,10 @@ type BzzoiroTransferListResponse = {
   results: BzzoiroTransferRow[];
 };
 
+// Shared with the /admin/bsd-player-mapping candidate list (see
+// resolveUnmappedTransferPlayers) so both draw from the same window.
+export const TRANSFER_WINDOW_START = "2026-06-01";
+
 const MAX_TRANSFERS_PER_TEAM = 500;
 
 // BSD's own transfer feed only refreshes about once a day, so polling more

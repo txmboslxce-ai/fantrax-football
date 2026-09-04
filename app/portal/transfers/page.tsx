@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { fetchPremierLeagueTransfers, type Transfer } from "@/lib/transfers/bzzoiro";
+import { fetchPremierLeagueTransfers, TRANSFER_WINDOW_START, type Transfer } from "@/lib/transfers/bzzoiro";
 import { fetchBsdPlayerPositions } from "@/lib/bsd/players";
 import { BSD_TEAM_ID_TO_ABBREV } from "@/lib/bsd/teams";
 import { positionBadgeClass } from "@/lib/portal/positionBadge";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-const TRANSFER_WINDOW_START = "2026-06-01";
 const PAGE_SIZE = 25;
 
 type TransfersPageProps = {
