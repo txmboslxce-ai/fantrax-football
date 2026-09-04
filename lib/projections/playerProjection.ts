@@ -494,11 +494,22 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   }
 
   function shrunkPer90(history: HistoryTotals, key: (typeof STAT_KEYS)[number], position: string, priorSeason: HistoryTotals | undefined): number {
-    const priorMean =
-      priorSeason && priorSeason.minutes >= MIN_SAMPLE_MINUTES
-        ? (priorSeason[key] * 90) / priorSeason.minutes
-        : positionAvgPer90(position, key);
-    return (history[key] * 90 + PRIOR_MINUTES * priorMean) / (history.minutes + PRIOR_MINUTES);
+    const hasOwnPrior = priorSeason != null && priorSeason.minutes >= MIN_SAMPLE_MINUTES;
+    const priorMean = hasOwnPrior ? (priorSeason![key] * 90) / priorSeason!.minutes : positionAvgPer90(position, key);
+    // A player's own prior-season rate earns trust proportional to how much
+    // of it we actually have -- a full half-season of established form
+    // should heavily anchor the projection even through a slow start, fading
+    // out only as *this* season's own minutes grow to match it, not on a
+    // fixed timetable. Confirmed live: the previous flat PRIOR_MINUTES
+    // weight here gave a proven full-half-season performer the exact same
+    // trust as someone who had barely crossed MIN_SAMPLE_MINUTES, diluting
+    // well-established players toward a mediocre early-season sample far
+    // faster than made sense. The generic position-average fallback (for a
+    // player with no personal prior at all) keeps the flat PRIOR_MINUTES
+    // weight, since that average is backed by the whole league regardless of
+    // this one player's own sample size.
+    const priorWeight = hasOwnPrior ? priorSeason!.minutes : PRIOR_MINUTES;
+    return (history[key] * 90 + priorWeight * priorMean) / (history.minutes + priorWeight);
   }
 
   function opponentFactor(team: TeamStrengthProfile | undefined, key: TeamStatKey): number {

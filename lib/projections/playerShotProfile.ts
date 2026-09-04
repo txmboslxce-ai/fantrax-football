@@ -17,9 +17,10 @@ export type PlayerShotProfile = {
   totalXg: number;
   totalXgot: number;
   // Volume: how often they shoot, and how often it's on target. Blended
-  // with the player's own PRIOR_SEASON rate (see PRIOR_MINUTES below) when
-  // they have one, so a couple of games this season isn't extrapolated at
-  // full weight -- fades toward this-season-only as those minutes add up.
+  // with the player's own PRIOR_SEASON rate (see blendPer90 below) when they
+  // have one, weighted by that prior's own minutes so a couple of games this
+  // season isn't extrapolated at full weight -- fades toward this-season-only
+  // only as this season's minutes grow to match the prior's.
   shotsPer90: number;
   shotsOnTargetPer90: number;
   // Quality: how good the chances they take are, independent of volume.
@@ -65,22 +66,16 @@ type PlayerGameweekRow = { player_id: string; gameweek: number; minutes_played: 
 // season to check calibration against.
 const PRIOR_XG = 8;
 
-// Same idea, in minutes, for the volume rates (shotsPer90/xgPer90/etc):
-// weight given to a player's own PRIOR_SEASON per-90 rate, fading out as
-// this season's own minutes accumulate past it. See PRIOR_MINUTES in
-// playerProjection.ts, which this mirrors.
-const PRIOR_MINUTES = 450;
-
 // A per-90 rate computed from a tiny minutes sample is extreme by
 // construction -- one shot in a 1-minute injury-time cameo extrapolates to
 // dozens of "xG per 90" despite the underlying shot being perfectly
 // ordinary. Confirmed live: exactly this, from a PRIOR_SEASON row with only
 // a couple of minutes attached, blew a defender's projected goal rate up to
-// double digits even after PRIOR_MINUTES-weighting -- the shrinkage weight
-// only controls how much the prior counts for, it doesn't cap how extreme
-// the prior's own rate can be before that weighting is applied. Below this
-// many minutes, a sample isn't trusted as a per-90 rate at all, prior or
-// current-season.
+// double digits even after weighting by that same tiny minutes figure -- the
+// shrinkage weight only controls how much the prior counts for, it doesn't
+// cap how extreme the prior's own rate can be before that weighting is
+// applied. Below this many minutes, a sample isn't trusted as a per-90 rate
+// at all, prior or current-season.
 const MIN_SAMPLE_MINUTES = 90;
 
 type Accum = {
@@ -139,12 +134,18 @@ function aggregateShotRows(
 // that, and this season's own sample gets the same floor rather than
 // extrapolating from a cameo just because there's no prior to compare it
 // against.
+//
+// The prior's weight in the blend is its own actual minutes, not a flat
+// constant: a full half-season of established form should heavily anchor
+// the projection through a slow start, fading only as this season's own
+// minutes grow to match it -- see the identical reasoning on shrunkPer90 in
+// playerProjection.ts, which this mirrors.
 function blendPer90(thisSeasonTotal: number, thisSeasonMinutes: number, priorSeasonTotal: number, priorSeasonMinutes: number): number {
   if (priorSeasonMinutes < MIN_SAMPLE_MINUTES) {
     return thisSeasonMinutes >= MIN_SAMPLE_MINUTES ? (thisSeasonTotal * 90) / thisSeasonMinutes : 0;
   }
   const priorPer90 = (priorSeasonTotal * 90) / priorSeasonMinutes;
-  return (thisSeasonTotal * 90 + PRIOR_MINUTES * priorPer90) / (thisSeasonMinutes + PRIOR_MINUTES);
+  return (thisSeasonTotal * 90 + priorSeasonMinutes * priorPer90) / (thisSeasonMinutes + priorSeasonMinutes);
 }
 
 export async function computePlayerShotProfiles(supabase: SupabaseClient): Promise<{ profiles: PlayerShotProfile[]; unmappedBsdPlayerIds: number[] }> {
