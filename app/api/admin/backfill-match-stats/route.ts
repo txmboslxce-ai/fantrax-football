@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   const alreadyBackfilled = new Set(((alreadyBackfilledRows ?? []) as Array<{ fixture_id: string }>).map((row) => row.fixture_id));
   const fixtures = ((fixtureRows ?? []) as FixtureRow[]).filter((fixture) => !alreadyBackfilled.has(fixture.id));
 
-  const summary = { backfilled: 0, not_finished: 0, no_bsd_match: 0, error: 0 };
+  const summary = { backfilled: 0, not_finished: 0, missing_kickoff: 0, no_bsd_match: 0, error: 0 };
   const errors: Array<{ fixtureId: string; message?: string }> = [];
 
   for (const fixture of fixtures) {

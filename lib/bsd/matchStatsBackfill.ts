@@ -233,14 +233,23 @@ function aggregatePlayerShots(shotmap: RawShot[], assistLookup: Map<string, numb
   return byPlayer;
 }
 
-export type BackfillResult = { fixtureId: string; status: "backfilled" | "not_finished" | "no_bsd_match" | "error"; message?: string };
+export type BackfillResult = {
+  fixtureId: string;
+  // missing_kickoff is split out from no_bsd_match: the same underlying
+  // resolveBsdEventForFixture lookup never even runs without a kickoff
+  // time, which is a data-completeness problem (the fixture row needs a
+  // kickoff_at) rather than "BSD doesn't have this match" -- worth telling
+  // apart when a whole season comes back empty.
+  status: "backfilled" | "not_finished" | "missing_kickoff" | "no_bsd_match" | "error";
+  message?: string;
+};
 
 export async function backfillFixtureMatchStats(
   db: SupabaseClient,
   fixture: { id: string; homeAbbrev: string; awayAbbrev: string; kickoffAt: string | null }
 ): Promise<BackfillResult> {
   if (!fixture.kickoffAt) {
-    return { fixtureId: fixture.id, status: "no_bsd_match", message: "No kickoff time" };
+    return { fixtureId: fixture.id, status: "missing_kickoff", message: "No kickoff time" };
   }
 
   let event: RawEventRow | null;

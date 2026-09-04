@@ -102,7 +102,7 @@ type MatchStatsBackfillResponse = {
   totalFixtures?: number;
   alreadyBackfilled?: number;
   attempted?: number;
-  summary?: { backfilled: number; not_finished: number; no_bsd_match: number; error: number };
+  summary?: { backfilled: number; not_finished: number; missing_kickoff: number; no_bsd_match: number; error: number };
   errors?: Array<{ fixtureId: string; message?: string }>;
   message?: string;
 };
@@ -703,7 +703,8 @@ function MatchStatsBackfillPanel() {
                   {result.summary?.backfilled ?? 0} fixtures backfilled ({result.attempted ?? 0} attempted, {result.alreadyBackfilled ?? 0} already done of {result.totalFixtures ?? 0} total).
                 </p>
                 <p className="mt-1 text-brand-creamDark">
-                  Not finished yet: {result.summary?.not_finished ?? 0}. No BSD match found: {result.summary?.no_bsd_match ?? 0}. Errors: {result.summary?.error ?? 0}.
+                  Not finished yet: {result.summary?.not_finished ?? 0}. Missing kickoff time: {result.summary?.missing_kickoff ?? 0}. No
+                  BSD match found: {result.summary?.no_bsd_match ?? 0}. Errors: {result.summary?.error ?? 0}.
                 </p>
                 {result.errors && result.errors.length > 0 ? (
                   <ul className="mt-2 space-y-0.5 text-xs text-red-300">
