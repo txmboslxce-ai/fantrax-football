@@ -379,6 +379,19 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   // revisit once there's more of a season to check calibration against.
   const PRIOR_MINUTES = 450;
 
+  // A per-90 rate computed from a tiny minutes sample is extreme by
+  // construction, independent of anything else going on: one clearance in
+  // a 2-minute cameo is a real event, but "clearances per 90" from it is
+  // nonsense, and PRIOR_MINUTES-weighting doesn't fix that -- it only
+  // controls how much the prior counts for once computed, not how extreme
+  // the prior's own rate can be beforehand. Confirmed live: exactly this,
+  // from a PRIOR_SEASON row with only a couple of minutes attached, is what
+  // blew a defender's projected goal rate into the double digits (see the
+  // identical guard in playerShotProfile.ts, which hit the same bug on the
+  // BSD-shot-derived rates). Below this many minutes, a sample isn't
+  // trusted as a per-90 rate at all.
+  const MIN_SAMPLE_MINUTES = 90;
+
   const STAT_KEYS = [
     "goals",
     "assists",
@@ -430,7 +443,9 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
 
   function shrunkPer90(history: HistoryTotals, key: (typeof STAT_KEYS)[number], position: string, priorSeason: HistoryTotals | undefined): number {
     const priorMean =
-      priorSeason && priorSeason.minutes > 0 ? (priorSeason[key] * 90) / priorSeason.minutes : positionAvgPer90(position, key);
+      priorSeason && priorSeason.minutes >= MIN_SAMPLE_MINUTES
+        ? (priorSeason[key] * 90) / priorSeason.minutes
+        : positionAvgPer90(position, key);
     return (history[key] * 90 + PRIOR_MINUTES * priorMean) / (history.minutes + PRIOR_MINUTES);
   }
 

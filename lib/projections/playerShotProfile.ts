@@ -71,6 +71,18 @@ const PRIOR_XG = 8;
 // playerProjection.ts, which this mirrors.
 const PRIOR_MINUTES = 450;
 
+// A per-90 rate computed from a tiny minutes sample is extreme by
+// construction -- one shot in a 1-minute injury-time cameo extrapolates to
+// dozens of "xG per 90" despite the underlying shot being perfectly
+// ordinary. Confirmed live: exactly this, from a PRIOR_SEASON row with only
+// a couple of minutes attached, blew a defender's projected goal rate up to
+// double digits even after PRIOR_MINUTES-weighting -- the shrinkage weight
+// only controls how much the prior counts for, it doesn't cap how extreme
+// the prior's own rate can be before that weighting is applied. Below this
+// many minutes, a sample isn't trusted as a per-90 rate at all, prior or
+// current-season.
+const MIN_SAMPLE_MINUTES = 90;
+
 type Accum = {
   player: PlayerRow;
   matches: number;
@@ -118,14 +130,18 @@ function aggregateShotRows(
 }
 
 // Weighted blend of this season's per-90 rate toward the player's own
-// PRIOR_SEASON per-90 rate (when they have minutes there), same pattern as
-// shrunkPer90 in playerProjection.ts. Falls back to the raw this-season
-// rate, unshrunk, for a player with no prior-season data at all (a new
-// signing or someone promoted up with their club) -- there's no league
-// average baked in here to fall back to further than that.
+// PRIOR_SEASON per-90 rate (when they have a trustworthy sample of minutes
+// there -- see MIN_SAMPLE_MINUTES), same pattern as shrunkPer90 in
+// playerProjection.ts. Falls back to the raw this-season rate, unshrunk,
+// for a player with no usable prior-season data (a new signing, someone
+// promoted up with their club, or a prior-season sample too thin to trust)
+// -- there's no league average baked in here to fall back to further than
+// that, and this season's own sample gets the same floor rather than
+// extrapolating from a cameo just because there's no prior to compare it
+// against.
 function blendPer90(thisSeasonTotal: number, thisSeasonMinutes: number, priorSeasonTotal: number, priorSeasonMinutes: number): number {
-  if (priorSeasonMinutes <= 0) {
-    return thisSeasonMinutes > 0 ? (thisSeasonTotal * 90) / thisSeasonMinutes : 0;
+  if (priorSeasonMinutes < MIN_SAMPLE_MINUTES) {
+    return thisSeasonMinutes >= MIN_SAMPLE_MINUTES ? (thisSeasonTotal * 90) / thisSeasonMinutes : 0;
   }
   const priorPer90 = (priorSeasonTotal * 90) / priorSeasonMinutes;
   return (thisSeasonTotal * 90 + PRIOR_MINUTES * priorPer90) / (thisSeasonMinutes + PRIOR_MINUTES);
