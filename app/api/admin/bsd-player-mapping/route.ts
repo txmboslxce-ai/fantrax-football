@@ -1,8 +1,22 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { matchCurrentPremierLeaguePlayers } from "@/lib/bsd/matchPlayers";
+import type { BsdPlayer } from "@/lib/bsd/players";
+import { resolveUnmappedShotPlayers } from "@/lib/bsd/resolveUnmappedShotPlayers";
+
+// matchCurrentPremierLeaguePlayers only offers candidates off BSD's live
+// current-team roster fetch, which misses anyone that roster hasn't caught
+// up on yet (a very recent transfer) even though they already have real
+// shot data on file (see resolveUnmappedShotPlayers). Merged in here so
+// they're still reachable for manual mapping instead of just missing.
+async function withShotDerivedCandidates(db: SupabaseClient, unmatchedBsdPlayers: BsdPlayer[]): Promise<BsdPlayer[]> {
+  const shotDerived = await resolveUnmappedShotPlayers(db).catch(() => [] as BsdPlayer[]);
+  const seen = new Set(unmatchedBsdPlayers.map((player) => player.id));
+  return [...unmatchedBsdPlayers, ...shotDerived.filter((player) => !seen.has(player.id))];
+}
 
 async function requireAdmin() {
   const supabase = await createServerSupabaseClient();
@@ -28,7 +42,8 @@ export async function GET() {
 
   try {
     const { matches, unmatchedBsdPlayers, unmatchedFantraxPlayers } = await matchCurrentPremierLeaguePlayers(db);
-    return NextResponse.json({ pendingAutoMatches: matches.length, unmatchedBsdPlayers, unmatchedFantraxPlayers });
+    const allUnmatchedBsdPlayers = await withShotDerivedCandidates(db, unmatchedBsdPlayers);
+    return NextResponse.json({ pendingAutoMatches: matches.length, unmatchedBsdPlayers: allUnmatchedBsdPlayers, unmatchedFantraxPlayers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to compute BSD player matches";
     return NextResponse.json({ message }, { status: 502 });
@@ -71,9 +86,11 @@ export async function POST(request: Request) {
       updatedCount += 1;
     }
 
+    const allUnmatchedBsdPlayers = await withShotDerivedCandidates(db, result.unmatchedBsdPlayers);
+
     return NextResponse.json({
       updatedCount,
-      unmatchedBsdPlayers: result.unmatchedBsdPlayers,
+      unmatchedBsdPlayers: allUnmatchedBsdPlayers,
       unmatchedFantraxPlayers: result.unmatchedFantraxPlayers,
     });
   }
