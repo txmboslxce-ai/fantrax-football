@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 
 export type PlayerShotProfile = {
   fantraxId: string;
@@ -149,15 +150,16 @@ function blendPer90(thisSeasonTotal: number, thisSeasonMinutes: number, priorSea
 }
 
 export async function computePlayerShotProfiles(supabase: SupabaseClient): Promise<{ profiles: PlayerShotProfile[]; unmappedBsdPlayerIds: number[] }> {
-  const { data: shotRows, error: shotError } = await supabase
-    .from("player_match_shot_stats")
-    .select("bsd_player_id, fixture_id, shots, shots_on_target, goals, assists, xg, xgot");
+  // Two full seasons' worth of per-match shot rows is well past a single
+  // request's row cap -- see fetchAllRows for why this can't just be a
+  // bigger .limit().
+  const rows = await fetchAllRows<ShotStatsRow>((from, to) =>
+    supabase
+      .from("player_match_shot_stats")
+      .select("bsd_player_id, fixture_id, shots, shots_on_target, goals, assists, xg, xgot")
+      .range(from, to)
+  );
 
-  if (shotError) {
-    throw new Error(`Unable to load player_match_shot_stats: ${shotError.message}`);
-  }
-
-  const rows = (shotRows ?? []) as ShotStatsRow[];
   if (rows.length === 0) {
     return { profiles: [], unmappedBsdPlayerIds: [] };
   }
@@ -208,25 +210,28 @@ export async function computePlayerShotProfiles(supabase: SupabaseClient): Promi
   // backfilled through the season, and an .in() filter that long risks the
   // same URL-length "Bad Request" hit in the projection engine's own
   // player_gameweeks query (see the comment there) -- filtering by
-  // season/gameweek alone and keeping what's needed in memory sidesteps it
-  // for a trivial extra row count.
+  // season/gameweek alone and keeping what's needed in memory sidesteps it.
+  // A full season's worth of rows across the whole league is comfortably
+  // into five figures though, past whatever single-request row cap
+  // Supabase/PostgREST enforces regardless of an explicit .limit() --
+  // confirmed live: it was silently dropping some players' prior-season
+  // rows entirely with no error, so fetchAllRows pages through with
+  // .range() instead.
   async function fetchMinutes(season: string): Promise<Map<string, number>> {
     const gameweeks = Array.from(gameweeksBySeason.get(season) ?? []);
     if (gameweeks.length === 0) return new Map();
 
-    const { data, error } = await supabase
-      .from("player_gameweeks")
-      .select("player_id, gameweek, minutes_played, games_played")
-      .eq("season", season)
-      .in("gameweek", gameweeks)
-      .limit(50000);
-
-    if (error) {
-      throw new Error(`Unable to load player_gameweeks (${season}): ${error.message}`);
-    }
+    const rows = await fetchAllRows<PlayerGameweekRow>((from, to) =>
+      supabase
+        .from("player_gameweeks")
+        .select("player_id, gameweek, minutes_played, games_played")
+        .eq("season", season)
+        .in("gameweek", gameweeks)
+        .range(from, to)
+    );
 
     const minutesByPlayerGameweek = new Map<string, number>();
-    for (const row of (data ?? []) as PlayerGameweekRow[]) {
+    for (const row of rows) {
       if ((row.games_played ?? 0) > 0) {
         minutesByPlayerGameweek.set(`${row.player_id}:${row.gameweek}`, row.minutes_played ?? 0);
       }

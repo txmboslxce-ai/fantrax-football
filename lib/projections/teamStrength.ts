@@ -1,5 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 
 // Every flat numeric column on team_match_stats (see
 // supabase/migrations/045_add_match_stats.sql) that's worth an opponent-
@@ -143,13 +144,20 @@ export type TeamStrengthResult = {
 };
 
 export async function computeTeamStrengthRatings(supabase: SupabaseClient): Promise<TeamStrengthResult> {
-  const { data, error } = await supabase.from("team_match_stats").select(["fixture_id", "team_abbrev", "is_home", ...TEAM_STAT_KEYS].join(","));
-
-  if (error) {
-    throw new Error(`Unable to load team_match_stats: ${error.message}`);
-  }
-
-  const rows = (data ?? []) as unknown as TeamMatchStatsRow[];
+  // Two full seasons x ~380 fixtures x two sides is past a single request's
+  // row cap -- see fetchAllRows for why this can't just be a bigger
+  // .limit(). Confirmed live: the equivalent unpaginated player_gameweeks
+  // fetch in playerProjection.ts was silently dropping rows with no error,
+  // so every unbounded whole-season fetch in this codebase gets the same
+  // treatment rather than assuming this one's row count is safely small.
+  const rawRows = await fetchAllRows<Record<string, unknown>>(
+    (from, to) =>
+      supabase
+        .from("team_match_stats")
+        .select(["fixture_id", "team_abbrev", "is_home", ...TEAM_STAT_KEYS].join(","))
+        .range(from, to) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: PostgrestError | null }>
+  );
+  const rows = rawRows as unknown as TeamMatchStatsRow[];
 
   const fixtureIds = Array.from(new Set(rows.map((row) => row.fixture_id)));
   const { data: fixtureRows, error: fixtureError } =

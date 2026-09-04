@@ -6,6 +6,7 @@ import { calcGoalsAgainstPts, calcKeeperPts, calcOutfielderPts } from "@/lib/csv
 import { computePlayerShotProfiles, type PlayerShotProfile } from "@/lib/projections/playerShotProfile";
 import { computeTeamStrengthRatings, type TeamStatKey, type TeamStrengthProfile } from "@/lib/projections/teamStrength";
 import { FIXTURES_SEASON, PRIOR_SEASON } from "@/lib/season/fixtures";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 
 export type ProjectedStatLine = {
   goals: number;
@@ -379,30 +380,30 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   // GET request whose query string blows past a URL length limit
   // somewhere in the stack (confirmed live: a plain "Bad Request" with no
   // more specific error). Fetching by season/gameweek range alone and
-  // keeping only the players we need in memory avoids that entirely --
-  // even a full season's worth of rows across the whole league is a few
-  // thousand, trivial for a single query.
+  // keeping only the players we need in memory avoids that entirely -- but a
+  // full season's worth of rows across the whole league is comfortably into
+  // five figures, past whatever single-request row cap Supabase/PostgREST
+  // enforces regardless of an explicit .limit() -- confirmed live: it was
+  // silently dropping some players' prior-season rows entirely with no
+  // error, so fetchAllRows below pages through with .range() instead.
   const PLAYER_GAMEWEEK_COLUMNS =
     "player_id, games_played, games_started, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield";
 
-  const [{ data: pgRows, error: pgError }, { data: priorSeasonRows, error: priorSeasonError }] = await Promise.all([
-    supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", FIXTURES_SEASON).lt("gameweek", gameweek).limit(50000),
+  const [pgRows, priorSeasonRows] = await Promise.all([
+    fetchAllRows<PlayerGameweekRow>((from, to) =>
+      supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", FIXTURES_SEASON).lt("gameweek", gameweek).range(from, to)
+    ),
     // Last season's rows for the same player -- used below as a personalized
     // prior (their own established per-90 rate) in place of a generic
     // position average, for whoever has one. Not filtered by player_id for
     // the same URL-length reason as above.
-    supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", PRIOR_SEASON).limit(50000),
+    fetchAllRows<PlayerGameweekRow>((from, to) =>
+      supabase.from("player_gameweeks").select(PLAYER_GAMEWEEK_COLUMNS).eq("season", PRIOR_SEASON).range(from, to)
+    ),
   ]);
 
-  if (pgError) {
-    throw new Error(`Unable to load player_gameweeks: ${pgError.message}`);
-  }
-  if (priorSeasonError) {
-    throw new Error(`Unable to load prior-season player_gameweeks: ${priorSeasonError.message}`);
-  }
-
-  const historyByPlayer = accumulateHistory((pgRows ?? []) as PlayerGameweekRow[]);
-  const priorSeasonByPlayer = accumulateHistory((priorSeasonRows ?? []) as PlayerGameweekRow[]);
+  const historyByPlayer = accumulateHistory(pgRows);
+  const priorSeasonByPlayer = accumulateHistory(priorSeasonRows);
 
   const shotProfileByFantraxId = new Map<string, PlayerShotProfile>();
   for (const profile of shotProfiles) {
