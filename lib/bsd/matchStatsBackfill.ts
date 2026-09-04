@@ -17,8 +17,18 @@ type RawEventRow = {
 };
 
 type RawEventListResponse = {
+  next: string | null;
   results: RawEventRow[];
 };
+
+// Same limit/offset pagination as fetchTeamPlayers in lib/bsd/players.ts --
+// the ones-day-either-side window this was originally written for only ever
+// returns a couple of results (well within one page), so this never
+// mattered until seasonDateBounds's much wider fallback window started
+// pulling back a whole season's worth of a team's matches, some of which
+// (cup runs push this higher) can spill past page one and get silently
+// dropped without it.
+const MAX_EVENTS_PER_TEAM = 200;
 
 // Deliberately separate from findBsdEventId (lib/bsd/events.ts), which only
 // returns an id for live display -- the backfill also needs `status` so it
@@ -43,13 +53,22 @@ async function resolveBsdEventForFixture(fixture: {
     return null;
   }
 
-  const data = await bzzoiroGet<RawEventListResponse>(
-    "/events/",
-    { team_id: String(homeTeamId), date_from: fixture.dateFrom, date_to: fixture.dateTo },
-    3600
-  );
+  const events: RawEventRow[] = [];
+  let offset = 0;
+  const limit = 100;
 
-  return data.results.find((event) => event.home_team_id === homeTeamId && event.away_team_id === awayTeamId) ?? null;
+  while (events.length < MAX_EVENTS_PER_TEAM) {
+    const data = await bzzoiroGet<RawEventListResponse>(
+      "/events/",
+      { team_id: String(homeTeamId), date_from: fixture.dateFrom, date_to: fixture.dateTo, limit: String(limit), offset: String(offset) },
+      3600
+    );
+    events.push(...data.results);
+    if (!data.next) break;
+    offset += limit;
+  }
+
+  return events.find((event) => event.home_team_id === homeTeamId && event.away_team_id === awayTeamId) ?? null;
 }
 
 // Fallback search window for a fixture with no kickoff_at: the full English
