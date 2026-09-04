@@ -94,18 +94,23 @@ export async function computePlayerShotProfiles(supabase: SupabaseClient): Promi
     gameweekByFixtureId.set(fixture.id, fixture.gameweek);
   }
 
-  const mappedPlayerIds = Array.from(playerByBsdId.values()).map((player) => player.id);
   const gameweeks = Array.from(new Set(gameweekByFixtureId.values()));
 
+  // Not filtered by player_id: that list only grows as more matches get
+  // backfilled through the season, and an .in() filter that long risks the
+  // same URL-length "Bad Request" hit in the projection engine's own
+  // player_gameweeks query (see the comment there) -- filtering by
+  // season/gameweek alone and keeping what's needed in memory sidesteps it
+  // for a trivial extra row count.
   const { data: pgRows, error: pgError } =
-    mappedPlayerIds.length === 0 || gameweeks.length === 0
+    gameweeks.length === 0
       ? { data: [], error: null }
       : await supabase
           .from("player_gameweeks")
           .select("player_id, gameweek, minutes_played, games_played")
           .eq("season", FIXTURES_SEASON)
-          .in("player_id", mappedPlayerIds)
-          .in("gameweek", gameweeks);
+          .in("gameweek", gameweeks)
+          .limit(50000);
 
   if (pgError) {
     throw new Error(`Unable to load player_gameweeks: ${pgError.message}`);

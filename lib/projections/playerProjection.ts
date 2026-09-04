@@ -209,19 +209,24 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   }
 
   const players = (playerRows ?? []) as PlayerRow[];
-  const playerIds = players.map((player) => player.id);
 
-  const { data: pgRows, error: pgError } =
-    playerIds.length === 0
-      ? { data: [], error: null }
-      : await supabase
-          .from("player_gameweeks")
-          .select(
-            "player_id, games_played, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield"
-          )
-          .eq("season", FIXTURES_SEASON)
-          .lt("gameweek", gameweek)
-          .in("player_id", playerIds);
+  // A full gameweek round involves every team, so `players` here is
+  // basically the whole league's squad list (500+ players) -- filtering
+  // player_gameweeks by an .in("player_id", ...) list that long builds a
+  // GET request whose query string blows past a URL length limit
+  // somewhere in the stack (confirmed live: a plain "Bad Request" with no
+  // more specific error). Fetching by season/gameweek range alone and
+  // keeping only the players we need in memory avoids that entirely --
+  // even a full season's worth of rows across the whole league is a few
+  // thousand, trivial for a single query.
+  const { data: pgRows, error: pgError } = await supabase
+    .from("player_gameweeks")
+    .select(
+      "player_id, games_played, minutes_played, goals, assists, key_passes, shots_on_target, tackles_won, interceptions, clearances, dribbles_succeeded, blocked_shots, accurate_crosses, penalties_drawn, penalties_missed, aerials_won, dispossessed, yellow_cards, red_cards, own_goals, saves, penalty_saves, high_claims, smothers, goals_against, goals_against_outfield"
+    )
+    .eq("season", FIXTURES_SEASON)
+    .lt("gameweek", gameweek)
+    .limit(50000);
 
   if (pgError) {
     throw new Error(`Unable to load player_gameweeks: ${pgError.message}`);
