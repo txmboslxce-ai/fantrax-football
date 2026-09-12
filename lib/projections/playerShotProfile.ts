@@ -21,7 +21,11 @@ export type PlayerShotProfile = {
   // with the player's own PRIOR_SEASON rate (see blendPer90 below) when they
   // have one, weighted by that prior's own minutes so a couple of games this
   // season isn't extrapolated at full weight -- fades toward this-season-only
-  // only as this season's minutes grow to match the prior's.
+  // only as this season's minutes grow to match the prior's. Then shrunk a
+  // second time toward the position-average rate (see shrinkTowardPosition
+  // below), weighted by the player's own accumulated xG rather than minutes
+  // -- minutes alone can't tell a real sample from a pile of quiet cameos
+  // that happen to include one or two freak high-xG chances.
   shotsPer90: number;
   shotsOnTargetPer90: number;
   // Quality: how good the chances they take are, independent of volume.
@@ -65,6 +69,17 @@ type PlayerGameweekRow = { player_id: string; gameweek: number; minutes_played: 
 // regular starter's shot volume. Same style of prior as PRIOR_GAMES in
 // teamStrength.ts; a starting value to revisit once there's more of a
 // season to check calibration against.
+//
+// Reused below as the same currency of trust for the volume rates
+// (shotsPer90/shotsOnTargetPer90/xgPer90/xgotPer90): how much real shot
+// involvement, in xG terms, justifies believing this player's own numbers
+// over a position-average default. blendPer90 alone isn't enough --
+// confirmed live: a player with 274 total "prior" minutes cleared
+// MIN_SAMPLE_MINUTES easily, but that total was 21 fragmented cameos, and
+// two freak high-xG chances (one from a 7-minute appearance) made up 46% of
+// his entire prior-season xG. Minutes measure how long he was on the pitch,
+// not how much genuine shot-quality evidence backs the rate -- accumulated
+// xG does, so it's what the second shrinkage step below is weighted by.
 const PRIOR_XG = 8;
 
 // A per-90 rate computed from a tiny minutes sample is extreme by
@@ -244,17 +259,64 @@ export async function computePlayerShotProfiles(supabase: SupabaseClient): Promi
   const byPlayerThisSeason = aggregateShotRows(thisSeasonRows, playerByBsdId, gameweekByFixtureId, minutesThisSeason);
   const byPlayerPriorSeason = aggregateShotRows(priorSeasonRows, playerByBsdId, gameweekByFixtureId, minutesPriorSeason);
 
+  // Position-average per-90 volume rates, from this season's league-wide
+  // minutes and totals -- the baseline the second shrinkage step below
+  // blends a thin personal sample toward, same role positionAvgPer90 plays
+  // in playerProjection.ts.
+  const positionMinutes: Record<string, number> = {};
+  const positionTotals: Record<string, { shots: number; shotsOnTarget: number; xg: number; xgot: number }> = {};
+  for (const acc of byPlayerThisSeason.values()) {
+    const pos = acc.player.position;
+    positionMinutes[pos] = (positionMinutes[pos] ?? 0) + acc.minutes;
+    const totals = positionTotals[pos] ?? { shots: 0, shotsOnTarget: 0, xg: 0, xgot: 0 };
+    totals.shots += acc.shots;
+    totals.shotsOnTarget += acc.shotsOnTarget;
+    totals.xg += acc.xg;
+    totals.xgot += acc.xgot;
+    positionTotals[pos] = totals;
+  }
+  function positionAvgPer90(position: string, key: keyof (typeof positionTotals)[string]): number {
+    const minutes = positionMinutes[position];
+    return minutes > 0 ? (positionTotals[position][key] * 90) / minutes : 0;
+  }
+
+  // A minutes-weighted personal rate (blendPer90) still isn't safe to use
+  // outright -- it measures how long a player was on the pitch, not how
+  // much real shot-quality evidence backs the rate. This second shrinkage
+  // blends that personal rate toward the position average, weighted by the
+  // player's own accumulated xG (across both seasons) as the currency of
+  // trust: a couple of freak high-xG chances in otherwise-quiet cameos
+  // produce a small accumulated-xG total even if the minutes behind them
+  // happen to clear MIN_SAMPLE_MINUTES, so they get pulled back toward a
+  // believable league baseline instead of standing as this player's rate.
+  function shrinkTowardPosition(personalRate: number, personalXgWeight: number, position: string, key: keyof (typeof positionTotals)[string]): number {
+    const baseline = positionAvgPer90(position, key);
+    return (personalRate * personalXgWeight + baseline * PRIOR_XG) / (personalXgWeight + PRIOR_XG);
+  }
+
   const profiles: PlayerShotProfile[] = [];
   for (const acc of byPlayerThisSeason.values()) {
     const prior = byPlayerPriorSeason.get(acc.player.bsd_id);
-
-    const xgPer90 = blendPer90(acc.xg, acc.minutes, prior?.xg ?? 0, prior?.minutes ?? 0);
-    const shotsPer90 = blendPer90(acc.shots, acc.minutes, prior?.shots ?? 0, prior?.minutes ?? 0);
-    const shotsOnTargetPer90 = blendPer90(acc.shotsOnTarget, acc.minutes, prior?.shotsOnTarget ?? 0, prior?.minutes ?? 0);
-    const xgotPer90 = blendPer90(acc.xgot, acc.minutes, prior?.xgot ?? 0, prior?.minutes ?? 0);
+    const position = acc.player.position;
 
     const combinedGoals = acc.goals + (prior?.goals ?? 0);
     const combinedXg = acc.xg + (prior?.xg ?? 0);
+
+    const xgPer90 = shrinkTowardPosition(blendPer90(acc.xg, acc.minutes, prior?.xg ?? 0, prior?.minutes ?? 0), combinedXg, position, "xg");
+    const shotsPer90 = shrinkTowardPosition(
+      blendPer90(acc.shots, acc.minutes, prior?.shots ?? 0, prior?.minutes ?? 0),
+      combinedXg,
+      position,
+      "shots"
+    );
+    const shotsOnTargetPer90 = shrinkTowardPosition(
+      blendPer90(acc.shotsOnTarget, acc.minutes, prior?.shotsOnTarget ?? 0, prior?.minutes ?? 0),
+      combinedXg,
+      position,
+      "shotsOnTarget"
+    );
+    const xgotPer90 = shrinkTowardPosition(blendPer90(acc.xgot, acc.minutes, prior?.xgot ?? 0, prior?.minutes ?? 0), combinedXg, position, "xgot");
+
     const finishingFactor = round((combinedGoals + PRIOR_XG) / (combinedXg + PRIOR_XG));
 
     profiles.push({
