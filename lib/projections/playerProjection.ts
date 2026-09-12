@@ -443,7 +443,20 @@ export async function computeGameweekProjections(supabase: SupabaseClient, gamew
   // identical guard in playerShotProfile.ts, which hit the same bug on the
   // BSD-shot-derived rates). Below this many minutes, a sample isn't
   // trusted as a per-90 rate at all.
-  const MIN_SAMPLE_MINUTES = 90;
+  //
+  // One full match (90) wasn't a high enough bar: confirmed live, a
+  // forward's 338 prior-season minutes cleared it easily, but that total
+  // was 21 fragmented cameos, and two games (5 aerial duels won in one
+  // 70-minute appearance, 3 in an 8-minute cameo) dominated his aerials_won
+  // total -- extrapolated into a per-90 rate, that's 5.86 aerial wins per
+  // 90 for a forward, more than most center-backs. Raised to four full
+  // matches' worth, mirroring the identical fix already made in
+  // playerShotProfile.ts -- checked first that positionAvgPer90 (the
+  // fallback more players now route through) is stable enough to trust:
+  // this-season-only and prior-pooled versions come out within single
+  // digits of each other for every position/stat that matters here, so no
+  // separate pooling fix is needed on that side.
+  const MIN_SAMPLE_MINUTES = 360;
 
   const STAT_KEYS = [
     "goals",
