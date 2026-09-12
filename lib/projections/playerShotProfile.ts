@@ -259,13 +259,22 @@ export async function computePlayerShotProfiles(supabase: SupabaseClient): Promi
   const byPlayerThisSeason = aggregateShotRows(thisSeasonRows, playerByBsdId, gameweekByFixtureId, minutesThisSeason);
   const byPlayerPriorSeason = aggregateShotRows(priorSeasonRows, playerByBsdId, gameweekByFixtureId, minutesPriorSeason);
 
-  // Position-average per-90 volume rates, from this season's league-wide
-  // minutes and totals -- the baseline the second shrinkage step below
-  // blends a thin personal sample toward, same role positionAvgPer90 plays
-  // in playerProjection.ts.
+  // Position-average per-90 volume rates -- the baseline the second
+  // shrinkage step below blends a thin personal sample toward, same role
+  // positionAvgPer90 plays in playerProjection.ts. Pooled across BOTH
+  // seasons, not just this one: confirmed live, a this-season-only average
+  // this early (three gameweeks in) is itself a small, biased sample --
+  // only the nailed-on starters have accumulated real minutes and shots
+  // yet, so the "average forward" baseline skewed toward what the good,
+  // undropped forwards are doing (0.48 xG/90, elite-striker volume) rather
+  // than a real league average. Shrinking a noisy personal rate toward
+  // another noisy, selection-biased baseline barely restrained anything. A
+  // full prior season across the whole league is a far larger, more stable
+  // sample, so it dominates this average until this season's own sample
+  // catches up in size.
   const positionMinutes: Record<string, number> = {};
   const positionTotals: Record<string, { shots: number; shotsOnTarget: number; xg: number; xgot: number }> = {};
-  for (const acc of byPlayerThisSeason.values()) {
+  for (const acc of [...byPlayerThisSeason.values(), ...byPlayerPriorSeason.values()]) {
     const pos = acc.player.position;
     positionMinutes[pos] = (positionMinutes[pos] ?? 0) + acc.minutes;
     const totals = positionTotals[pos] ?? { shots: 0, shotsOnTarget: 0, xg: 0, xgot: 0 };
