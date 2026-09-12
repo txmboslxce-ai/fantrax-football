@@ -98,8 +98,21 @@ const PRIOR_XG = 8;
 // shrinkage weight only controls how much the prior counts for, it doesn't
 // cap how extreme the prior's own rate can be before that weighting is
 // applied. Below this many minutes, a sample isn't trusted as a per-90 rate
-// at all, prior or current-season.
-const MIN_SAMPLE_MINUTES = 90;
+// at all, prior or current-season -- it falls through to 0 here, and the
+// position-average shrinkage above (weighted by whatever real accumulated
+// xG this player has, however little) does the entire job of estimating a
+// rate instead.
+//
+// One full match (90) turned out not to be a high enough bar: confirmed
+// live, a forward with 274 prior-season minutes cleared it easily, but that
+// total was 21 fragmented cameos, and two freak high-xG chances (one from a
+// single 7-minute appearance) made up 46% of his entire prior-season xG --
+// blendPer90 still treated that as a trustworthy personal rate (0.649
+// xG/90, elite-striker volume) and fed it into the shrinkage above at real
+// weight. Raised to four full matches' worth so a handful of cameos can't
+// pass as an established sample; a starting value to revisit once there's
+// more of a season to check calibration against.
+const MIN_SAMPLE_MINUTES = 360;
 
 type Accum = {
   player: PlayerRow;
