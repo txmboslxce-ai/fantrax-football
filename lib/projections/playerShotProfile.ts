@@ -45,6 +45,13 @@ export type PlayerShotProfile = {
   // xgPer90 * finishingFactor -- the single number Phase 4 combines with an
   // opponent's defensive factor to project a goal rate for a fixture.
   projectedGoalRatePer90: number;
+  // Diagnostic only, not consumed by projections: xgPer90 before the
+  // position-average shrinkage step, and the position-average baseline it
+  // was shrunk toward. Exposed so an anomalous final rate can be traced to
+  // "personal rate is extreme" vs. "the baseline itself is off" without
+  // needing a one-off debug endpoint each time.
+  rawXgPer90BeforeShrink: number;
+  positionAvgXgPer90: number;
 };
 
 type ShotStatsRow = {
@@ -311,7 +318,8 @@ export async function computePlayerShotProfiles(supabase: SupabaseClient): Promi
     const combinedGoals = acc.goals + (prior?.goals ?? 0);
     const combinedXg = acc.xg + (prior?.xg ?? 0);
 
-    const xgPer90 = shrinkTowardPosition(blendPer90(acc.xg, acc.minutes, prior?.xg ?? 0, prior?.minutes ?? 0), combinedXg, position, "xg");
+    const rawXgPer90 = blendPer90(acc.xg, acc.minutes, prior?.xg ?? 0, prior?.minutes ?? 0);
+    const xgPer90 = shrinkTowardPosition(rawXgPer90, combinedXg, position, "xg");
     const shotsPer90 = shrinkTowardPosition(
       blendPer90(acc.shots, acc.minutes, prior?.shots ?? 0, prior?.minutes ?? 0),
       combinedXg,
@@ -348,6 +356,8 @@ export async function computePlayerShotProfiles(supabase: SupabaseClient): Promi
       xgotPer90: round(xgotPer90),
       finishingFactor,
       projectedGoalRatePer90: round(xgPer90 * finishingFactor),
+      rawXgPer90BeforeShrink: round(rawXgPer90),
+      positionAvgXgPer90: round(positionAvgPer90(position, "xg")),
     });
   }
 
